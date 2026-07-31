@@ -27,7 +27,7 @@ SangonomiyaKokomi:       {usage: "IT Only", role: Support, set: "Ocean-Hued Clam
 KukiShinobu:  {usage: "IT Only", role: Support, set: Gilded,     domain: "Sumeru 1",         useful_stats: [EM, "HP%", ER], main_stats: {Sands: [EM], Goblet: [EM], Circlet: [EM]}}
 Candace:      {usage: "IT Only", role: Support, set: Emblem,     domain: "Sumeru 1",         useful_stats: [ER, CR, "HP%", HP], main_stats: {Sands: ["HP%", EM], Goblet: ["HP%"], Circlet: ["HP%", CD, CR]}}
 Xilonen:      {usage: Active,  role: Support, set: Petra,        domain: Guyun,              useful_stats: [ER, "DEF%", DEF, CR], main_stats: {Sands: ["DEF%", ER], Goblet: ["DEF%"], Circlet: [CR]}}
-Linnea:       {usage: Active,  role: Sub-DPS, set: Aubade,       domain: "Nod Krai 2",       useful_stats: [ER, "DEF%", CR, CD, EM], main_stats: {Sands: ["DEF%"], Goblet: ["DEF%"], Circlet: [CR, CD, "DEF%"]}}
+Linnea:       {usage: Active,  role: Sub-DPS, set: Husk,       domain: "Inazuma 2",       useful_stats: [ER, "DEF%", CR, CD, EM], main_stats: {Sands: ["DEF%"], Goblet: ["DEF%"], Circlet: [CR, CD, "DEF%"]}}
 Illuga:       {usage: Active,  role: Support, set: SMS,          domain: "Sumeru 1",         useful_stats: [ER, EM, CR], main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM, CR]}}
 Kachina:      {usage: "IT Only", role: Support, set: Scroll,     domain: "Natlan 1",         useful_stats: [ER, CD, CR, "DEF%"], main_stats: {Sands: ["DEF%", ER], Goblet: ["GeoDMG%"], Circlet: [CR, CD]}}
 Rosaria:      {usage: "IT Only", role: Sub-DPS, set: NO,         domain: "Clear Pool",       useful_stats: [ER, CD, CR, "ATK%"], main_stats: {Sands: [EM], Goblet: [CryoDMG%], Circlet: [CR, CD]}}
