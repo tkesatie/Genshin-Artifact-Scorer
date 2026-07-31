@@ -31,13 +31,15 @@ STAT_LABEL = {
     "critRate_": "CR", "critDMG_": "CD", "atk_": "ATK%", "hp_": "HP%",
     "def_": "DEF%", "enerRech_": "ER", "eleMas": "EM",
     "hp": "HP", "atk": "ATK", "def": "DEF", "heal_": "Heal%",
+    "cryo_dmg_": "CryoDMG%", "pyro_dmg_": "PyroDMG%", "hydro_dmg_": "HydroDMG%",
+    "electro_dmg_": "ElectroDMG%", "anemo_dmg_": "AnemoDMG%", "geo_dmg_": "GeoDMG%", "dendro_dmg_": "DendroDMG%"
 }
 
 
 def load_configs():
-    roster = yaml.safe_load((HERE / "roster.yaml").read_text())
-    rules = yaml.safe_load((HERE / "rules.yaml").read_text())
-    roll_values = yaml.safe_load((HERE / "roll_values.yaml").read_text())
+    roster = yaml.safe_load((HERE / "roster.yaml").read_text(encoding="utf-8"))
+    rules = yaml.safe_load((HERE / "rules.yaml").read_text(encoding="utf-8"))
+    roll_values = yaml.safe_load((HERE / "roll_values.yaml").read_text(encoding="utf-8"))
     return roster, rules, roll_values
 
 
@@ -95,17 +97,28 @@ def effective_useful_pool(main_stat_key, useful_stats):
         pool -= 1
     return pool
 
+def valid_main_stat(artifact, cfg, slot):
+    """Check whether an artifact has an acceptable main stat for this character slot."""
+    allowed = cfg.get("main_stats", {}).get(slot, [])
+    if not allowed:
+        return True
 
-def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values):
+    main_label = STAT_LABEL.get(artifact.get("mainStatKey"))
+    return main_label in allowed
+
+
+def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench_lookup, bench_candidates):
     usage, role = cfg["usage"], cfg["role"]
     useful_stats = [str(s) for s in cfg["useful_stats"]]
     slots_result = {}
     for slot in ["Flower", "Feather", "Sands", "Goblet", "Circlet"]:
         art = artifacts_by_slot.get(slot)
+        bench_ceiling = bench_lookup.get((char_name, slot), 0)
         if art is None:
             slots_result[slot] = {
                 "status": "Missing", "roll_status": "Fail",
                 "roll_count": 0, "good": None, "excellent": None,
+                "bench_ceiling": bench_ceiling, "upgradeable": bench_ceiling > 0,
             }
             continue
         rarity = art.get("rarity", 5)
@@ -122,11 +135,18 @@ def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values):
         slots_result[slot] = {
             "status": status, "roll_status": roll_status,
             "roll_count": round(rc, 2), "good": good, "excellent": excellent,
+            "bench_ceiling": bench_ceiling, "upgradeable": bench_ceiling > rc,
         }
 
     completion = sum(1 for s in slots_result.values() if s["status"] not in ("Needs Work", "Missing"))
     excellent_pieces = sum(1 for s in slots_result.values() if s["status"] == "Excellent")
     needs_work = [slot for slot, s in slots_result.items() if s["status"] in ("Needs Work", "Missing")]
+    possible_upgrades = 0
+
+    for slot, s in slots_result.items():
+        equipped_rolls = s["roll_count"]
+        candidates = bench_candidates.get((char_name, slot), [])
+        possible_upgrades += sum(1 for ceiling in candidates if ceiling > equipped_rolls)
 
     base = rules["base_thresholds"][f"{usage}|{role}"]
     if needs_work:
@@ -154,7 +174,7 @@ def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values):
         "name": char_name, "usage": usage, "role": role, "domain": cfg.get("domain"),
         "status": char_status, "completion": completion, "excellent_pieces": excellent_pieces,
         "needs_work": needs_work, "score": score, "slots": slots_result,
-        "luxury_target": base["luxury_excellent"],
+        "luxury_target": base["luxury_excellent"], "possible_upgrades": possible_upgrades,
     }
 
 
@@ -192,6 +212,140 @@ def parse_good_export(good_json, roster):
     return by_char
 
 
+MAX_LEVEL = {5: 20, 4: 16, 3: 12, 2: 8, 1: 4}
+
+# Your roster.yaml's "set" field is a short label (e.g. "Scroll", "VV"), but the
+# real GOOD export's setKey is the full internal name (e.g. "NighttimeWhispersInTheStill").
+# This maps short labels -> the setKey(s) Irminsul actually writes, so bench
+# artifacts can be matched to the characters who'd want them.
+# CHECK THIS against your own export - setKey spelling varies by exporter/version,
+# and any set not listed here just won't get matched to a character.
+SET_ALIASES = {
+    "Galleries": ["FinaleOfTheDeepGalleries"],  # placeholder - verify against your export
+    "Scroll": ["ScrollOfTheHeroOfCinderCity"],
+    "Obsidian": ["ObsidianCodex"],
+    "Night Sky": ["NightOfTheSkysUnveiling"],
+    "TotM": ["TenacityOfTheMillelith"],
+    "NO": ["NoblesseOblige"],
+    "VV": ["ViridescentVenerer"],
+    "SMS": ["SongOfDaysPast"],
+    "Deepwood": ["DeepwoodMemories"],
+    "Aubade": ["AubadeOfMorningstarAndMoon"],
+    "Ocean-Hued Clam": ["OceanHuedClam"],
+    "Gilded": ["GildedDreams"],
+    "Emblem": ["EmblemOfSeveredFate"],
+    "Petra": ["ArchaicPetra"],
+    "Nighttime": ["NighttimeWhispersInTheStill"],
+    "Instructor": ["Instructor"],
+    "Golden Troupe": ["GoldenTroupe"],
+    "Thundering Fury": ["ThunderingFury"],
+}
+
+
+def matched_characters_for_set(set_key, roster):
+    """Which roster characters would want an artifact with this setKey."""
+    matches = []
+    for name, cfg in roster.items():
+        short_set = cfg.get("set")
+        aliases = SET_ALIASES.get(short_set, [])
+        if set_key == short_set or set_key in aliases:
+            matches.append(name)
+    return matches
+
+
+def max_possible_useful_rolls(artifact, useful_stats, roll_values):
+    """Optimistic ceiling: how many useful rolls this artifact could reach if
+    leveled all the way, assuming every remaining upgrade lands on a useful stat
+    wherever that's actually still possible. Returns (current_rolls, max_rolls)."""
+    rarity = artifact.get("rarity", 5)
+    level = artifact.get("level", 0)
+    max_level = MAX_LEVEL.get(rarity, 20)
+    remaining_upgrades = max(0, (max_level - level) // 4)
+
+    subs = artifact.get("substats", [])
+    existing_labels = {STAT_LABEL.get(s.get("key")) for s in subs if STAT_LABEL.get(s.get("key"))}
+    current_rolls = roll_count_for_artifact(artifact, useful_stats, roll_values, rarity)
+
+    open_slot = len(subs) < 4
+    room_for_new_useful = open_slot and bool(set(useful_stats) - existing_labels)
+    has_useful_now = bool(existing_labels & set(useful_stats))
+
+    if room_for_new_useful:
+        # best case: the still-unlocked substat becomes a useful one, and every
+        # subsequent upgrade also lands on a useful substat
+        max_additional = remaining_upgrades
+    elif has_useful_now:
+        # no room for a *new* useful stat, but upgrades can still pile onto the
+        # useful stat(s) already present; the unlock event itself (if any) is
+        # guaranteed wasted since it can't be useful
+        wasted = 1 if open_slot else 0
+        max_additional = max(0, remaining_upgrades - wasted)
+    else:
+        # no useful stat present, and no way to gain one -> dead end
+        max_additional = 0
+
+    return current_rolls, current_rolls + max_additional
+
+
+def find_bench_potential(good_json, roster, rules, roll_values):
+    """Unequipped, under-max-level artifacts, evaluated against every roster
+    character who uses that artifact set."""
+    results = []
+    for art in good_json.get("artifacts", []):
+        if art.get("location"):
+            continue  # equipped - not bench
+        rarity = art.get("rarity", 5)
+        level = art.get("level", 0)
+        if level >= MAX_LEVEL.get(rarity, 20):
+            continue  # already maxed, nothing left to gain
+        slot = SLOT_MAP.get(art.get("slotKey"))
+        if slot is None:
+            continue
+
+        set_key = art.get("setKey")
+        for char_name in matched_characters_for_set(set_key, roster):
+            cfg = roster[char_name]
+
+            if not valid_main_stat(art, cfg, slot):
+                continue
+
+            useful_stats = [str(s) for s in cfg["useful_stats"]]
+            eff_pool = effective_useful_pool(art.get("mainStatKey"), useful_stats)
+            good, excellent = compute_thresholds(rules, cfg["usage"], cfg["role"], slot, eff_pool, char_name)
+            current, ceiling = max_possible_useful_rolls(art, useful_stats, roll_values)
+            if ceiling < good:
+                verdict = "Dead end"
+            elif ceiling < excellent:
+                verdict = "Could reach Good"
+            else:
+                verdict = "Could reach Excellent"
+            results.append({
+                "character": char_name, "slot": slot, "set": set_key,
+                "level": level, "rarity": rarity, "current_rolls": current,
+                "max_rolls": ceiling, "good": good, "excellent": excellent,
+                "verdict": verdict,
+            })
+    results.sort(key=lambda r: (-r["max_rolls"], -r["current_rolls"]))
+    return results
+
+
+def bench_ceiling_lookup(bench_results):
+    """(character, slot) -> best ceiling among bench candidates for that slot."""
+    lookup = {}
+    for b in bench_results:
+        key = (b["character"], b["slot"])
+        if key not in lookup or b["max_rolls"] > lookup[key]:
+            lookup[key] = b["max_rolls"]
+    return lookup
+
+def bench_candidates_lookup(bench_results):
+    """(character, slot) -> list of bench candidate max_roll values."""
+    lookup = defaultdict(list)
+    for b in bench_results:
+        lookup[(b["character"], b["slot"])].append(b["max_rolls"])
+    return lookup
+
+
 STATUS_COLOR = {
     "Farming": "#e05a4e", "Usable": "#e0a94e", "Finished": "#4e8ee0",
     "Luxury": "#4ec97a", "Needs Work": "#e05a4e", "Good": "#e0a94e",
@@ -199,7 +353,7 @@ STATUS_COLOR = {
 }
 
 
-def render_html(char_results, domain_results, out_path):
+def render_html(char_results, domain_results, bench_results, out_path):
     char_results_sorted = sorted(char_results, key=lambda r: -r["score"])
     domain_sorted = sorted(domain_results.items(), key=lambda kv: -kv[1]["score"])
 
@@ -210,7 +364,7 @@ def render_html(char_results, domain_results, out_path):
     rows = []
     for r in char_results_sorted:
         slot_html = " ".join(
-            f'<span title="{slot}: {s["roll_count"]} rolls (need {s["good"]}/{s["excellent"]})">{badge(s["status"])}</span>'
+            f'<span title="{slot}: {s["roll_count"]} rolls equipped (need {s["good"]}/{s["excellent"]}); best bench candidate could reach {s["bench_ceiling"]}">{badge(s["status"])}{"↑" if s["upgradeable"] else ""}</span>'
             for slot, s in r["slots"].items()
         )
         rows.append(f"""
@@ -221,6 +375,7 @@ def render_html(char_results, domain_results, out_path):
           <td>{badge(r['status'])}</td>
           <td>{r['completion']}/5</td>
           <td>{r['excellent_pieces']}</td>
+          <td>{r['possible_upgrades']}</td>
           <td>{slot_html}</td>
           <td>{r['domain']}</td>
           <td>{round(r['score'],1)}</td>
@@ -235,6 +390,25 @@ def render_html(char_results, domain_results, out_path):
           <td>{round(d['score'],1)}</td>
           <td>{d['active']}</td>
           <td>{d['it_only']}</td>
+        </tr>""")
+
+    VERDICT_COLOR = {"Dead end": "#999999", "Could reach Good": "#e0a94e", "Could reach Excellent": "#4ec97a"}
+
+    def vbadge(text):
+        color = VERDICT_COLOR.get(text, "#999")
+        return f'<span style="background:{color};color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">{text}</span>'
+
+    bench_rows = []
+    for b in bench_results:
+        bench_rows.append(f"""
+        <tr>
+          <td>{b['character']}</td>
+          <td>{b['set']}</td>
+          <td>{b['slot']}</td>
+          <td>{b['rarity']}★ Lv{b['level']}</td>
+          <td>{b['current_rolls']}</td>
+          <td>{b['max_rolls']} (need {b['good']}/{b['excellent']})</td>
+          <td>{vbadge(b['verdict'])}</td>
         </tr>""")
 
     html = f"""<!DOCTYPE html>
@@ -252,7 +426,7 @@ tr:hover {{ background: #242424; }}
 <h2>Characters (sorted by farming priority)</h2>
 <table id="charTable">
 <thead><tr><th>Character</th><th>Usage</th><th>Role</th><th>Status</th><th>Completion</th>
-<th>Excellent</th><th>Slots</th><th>Domain</th><th>Score</th></tr></thead>
+<th>Excellent</th><th>Possible Upgrades</th><th>Slots</th><th>Domain</th><th>Score</th></tr></thead>
 <tbody>{''.join(rows)}</tbody>
 </table>
 
@@ -260,6 +434,16 @@ tr:hover {{ background: #242424; }}
 <table id="domainTable">
 <thead><tr><th>Domain</th><th>Characters</th><th>Score</th><th>Active</th><th>IT Only</th></tr></thead>
 <tbody>{''.join(domain_rows)}</tbody>
+</table>
+
+<h2>Bench Potential (unequipped, under-leveled artifacts worth checking)</h2>
+<p style="color:#999;font-size:13px;max-width:700px;">"Max Rolls" is an optimistic ceiling assuming every remaining
+upgrade lands on a useful stat - it's not a guarantee, just whether the piece is worth the resin/mora to level up
+and find out. "Dead end" means even best case it can't clear the Good bar for that character.</p>
+<table id="benchTable">
+<thead><tr><th>Character</th><th>Set</th><th>Slot</th><th>Rarity/Level</th><th>Current Rolls</th>
+<th>Max Possible Rolls</th><th>Verdict</th></tr></thead>
+<tbody>{''.join(bench_rows)}</tbody>
 </table>
 
 <script>
@@ -283,7 +467,7 @@ document.querySelectorAll('table').forEach(table => {{
 }});
 </script>
 </body></html>"""
-    Path(out_path).write_text(html)
+    Path(out_path).write_text(html, encoding="utf-8")
     print(f"Wrote {out_path}")
 
 
@@ -294,17 +478,20 @@ def main():
     args = ap.parse_args()
 
     roster, rules, roll_values = load_configs()
-    good_json = json.loads(Path(args.good_export).read_text())
+    good_json = json.loads(Path(args.good_export).read_text(encoding="utf-8"))
 
     by_char = parse_good_export(good_json, roster)
+    bench_results = find_bench_potential(good_json, roster, rules, roll_values)
+    bench_lookup = bench_ceiling_lookup(bench_results)
+    bench_candidates = bench_candidates_lookup(bench_results)
 
     char_results = []
     for name, cfg in roster.items():
         artifacts = by_char.get(name, {})
-        char_results.append(score_character(name, cfg, artifacts, rules, roll_values))
+        char_results.append(score_character(name, cfg, artifacts, rules, roll_values, bench_lookup, bench_candidates))
 
     domain_results = score_domains(char_results, rules)
-    render_html(char_results, domain_results, args.out)
+    render_html(char_results, domain_results, bench_results, args.out)
 
 
 if __name__ == "__main__":
