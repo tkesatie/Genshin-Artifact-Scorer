@@ -1,0 +1,43 @@
+# Rules config — ported 1:1 from the Artifact Rules sheet.
+# Edit here if you ever want to retune thresholds; everything downstream
+# (score.py) reads from this file, same as the sheet's VLOOKUPs did.
+
+base_thresholds:
+  # usage|role : {good, excellent, finished_excellent_count, luxury_excellent_count}
+  "Active|DPS":       {good: 6, excellent: 7, finished_excellent: 3, luxury_excellent: 5}
+  "Active|Sub-DPS":   {good: 5, excellent: 7, finished_excellent: 2, luxury_excellent: 4}
+  "Active|Support":   {good: 3, excellent: 5, finished_excellent: 1, luxury_excellent: 3}
+  "IT Only|DPS":      {good: 6, excellent: 7, finished_excellent: 2, luxury_excellent: 3}
+  "IT Only|Sub-DPS":  {good: 5, excellent: 7, finished_excellent: 1, luxury_excellent: 2}
+  "IT Only|Support":  {good: 3, excellent: 5, finished_excellent: 0, luxury_excellent: 1}
+
+# Adjustment based on Effective Useful Stat Pool (main-stat-pool minus 1 if
+# main stat == a listed useful stat for that slot). Approximate/bucketed match,
+# same as the sheet's VLOOKUP(...,TRUE) — pick the highest stat_count <= pool.
+stat_pool_adjustment:
+  - {stat_count: 1, good_adj: -3, excellent_adj: -3}
+  - {stat_count: 2, good_adj: -2, excellent_adj: -2}
+  - {stat_count: 3, good_adj: -1, excellent_adj: -1}
+  - {stat_count: 4, good_adj: 0,  excellent_adj: 0}
+  - {stat_count: 5, good_adj: 0,  excellent_adj: 0}
+  - {stat_count: 6, good_adj: 0,  excellent_adj: 0}
+
+# Slot adjustment — Flower/Feather have fixed main stats, so more rolls
+# necessarily go into substats, hence the higher bar.
+slot_adjustment:
+  Flower:  {good_adj: 1, excellent_adj: 1}
+  Feather: {good_adj: 1, excellent_adj: 1}
+  Sands:   {good_adj: 0, excellent_adj: 0}
+  Goblet:  {good_adj: 0, excellent_adj: 0}
+  Circlet: {good_adj: 0, excellent_adj: 0}
+
+# Per-character overrides — blank in the sheet currently. Add entries here
+# if a specific character ever needs a manually adjusted bar, e.g.:
+# Furina: {good_adj: -1, excellent_adj: -1, notes: "cracked HP substat rolls are enough"}
+character_overrides: {}
+
+# Domain score weighting (from our latest formula)
+domain_scoring:
+  active_weight: 2.0
+  it_only_weight: 1.0
+  finished_polish_weight: 0.2   # applied to (luxury_excellent_count - excellent_pieces) for non-Luxury chars

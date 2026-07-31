@@ -1,0 +1,38 @@
+# Average roll value per substat, used to convert a raw GOOD substat value
+# into an estimated "roll count" (what you've been hand-eyeballing as
+# Useful Roll Count in the sheet).
+#
+# 5-star values are averaged across the four possible per-roll tiers.
+# 4-star values are estimated at ~90% of 5-star (4-star artifacts only have
+# 3 roll tiers and a lower ceiling) — this is an approximation; if you want
+# exact 4-star tables later we can add them, but this is close enough for
+# ranking purposes, which is all the roll-count metric is used for.
+#
+# GOOD substat keys: hp, hp_, atk, atk_, def, def_, enerRech_, eleMas,
+# critRate_, critDMG_   (trailing underscore = percent stat)
+
+five_star:
+  hp_:        4.955
+  atk_:       4.955
+  def_:       6.195
+  enerRech_:  5.505
+  eleMas:     19.815
+  critRate_:  3.305
+  critDMG_:   6.605
+  # flat hp/atk/def are not scored as "useful" for any current roster entry,
+  # included for completeness in case that changes
+  hp:         268.9
+  atk:        16.5
+  def:        19.7
+
+four_star:
+  hp_:        4.46
+  atk_:       4.46
+  def_:       5.58
+  enerRech_:  4.95
+  eleMas:     17.83
+  critRate_:  2.97
+  critDMG_:   5.94
+  hp:         242.0
+  atk:        14.85
+  def:        17.7

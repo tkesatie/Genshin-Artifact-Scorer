@@ -1,0 +1,55 @@
+# Roster config — one entry per tracked character.
+# This is the file you'll actually hand-edit going forward.
+#
+# usage: Active | IT Only
+# role: DPS | Sub-DPS | Support
+# set: artifact set name (for your reference, not used in scoring)
+# domain: farming domain (for the Domain Summary aggregation)
+# useful_stats: substats that count toward this character's "useful stat pool"
+#   (use: ATK%, HP%, DEF%, EM, ER, CR, CD — CR/CD are always implicitly useful
+#   for damage roles but list them explicitly for clarity)
+
+Skirk:        {usage: Active,  role: DPS,     set: Galleries,    domain: "Natlan 2",         useful_stats: [CD, CR, "ATK%"]}
+Escoffier:    {usage: Active,  role: Sub-DPS, set: Scroll,       domain: "Natlan 1",         useful_stats: [ER, CD, CR, "ATK%"]}
+Mavuika:      {usage: Active,  role: DPS,     set: Obsidian,     domain: "Natlan 1",         useful_stats: [CD, CR, EM, "ATK%"]}
+Mualani:      {usage: Active,  role: DPS,     set: Obsidian,     domain: "Natlan 1",         useful_stats: [CD, CR, "HP%", EM, ER]}
+Zibai:        {usage: Active,  role: DPS,     set: "Night Sky",  domain: "Nod Krai 1",       useful_stats: [CD, CR, "DEF%", EM, ER]}
+Citlali:      {usage: Active,  role: Sub-DPS, set: Scroll,       domain: "Natlan 1",         useful_stats: [ER, EM, CD, CR]}
+Furina:       {usage: Active,  role: Support, set: TotM,         domain: "Ridge Watch",      useful_stats: [ER, CD, CR, "HP%"]}
+Mona:         {usage: Active,  role: Support, set: NO,           domain: "Clear Pool",       useful_stats: [ER, CR, CD]}
+Sucrose:      {usage: Active,  role: Support, set: VV,           domain: Remembrance,        useful_stats: [ER, EM]}
+Keqing:       {usage: "IT Only", role: DPS,   set: "Thundering Fury", domain: "Midsummer Courtyard", useful_stats: [CD, CR, "ATK%", EM]}
+Lauma:        {usage: "IT Only", role: Support, set: SMS,        domain: "Nod Krai 1",       useful_stats: [ER, EM, CR, CD]}
+Nahida:       {usage: "IT Only", role: Sub-DPS, set: Deepwood,   domain: "Sumeru 1",         useful_stats: [ER, EM, CD, CR, "ATK%"]}
+Columbina:    {usage: Active,  role: Sub-DPS, set: Aubade,       domain: "Nod Krai 2",       useful_stats: [ER, EM, CD, CR, "HP%"]}
+Nilou:        {usage: "IT Only", role: Support, set: "2pc/2pc",  domain: None,                useful_stats: ["HP%", HP, EM]}
+SangonomiyaKokomi:       {usage: "IT Only", role: Support, set: "Ocean-Hued Clam", domain: "Inazuma 2",  useful_stats: ["HP%", ER, "ATK%", HP]}
+KukiShinobu:  {usage: "IT Only", role: Support, set: Gilded,     domain: "Sumeru 1",         useful_stats: [EM, "HP%", ER]}
+Candace:      {usage: "IT Only", role: Support, set: Emblem,     domain: "Sumeru 1",         useful_stats: [ER, CR, "HP%", HP]}
+Xilonen:      {usage: Active,  role: Support, set: Petra,        domain: Guyun,              useful_stats: [ER, "DEF%", DEF, CR]}
+Linnea:       {usage: Active,  role: Sub-DPS, set: Aubade,       domain: "Nod Krai 2",       useful_stats: [ER, "DEF%", CR, CD, EM]}
+Illuga:       {usage: Active,  role: Support, set: SMS,          domain: "Sumeru 1",         useful_stats: [ER, EM, CR]}
+Kachina:      {usage: "IT Only", role: Support, set: Scroll,     domain: "Natlan 1",         useful_stats: [ER, CD, CR, "DEF%"]}
+Rosaria:      {usage: "IT Only", role: Sub-DPS, set: NO,         domain: "Clear Pool",       useful_stats: [ER, CD, CR, "ATK%"]}
+Fischl:       {usage: "IT Only", role: Sub-DPS, set: "Golden Troupe", domain: "Fontaine 1",  useful_stats: [ER, CD, CR, "ATK%", EM]}
+Ororon:       {usage: "IT Only", role: Sub-DPS, set: Scroll,     domain: "Natlan 1",         useful_stats: [ER, CD, CR, "ATK%", EM]}
+Xingqiu:      {usage: "IT Only", role: Sub-DPS, set: Emblem,     domain: "Inazuma 1",        useful_stats: [ER, CD, CR, "ATK%"]}
+Bennett:      {usage: Active,  role: Support, set: NO,           domain: "Clear Pool",       useful_stats: [ER, CD, CR, "HP%"]}
+Xiangling:    {usage: "IT Only", role: Sub-DPS, set: Emblem,     domain: "Inazuma 1",        useful_stats: [ER, CD, CR, "ATK%", EM]}
+Jean:         {usage: "IT Only", role: Support, set: VV,         domain: Remembrance,        useful_stats: [ER, CD, CR, "ATK%", EM]}
+Diluc:        {usage: "IT Only", role: DPS,   set: Gilded,       domain: "Sumeru 1",         useful_stats: [CR, CD, "ATK%", EM, ER]}
+Gorou:        {usage: "IT Only", role: Support, set: NO,         domain: "Clear Pool",       useful_stats: [ER, "DEF%", CR]}
+Ningguang:    {usage: "IT Only", role: DPS,   set: Nighttime,    domain: "Fontaine 2",       useful_stats: [CR, CD, "ATK%", ER]}
+"LanYan":    {usage: "IT Only", role: Support, set: VV,         domain: Remembrance,        useful_stats: [ER, "ATK%", EM, CR]}
+Faruzan:      {usage: "IT Only", role: Support, set: NO,         domain: "Clear Pool",       useful_stats: [ER, CR, CD, "ATK%"]}
+Layla:        {usage: "IT Only", role: Support, set: TotM,       domain: Windblume,          useful_stats: [CR, "HP%", HP]}
+Diona:        {usage: "IT Only", role: Support, set: NO,         domain: "Clear Pool",       useful_stats: [ER, "HP%", CR, HP]}
+Kaeya:        {usage: "IT Only", role: Sub-DPS, set: Emblem,     domain: "Inazuma 1",        useful_stats: [ER, CD, "ATK%", CR]}
+Iansan:       {usage: "IT Only", role: Support, set: Scroll,     domain: "Natlan 1",         useful_stats: [ER, "ATK%", CR]}
+Beidou:       {usage: "IT Only", role: Sub-DPS, set: Emblem,     domain: "Sumeru 1",         useful_stats: [ER, CR, CD, "ATK%", EM]}
+Collei:       {usage: "IT Only", role: Support, set: Deepwood,   domain: "Sumeru 1",         useful_stats: [ER, CR, CD, "ATK%", EM]}
+Kirara:       {usage: "IT Only", role: Support, set: Instructor, domain: "Nod Krai 2",       useful_stats: [ER, "HP%", CR, HP]}
+Aino:         {usage: "IT Only", role: Support, set: SMS,        domain: "Nod Krai 1",       useful_stats: [ER, EM, CR]}
+Barbara:      {usage: "IT Only", role: Support, set: "Ocean-Hued Clam", domain: "Inazuma 2", useful_stats: ["HP%", HP]}
+Chevreuse:    {usage: "IT Only", role: Support, set: NO,         domain: "Clear Pool",       useful_stats: [ER, "HP%", CR, HP, EM]}
+Thoma:        {usage: "IT Only", role: Support, set: Gilded,     domain: "Sumeru 1",         useful_stats: [ER, EM, "HP%", HP, CR]}

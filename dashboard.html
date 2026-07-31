@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Artifact Farming Dashboard</title>
+<style>
+body { font-family: -apple-system, Segoe UI, sans-serif; background:#1a1a1a; color:#eee; padding:24px; }
+h1, h2 { font-weight: 600; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 32px; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #333; font-size: 14px; }
+th { cursor: pointer; background:#242424; position: sticky; top:0; }
+tr:hover { background: #242424; }
+</style></head>
+<body>
+<h1>Artifact Farming Dashboard</h1>
+<h2>Characters (sorted by farming priority)</h2>
+<table id="charTable">
+<thead><tr><th>Character</th><th>Usage</th><th>Role</th><th>Status</th><th>Completion</th>
+<th>Excellent</th><th>Slots</th><th>Domain</th><th>Score</th></tr></thead>
+<tbody>
+        <tr>
+          <td>Citlali</td>
+          <td>Active</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>1</td>
+          <td><span title="Flower: 8 rolls (need 6/8)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 5 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 2 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 3 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 2 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Natlan 1</td>
+          <td>889</td>
+        </tr>
+        <tr>
+          <td>Columbina</td>
+          <td>Active</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>0</td>
+          <td><span title="Flower: 6 rolls (need 6/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 2 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 3 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 6 rolls (need 5/7)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 4 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Nod Krai 2</td>
+          <td>880</td>
+        </tr>
+        <tr>
+          <td>Linnea</td>
+          <td>Active</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>0</td>
+          <td><span title="Flower: 6 rolls (need 6/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 5 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 5 rolls (need 5/7)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 1 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 0 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Nod Krai 2</td>
+          <td>880</td>
+        </tr>
+        <tr>
+          <td>Xilonen</td>
+          <td>Active</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>2</td>
+          <td><span title="Flower: 2 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 3 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 1 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 5 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 7 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Guyun</td>
+          <td>878</td>
+        </tr>
+        <tr>
+          <td>Bennett</td>
+          <td>Active</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>4/5</td>
+          <td>1</td>
+          <td><span title="Flower: 5 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 3 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 3 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 3 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 4 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Clear Pool</td>
+          <td>859</td>
+        </tr>
+        <tr>
+          <td>Illuga</td>
+          <td>Active</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>4/5</td>
+          <td>2</td>
+          <td><span title="Flower: 4 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 3 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 3 rolls (need 1/3)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 5 rolls (need 1/3)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 0 rolls (need 1/3)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Sumeru 1</td>
+          <td>858</td>
+        </tr>
+        <tr>
+          <td>Mualani</td>
+          <td>Active</td>
+          <td>DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>4/5</td>
+          <td>3</td>
+          <td><span title="Flower: 8 rolls (need 7/8)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 9 rolls (need 7/8)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 4 rolls (need 6/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 9 rolls (need 6/7)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 6 rolls (need 6/7)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Natlan 1</td>
+          <td>857</td>
+        </tr>
+        <tr>
+          <td>Zibai</td>
+          <td>Active</td>
+          <td>DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>4/5</td>
+          <td>3</td>
+          <td><span title="Flower: 8 rolls (need 7/8)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 9 rolls (need 7/8)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 7 rolls (need 6/7)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 6 rolls (need 6/7)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 5 rolls (need 6/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Nod Krai 1</td>
+          <td>857</td>
+        </tr>
+        <tr>
+          <td>Sucrose</td>
+          <td>Active</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>4/5</td>
+          <td>3</td>
+          <td><span title="Flower: 5 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 5 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 3 rolls (need 0/2)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 1 rolls (need 0/2)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 0 rolls (need 1/3)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Remembrance</td>
+          <td>857</td>
+        </tr>
+        <tr>
+          <td>Ningguang</td>
+          <td>IT Only</td>
+          <td>DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>0/5</td>
+          <td>0</td>
+          <td><span title="Flower: 3 rolls (need 7/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 1 rolls (need 7/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 4 rolls (need 5/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 2 rolls (need 6/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 3 rolls (need 6/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Fontaine 2</td>
+          <td>800</td>
+        </tr>
+        <tr>
+          <td>Rosaria</td>
+          <td>IT Only</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>0</td>
+          <td><span title="Flower: 3 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 4 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 3 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 5 rolls (need 5/7)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 2 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Clear Pool</td>
+          <td>790</td>
+        </tr>
+        <tr>
+          <td>Ororon</td>
+          <td>IT Only</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>0</td>
+          <td><span title="Flower: 7 rolls (need 6/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 2 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 1 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 3 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 4 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Natlan 1</td>
+          <td>790</td>
+        </tr>
+        <tr>
+          <td>Xingqiu</td>
+          <td>IT Only</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>0</td>
+          <td><span title="Flower: 4 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 5 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 1 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 2 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 5 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Inazuma 1</td>
+          <td>790</td>
+        </tr>
+        <tr>
+          <td>Faruzan</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>0</td>
+          <td><span title="Flower: 1 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 2 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 0 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 3 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 0 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Clear Pool</td>
+          <td>790</td>
+        </tr>
+        <tr>
+          <td>Layla</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>0</td>
+          <td><span title="Flower: 1 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 1 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 0 rolls (need 1/3)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 1 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 0 rolls (need 1/3)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Windblume</td>
+          <td>790</td>
+        </tr>
+        <tr>
+          <td>Kirara</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>0</td>
+          <td><span title="Flower: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 5 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 1 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 1 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 1 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Nod Krai 2</td>
+          <td>790</td>
+        </tr>
+        <tr>
+          <td>Chevreuse</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>0</td>
+          <td><span title="Flower: 1 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 2 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 4 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Clear Pool</td>
+          <td>790</td>
+        </tr>
+        <tr>
+          <td>Fischl</td>
+          <td>IT Only</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>1</td>
+          <td><span title="Flower: 5 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 3 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 2 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 7 rolls (need 5/7)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 2 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Fontaine 1</td>
+          <td>789</td>
+        </tr>
+        <tr>
+          <td>Xiangling</td>
+          <td>IT Only</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>1</td>
+          <td><span title="Flower: 4 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 8 rolls (need 6/8)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 4 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 4 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 2 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Inazuma 1</td>
+          <td>789</td>
+        </tr>
+        <tr>
+          <td>Kaeya</td>
+          <td>IT Only</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>1/5</td>
+          <td>1</td>
+          <td><span title="Flower: 1 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 5 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 1 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 2 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 6 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Inazuma 1</td>
+          <td>789</td>
+        </tr>
+        <tr>
+          <td>Keqing</td>
+          <td>IT Only</td>
+          <td>DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>0</td>
+          <td><span title="Flower: 3 rolls (need 7/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 7 rolls (need 7/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 2 rolls (need 5/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 3 rolls (need 6/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 5 rolls (need 5/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Midsummer Courtyard</td>
+          <td>780</td>
+        </tr>
+        <tr>
+          <td>Nahida</td>
+          <td>IT Only</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>0</td>
+          <td><span title="Flower: 5 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 7 rolls (need 6/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 4 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 4 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 6 rolls (need 5/7)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Sumeru 1</td>
+          <td>780</td>
+        </tr>
+        <tr>
+          <td>Jean</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>0</td>
+          <td><span title="Flower: 3 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 5 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 3 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 0 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Remembrance</td>
+          <td>780</td>
+        </tr>
+        <tr>
+          <td>LanYan</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>0</td>
+          <td><span title="Flower: 4 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 3 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 1 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 2 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 1 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Remembrance</td>
+          <td>780</td>
+        </tr>
+        <tr>
+          <td>Aino</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>0</td>
+          <td><span title="Flower: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 1 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 0 rolls (need None/None)"><span style="background:#999999;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Missing</span></span> <span title="Circlet: 1 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Nod Krai 1</td>
+          <td>780</td>
+        </tr>
+        <tr>
+          <td>Diona</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>1</td>
+          <td><span title="Flower: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 3 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 4 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 1 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 2 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Clear Pool</td>
+          <td>779</td>
+        </tr>
+        <tr>
+          <td>Beidou</td>
+          <td>IT Only</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>1</td>
+          <td><span title="Flower: 3 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 5 rolls (need 6/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 5 rolls (need 5/7)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 3 rolls (need 5/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 7 rolls (need 5/7)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Sumeru 1</td>
+          <td>779</td>
+        </tr>
+        <tr>
+          <td>Thoma</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>2/5</td>
+          <td>2</td>
+          <td><span title="Flower: 2 rolls (need 4/6)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 6 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 1 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Circlet: 5 rolls (need 3/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Sumeru 1</td>
+          <td>778</td>
+        </tr>
+        <tr>
+          <td>Barbara</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>3/5</td>
+          <td>0</td>
+          <td><span title="Flower: 0 rolls (need 1/3)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 0 rolls (need 2/4)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 1 rolls (need 0/2)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 1 rolls (need 0/2)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 1 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Inazuma 2</td>
+          <td>770</td>
+        </tr>
+        <tr>
+          <td>Diluc</td>
+          <td>IT Only</td>
+          <td>DPS</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>3/5</td>
+          <td>1</td>
+          <td><span title="Flower: 7 rolls (need 7/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 4 rolls (need 7/8)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Sands: 7 rolls (need 6/7)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 6 rolls (need 6/7)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 4 rolls (need 6/7)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Sumeru 1</td>
+          <td>769</td>
+        </tr>
+        <tr>
+          <td>Gorou</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>3/5</td>
+          <td>1</td>
+          <td><span title="Flower: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 3 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 2 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 3 rolls (need 1/3)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 0 rolls (need 1/3)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span></td>
+          <td>Clear Pool</td>
+          <td>769</td>
+        </tr>
+        <tr>
+          <td>KukiShinobu</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>4/5</td>
+          <td>0</td>
+          <td><span title="Flower: 2 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 3 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 1 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 2 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 2 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Sumeru 1</td>
+          <td>760</td>
+        </tr>
+        <tr>
+          <td>Candace</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>4/5</td>
+          <td>1</td>
+          <td><span title="Flower: 1 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Feather: 4 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 4 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 3 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 3 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Sumeru 1</td>
+          <td>759</td>
+        </tr>
+        <tr>
+          <td>Collei</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Farming</span></td>
+          <td>4/5</td>
+          <td>2</td>
+          <td><span title="Flower: 4 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 6 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 0 rolls (need 3/5)"><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Needs Work</span></span> <span title="Goblet: 5 rolls (need 3/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 4 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Sumeru 1</td>
+          <td>758</td>
+        </tr>
+        <tr>
+          <td>Escoffier</td>
+          <td>Active</td>
+          <td>Sub-DPS</td>
+          <td><span style="background:#4e8ee0;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Finished</span></td>
+          <td>5/5</td>
+          <td>2</td>
+          <td><span title="Flower: 8 rolls (need 6/8)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 7 rolls (need 6/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 5 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 5 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 6 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Natlan 1</td>
+          <td>648</td>
+        </tr>
+        <tr>
+          <td>Mona</td>
+          <td>Active</td>
+          <td>Support</td>
+          <td><span style="background:#4e8ee0;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Finished</span></td>
+          <td>5/5</td>
+          <td>2</td>
+          <td><span title="Flower: 4 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 5 rolls (need 3/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 6 rolls (need 1/3)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 3 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 2 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Clear Pool</td>
+          <td>648</td>
+        </tr>
+        <tr>
+          <td>Mavuika</td>
+          <td>Active</td>
+          <td>DPS</td>
+          <td><span style="background:#4e8ee0;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Finished</span></td>
+          <td>5/5</td>
+          <td>3</td>
+          <td><span title="Flower: 7 rolls (need 7/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 7 rolls (need 7/8)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 6 rolls (need 5/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 9 rolls (need 6/7)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 6 rolls (need 5/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Natlan 1</td>
+          <td>647</td>
+        </tr>
+        <tr>
+          <td>Lauma</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Luxury</span></td>
+          <td>5/5</td>
+          <td>2</td>
+          <td><span title="Flower: 8 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 7 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 2 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 2 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 2 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Nod Krai 1</td>
+          <td>448</td>
+        </tr>
+        <tr>
+          <td>Furina</td>
+          <td>Active</td>
+          <td>Support</td>
+          <td><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Luxury</span></td>
+          <td>5/5</td>
+          <td>3</td>
+          <td><span title="Flower: 6 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 4 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Sands: 4 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 4 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 3 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span></td>
+          <td>Ridge Watch</td>
+          <td>447</td>
+        </tr>
+        <tr>
+          <td>SangonomiyaKokomi</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Luxury</span></td>
+          <td>5/5</td>
+          <td>3</td>
+          <td><span title="Flower: 3 rolls (need 3/5)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 6 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 4 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 2 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 6 rolls (need 3/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Inazuma 2</td>
+          <td>447</td>
+        </tr>
+        <tr>
+          <td>Iansan</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Luxury</span></td>
+          <td>5/5</td>
+          <td>3</td>
+          <td><span title="Flower: 6 rolls (need 3/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 5 rolls (need 3/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 2 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Goblet: 1 rolls (need 1/3)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Circlet: 3 rolls (need 1/3)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Natlan 1</td>
+          <td>447</td>
+        </tr>
+        <tr>
+          <td>Nilou</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Luxury</span></td>
+          <td>5/5</td>
+          <td>4</td>
+          <td><span title="Flower: 3 rolls (need 2/4)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 7 rolls (need 3/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 4 rolls (need 1/3)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 3 rolls (need 1/3)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 4 rolls (need 1/3)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>None</td>
+          <td>446</td>
+        </tr>
+        <tr>
+          <td>Kachina</td>
+          <td>IT Only</td>
+          <td>Support</td>
+          <td><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Luxury</span></td>
+          <td>5/5</td>
+          <td>4</td>
+          <td><span title="Flower: 5 rolls (need 4/6)"><span style="background:#e0a94e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Good</span></span> <span title="Feather: 6 rolls (need 4/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 4 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 7 rolls (need 3/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 4 rolls (need 2/4)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Natlan 1</td>
+          <td>446</td>
+        </tr>
+        <tr>
+          <td>Skirk</td>
+          <td>Active</td>
+          <td>DPS</td>
+          <td><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Luxury</span></td>
+          <td>5/5</td>
+          <td>5</td>
+          <td><span title="Flower: 7 rolls (need 6/7)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Feather: 7 rolls (need 6/7)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Sands: 5 rolls (need 4/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Goblet: 8 rolls (need 5/6)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span> <span title="Circlet: 5 rolls (need 4/5)"><span style="background:#4ec97a;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Excellent</span></span></td>
+          <td>Natlan 2</td>
+          <td>445</td>
+        </tr></tbody>
+</table>
+
+<h2>Domains (sorted by farming priority)</h2>
+<table id="domainTable">
+<thead><tr><th>Domain</th><th>Characters</th><th>Score</th><th>Active</th><th>IT Only</th></tr></thead>
+<tbody>
+        <tr>
+          <td>Clear Pool</td>
+          <td>Mona, Rosaria, Bennett, Gorou, Faruzan, Diona, Chevreuse</td>
+          <td>21.0</td>
+          <td>2</td>
+          <td>5</td>
+        </tr>
+        <tr>
+          <td>Nod Krai 2</td>
+          <td>Columbina, Linnea, Kirara</td>
+          <td>19.4</td>
+          <td>2</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Natlan 1</td>
+          <td>Escoffier, Mavuika, Mualani, Citlali, Kachina, Ororon, Iansan</td>
+          <td>18.0</td>
+          <td>4</td>
+          <td>3</td>
+        </tr>
+        <tr>
+          <td>Sumeru 1</td>
+          <td>Nahida, KukiShinobu, Candace, Illuga, Diluc, Beidou, Collei, Thoma</td>
+          <td>17.6</td>
+          <td>1</td>
+          <td>7</td>
+        </tr>
+        <tr>
+          <td>Inazuma 1</td>
+          <td>Xingqiu, Xiangling, Kaeya</td>
+          <td>12.8</td>
+          <td>0</td>
+          <td>3</td>
+        </tr>
+        <tr>
+          <td>Remembrance</td>
+          <td>Sucrose, Jean, LanYan</td>
+          <td>8.4</td>
+          <td>1</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Guyun</td>
+          <td>Xilonen</td>
+          <td>6.4</td>
+          <td>1</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>Nod Krai 1</td>
+          <td>Zibai, Lauma, Aino</td>
+          <td>6.0</td>
+          <td>1</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Fontaine 2</td>
+          <td>Ningguang</td>
+          <td>5.6</td>
+          <td>0</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Fontaine 1</td>
+          <td>Fischl</td>
+          <td>4.2</td>
+          <td>0</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Windblume</td>
+          <td>Layla</td>
+          <td>4.2</td>
+          <td>0</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Midsummer Courtyard</td>
+          <td>Keqing</td>
+          <td>3.6</td>
+          <td>0</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Inazuma 2</td>
+          <td>SangonomiyaKokomi, Barbara</td>
+          <td>2.2</td>
+          <td>0</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Natlan 2</td>
+          <td>Skirk</td>
+          <td>0.0</td>
+          <td>1</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>Ridge Watch</td>
+          <td>Furina</td>
+          <td>0.0</td>
+          <td>1</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>None</td>
+          <td>Nilou</td>
+          <td>0.0</td>
+          <td>0</td>
+          <td>1</td>
+        </tr></tbody>
+</table>
+
+<script>
+document.querySelectorAll('table').forEach(table => {
+  const headers = table.querySelectorAll('th');
+  headers.forEach((th, idx) => {
+    th.addEventListener('click', () => {
+      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      const asc = th.dataset.asc !== 'true';
+      headers.forEach(h => h.dataset.asc = '');
+      th.dataset.asc = asc;
+      rows.sort((a, b) => {
+        const av = a.children[idx].innerText, bv = b.children[idx].innerText;
+        const an = parseFloat(av), bn = parseFloat(bv);
+        if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+        return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+      rows.forEach(r => table.querySelector('tbody').appendChild(r));
+    });
+  });
+});
+</script>
+</body></html>
