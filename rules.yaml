@@ -22,8 +22,15 @@ stat_pool_adjustment:
   - {stat_count: 5, good_adj: 0,  excellent_adj: 0}
   - {stat_count: 6, good_adj: 0,  excellent_adj: 0}
 
-# Slot adjustment — Flower/Feather have fixed main stats, so more rolls
-# necessarily go into substats, hence the higher bar.
+# Slot adjustment — Flower/Feather aren't constrained by a main-stat
+# requirement (main is always fixed HP/ATK flat), so far more candidate
+# artifacts exist for these slots than for Sands/Goblet/Circlet, where the
+# wrong main stat disqualifies a piece outright. More candidates to choose
+# from means you can afford to be pickier, hence the higher bar. This is a
+# *selectivity* argument, not a roll-composition one - the roll-composition
+# side (Flower/Feather not losing a useful-stat slot to main stat) is
+# already handled by stat_pool_adjustment via effective_useful_pool, so
+# don't fold that reasoning back in here or it double-counts.
 slot_adjustment:
   Flower:  {good_adj: 1, excellent_adj: 1}
   Feather: {good_adj: 1, excellent_adj: 1}
@@ -39,23 +46,8 @@ character_overrides: {}
 # Domain score weighting (from our latest formula)
 domain_scoring:
   active_weight: 2.0
-  it_only_weight: 1.0
+  it_only_weight: 0.7
   finished_polish_weight: 0.2   # applied to (luxury_excellent_count - excellent_pieces) for non-Luxury chars
-
-off_piece_rules:
-  minimum_ceiling: 7
-  protected_main_stats:
-    - CR
-    - CD
-    - ER
-    - EM
-    - CryoDMG%
-    - PyroDMG%
-    - HydroDMG%
-    - ElectroDMG%
-    - AnemoDMG%
-    - GeoDMG%
-    - DendroDMG%
 
 flex_rules:
   min_ev_gain: 2.0

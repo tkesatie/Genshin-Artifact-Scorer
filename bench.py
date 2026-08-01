@@ -62,14 +62,14 @@ UPGRADE_EVENTS = {
 # CHECK THIS against your own export - setKey spelling varies by exporter/version,
 # and any set not listed here just won't get matched to a character.
 SET_ALIASES = {
-    "Galleries": ["FinaleOfTheDeepGalleries"],  # placeholder - verify against your export
+    "Galleries": ["FinaleOfTheDeepGalleries"],
     "Scroll": ["ScrollOfTheHeroOfCinderCity"],
     "Obsidian": ["ObsidianCodex"],
     "Night Sky": ["NightOfTheSkysUnveiling"],
     "TotM": ["TenacityOfTheMillelith"],
     "NO": ["NoblesseOblige"],
     "VV": ["ViridescentVenerer"],
-    "SMS": ["SongOfDaysPast"],
+    "SMS": ["SilkenMoonsSerenade"],
     "Deepwood": ["DeepwoodMemories"],
     "Aubade": ["AubadeOfMorningstarAndMoon"],
     "Ocean-Hued Clam": ["OceanHuedClam"],
@@ -128,8 +128,7 @@ def max_possible_useful_rolls(artifact, useful_stats, roll_values):
     current_rolls = roll_count_for_artifact(
         artifact,
         useful_stats,
-        roll_values,
-        rarity
+        roll_values
     )
 
     hidden_subs = artifact.get("unactivatedSubstats", [])
@@ -163,8 +162,7 @@ def expected_useful_rolls(artifact, useful_stats, roll_values):
     current_rolls = roll_count_for_artifact(
         artifact,
         useful_stats,
-        roll_values,
-        rarity
+        roll_values
     )
 
     remaining_events = max(

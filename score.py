@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from artifact_utils import parse_good_export, SLOT_MAP, valid_main_stat
+from artifact_utils import effective_useful_pool, parse_good_export, SLOT_MAP, valid_main_stat
 from bench import (
     bench_candidates_lookup,
     bench_potential_lookup,
@@ -20,43 +20,40 @@ from flex import find_flex_candidates
 from inventory import classify_inventory_artifact
 from recommendations import build_recommendations
 from render_html import render_html
+from thresholds import compute_thresholds
 
 
-def build_equipped_baseline_lookup(char_results):
-    """(character, slot) -> equipped roll_count, for inventory comparisons."""
-    lookup = {}
-    for r in char_results:
-        for slot, s in r["slots"].items():
-            lookup[(r["name"], slot)] = s["roll_count"]
-    return lookup
-
-
-def best_fit_for_artifact(artifact, roster, slot, roll_values):
+def best_fit_for_artifact(artifact, roster, slot, roll_values, rules):
     """Evaluate this artifact against every roster character whose main-stat
     config allows this slot, regardless of set. Returns fits sorted by
-    ceiling, descending, so fits[0] is the best possible home for this piece."""
+    ceiling, descending (in-set breaks ties), so fits[0] is the best possible
+    home for this piece. Each fit carries its own 'excellent' threshold so
+    the inventory classifier can check whether this piece has genuine
+    excellent-tier potential for that specific character."""
     fits = []
     for name, cfg in roster.items():
         if not valid_main_stat(artifact, cfg, slot):
             continue
         useful_stats = [str(s) for s in cfg["useful_stats"]]
         current, ceiling = max_possible_useful_rolls(artifact, useful_stats, roll_values)
+        eff_pool = effective_useful_pool(artifact.get("mainStatKey"), useful_stats)
+        good, excellent = compute_thresholds(rules, cfg["usage"], cfg["role"], slot, eff_pool, name)
         fits.append({
             "character": name,
             "ceiling": ceiling,
             "current_rolls": current,
             "useful_stats": useful_stats,
             "in_set": name in matched_characters_for_set(artifact.get("setKey"), roster),
+            "good": good,
+            "excellent": excellent,
         })
     fits.sort(key=lambda f: (-f["ceiling"], not f["in_set"]))
     return fits
 
 
-def build_inventory_results(good_json, roster, rules, roll_values, char_results):
-    """Classify every unequipped artifact against its single best-fit roster
-    character (any character whose main-stat config allows this slot, not
-    just set-matched ones)."""
-    equipped_lookup = build_equipped_baseline_lookup(char_results)
+def build_inventory_results(good_json, roster, rules, roll_values):
+    """Classify every unequipped artifact against every roster character
+    whose main-stat config allows this slot (not just set-matched ones)."""
     results = []
 
     for art in good_json.get("artifacts", []):
@@ -67,17 +64,12 @@ def build_inventory_results(good_json, roster, rules, roll_values, char_results)
         if slot is None:
             continue
 
-        fits = best_fit_for_artifact(art, roster, slot, roll_values)
-        best = fits[0] if fits else None
-        equipped_baseline = equipped_lookup.get((best["character"], slot), 0) if best else 0
-        ceiling = best["ceiling"] if best else 0
+        fits = best_fit_for_artifact(art, roster, slot, roll_values, rules)
 
-        classification = classify_inventory_artifact(
-            art, rules, ceiling, equipped_baseline, best
-        )
+        classification = classify_inventory_artifact(art, fits)
         classification["artifact"] = art
         classification["slot"] = slot
-        classification["ceiling"] = ceiling
+        classification["ceiling"] = fits[0]["ceiling"] if fits else 0
         classification["fits"] = fits[:3]  # top 3 alternate homes, for display
         results.append(classification)
 
@@ -112,7 +104,7 @@ def main():
     )
 
     inventory_results = build_inventory_results(
-        good_json, roster, rules, roll_values, char_results
+        good_json, roster, rules, roll_values
     )
 
     strongbox_count = sum(1 for i in inventory_results if i["action"] == "SAFE_STRONGBOX")

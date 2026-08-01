@@ -12,27 +12,109 @@
 # critRate_, critDMG_   (trailing underscore = percent stat)
 
 five_star:
-  hp_:        4.955
-  atk_:       4.955
-  def_:       6.195
-  enerRech_:  5.505
-  eleMas:     19.815
-  critRate_:  3.305
-  critDMG_:   6.605
-  # flat hp/atk/def are not scored as "useful" for any current roster entry,
-  # included for completeness in case that changes
-  hp:         268.9
-  atk:        16.5
-  def:        19.7
+  hp_:
+    - 4.1
+    - 4.7
+    - 5.3
+    - 5.8
+  atk_:
+    - 4.1
+    - 4.7
+    - 5.3
+    - 5.8
+  def_:
+    - 5.1
+    - 5.8
+    - 6.6
+    - 7.3
+  enerRech_:
+    - 4.5
+    - 5.2
+    - 5.8
+    - 6.5
+  eleMas:
+    - 16
+    - 19
+    - 21
+    - 23
+  critRate_:
+    - 2.7
+    - 3.1
+    - 3.5
+    - 3.9
+  critDMG_:
+    - 5.4
+    - 6.2
+    - 7.0
+    - 7.8
+
+  # Flat HP/ATK/DEF are not currently scored as useful, but are
+  # included for completeness and future-proofing.
+  hp:
+    - 209
+    - 239
+    - 269
+    - 299
+  atk:
+    - 14
+    - 16
+    - 18
+    - 19
+  def:
+    - 16
+    - 19
+    - 21
+    - 23
 
 four_star:
-  hp_:        4.46
-  atk_:       4.46
-  def_:       5.58
-  enerRech_:  4.95
-  eleMas:     17.83
-  critRate_:  2.97
-  critDMG_:   5.94
-  hp:         242.0
-  atk:        14.85
-  def:        17.7
+  hp_:
+    - 3.3
+    - 3.7
+    - 4.2
+    - 4.7
+  atk_:
+    - 3.3
+    - 3.7
+    - 4.2
+    - 4.7
+  def_:
+    - 4.1
+    - 4.7
+    - 5.3
+    - 5.8
+  enerRech_:
+    - 3.7
+    - 4.2
+    - 4.7
+    - 5.2
+  eleMas:
+    - 13
+    - 15
+    - 17
+    - 19
+  critRate_:
+    - 2.2
+    - 2.5
+    - 2.8
+    - 3.1
+  critDMG_:
+    - 4.4
+    - 5.0
+    - 5.6
+    - 6.2
+
+  hp:
+    - 167
+    - 191
+    - 215
+    - 239
+  atk:
+    - 11
+    - 13
+    - 15
+    - 16
+  def:
+    - 13
+    - 15
+    - 17
+    - 19

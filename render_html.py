@@ -34,6 +34,11 @@ STATUS_COLOR = {
     "Excellent": "#4ec97a", "Missing": "#999999",
 }
 
+SET_BONUS_COLOR = {
+    "4pc": "#4ec97a", "2pc": "#e0a94e", "None": "#e05a4e",
+    "Split (unverified)": "#999999", "N/A": "#999999",
+}
+
 INVENTORY_COLOR = {
     "KEEP": "#4ec97a", "REVIEW": "#e0a94e",
     "SANCTIFY_ELIXIR": "#4e8ee0", "SAFE_STRONGBOX": "#999999",
@@ -96,12 +101,33 @@ def render_html(char_results, domain_results, recommendations, out_path,
             f'<span title="{slot}: {s["roll_count"]} rolls equipped (need {s["good"]}/{s["excellent"]}); best bench candidate: EV {s["bench_expected"]}, max {s["bench_ceiling"]}">{badge(s["status"])}{"↑" if s["upgradeable"] else ""}</span>'
             for slot, s in r["slots"].items()
         )
+
+        ss = r.get("set_status", {})
+        bonus_text = ss.get("active_bonus", "N/A")
+        bonus_color = SET_BONUS_COLOR.get(bonus_text, "#999")
+        if ss.get("target"):
+            bonus_title = f'Target: {ss["target"]} · {ss.get("matching", "?")}/5 equipped pieces match'
+        else:
+            bonus_title = "No target set configured"
+        set_bonus_html = (
+            f'<span title="{bonus_title}" style="background:{bonus_color};color:#fff;'
+            f'padding:2px 8px;border-radius:10px;font-size:12px;">{bonus_text}</span>'
+        )
+
+        status_html = badge(r['status'])
+        if r.get("set_bonus_mismatch"):
+            status_html += (
+                ' <span title="Roll quality looks great, but the set bonus isn\'t actually active - '
+                'check equipped pieces against the target set." style="color:#e0a94e;">⚠</span>'
+            )
+
         rows.append(f"""
         <tr>
         <td>{r['name']}</td>
         <td>{r['usage']}</td>
         <td>{r['role']}</td>
-        <td>{badge(r['status'])}</td>
+        <td>{status_html}</td>
+        <td>{set_bonus_html}</td>
         <td>{r['completion']}/5</td>
         <td>{r['excellent_pieces']}</td>
         <td>{r['upgrades_good']} / {r['upgrades_excellent']}</td>
@@ -238,7 +264,7 @@ tr:hover {{ background: #242424; }}
 <h1>Artifact Farming Dashboard</h1>
 <h2>Characters (sorted by farming priority)</h2>
 <table id="charTable">
-<thead><tr><th>Character</th><th>Usage</th><th>Role</th><th>Status</th><th>Completion</th>
+<thead><tr><th>Character</th><th>Usage</th><th>Role</th><th>Status</th><th>Set Bonus</th><th>Completion</th>
 <th>Excellent</th><th>Good / Exc Upgrades</th><th>Slots</th><th>Domain</th><th>Score</th></tr></thead>
 <tbody>{''.join(rows)}</tbody>
 </table>

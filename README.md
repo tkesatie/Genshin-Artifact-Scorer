@@ -7,8 +7,11 @@ Genshin Artifact Scorer analyzes an Irminsul/GOOD artifact export against the lo
 - Parses equipped artifacts from a GOOD-format JSON export.
 - Scores each roster character's equipped artifacts by useful substat roll count.
 - Computes per-slot "Good" and "Excellent" thresholds from usage, role, slot, useful-stat pool, and character overrides.
+- Flags whether a character's equipped artifacts actually satisfy their target set's 2pc/4pc bonus, independent of substat roll quality, and warns when a high roll-quality status (Finished/Luxury) is misleading because the set bonus isn't active.
 - Evaluates under-leveled artifacts as upgrade candidates for matching roster characters.
 - Builds prioritized recommendations for artifact upgrades and swaps.
+- Flags off-set flex candidates for 4pc-locked characters when a piece beats their weakest equipped slot by enough expected value.
+- Classifies unequipped artifacts for inventory cleanup (review / strongbox / elixir fodder).
 - Aggregates character needs into domain farming scores.
 - Renders the final report to a sortable standalone HTML dashboard.
 
@@ -34,6 +37,8 @@ These files must be in the project root:
 - `bench.py`: upgrade-potential calculations for under-leveled artifacts.
 - `character_scoring.py`: character and domain scoring.
 - `config.py`: YAML configuration loader.
+- `flex.py`: off-set flex-slot suggestions for 4pc-locked characters.
+- `inventory.py`: classification of unequipped artifacts for inventory cleanup.
 - `recommendations.py`: recommendation ranking.
 - `render_html.py`: HTML report writer.
 - `thresholds.py`: threshold calculation helpers.
@@ -80,9 +85,19 @@ Defines each character included in scoring. The current code expects fields such
 - `set`: short artifact-set label used for bench matching through `bench.SET_ALIASES`.
 - `domain`: farming domain shown in the dashboard and domain priority table.
 - `useful_stats`: display labels such as `CR`, `CD`, `ATK%`, `ER`, or `EM`.
-- `main_stats`: allowed main-stat labels per slot.
+- `main_stats`: allowed main-stat labels per slot, matched against `artifact_utils.STAT_LABEL` values (e.g. `PyroDMG%`, not `Pyro%`). Use the literal string `ANY` for a slot to accept any main stat (e.g. Gorou/Faruzan's Goblet, where the set doesn't require a specific one).
 
 Update this file as your roster, builds, or farming targets change.
+
+**YAML gotcha:** PyYAML's `safe_load` treats bare `NO`/`No`/`no` (and `YES`/`ON`/`OFF`, etc.) as booleans, not strings. If a `set` value would read as one of those words - most notably Noblesse Oblige's short label `NO` - it must be quoted (`set: "NO"`) or it silently becomes Python `False` and that character stops matching their own set in bench/inventory/flex logic. Same applies to any other config field that might collide with a YAML boolean/null keyword.
+
+**2pc/2pc split-set builds are not currently resolvable.** The `set` field is designed to hold a single short label (`"NO"`, `"VV"`, etc.) that gets resolved to a real GOOD `setKey` through `bench.SET_ALIASES`. Writing a two-set build directly as text - e.g. `set: "2pc/2pc"`, as `Nilou` currently does in this file - does not work as a real match: no exported artifact's `setKey` will ever equal that string, so `bench.matched_characters_for_set` returns no matches for the character. In practice this means:
+
+- `bench.py` never evaluates any bench artifact for that character, for either set - no upgrade candidates will ever surface for them.
+- `flex.py` already special-cases this: `is_four_piece_locked` checks for `"/"` in the `set` field and skips flex consideration entirely for these characters, so they're at least not given bad off-set suggestions.
+- `character_scoring.compute_set_status` (see Module Reference below) also detects the `"/"` and reports `"Split (unverified)"` rather than a false result, so the dashboard's Set Bonus badge won't lie to you, it just can't check.
+
+Until real split-set support is added, a `set` field with `"/"` is honestly reported as unverified everywhere, but gets zero bench-upgrade evaluation. If you want *some* bench coverage in the meantime, the practical workaround is to set `set` to whichever of the two half-sets you're most actively trying to complete or upgrade (e.g. `set: "Ocean-Hued Clam"` instead of a literal split label) - you'll lose bench matching for the other half, but at least get real candidates for the one you listed. Revert it once genuine 2pc/2pc support exists.
 
 ### `rules.yaml`
 
@@ -93,6 +108,7 @@ Controls scoring thresholds and farming priority:
 - `slot_adjustment`: per-slot threshold adjustments.
 - `character_overrides`: optional per-character threshold overrides.
 - `domain_scoring`: weights used by `score_domains`.
+- `flex_rules.min_ev_gain`: minimum EV gain required for `flex.find_flex_candidates` to surface an off-set flex suggestion.
 
 ### `roll_values.yaml`
 
@@ -152,8 +168,9 @@ Scores equipped artifacts for each roster character and aggregates domain priori
 
 Functions:
 
-- `score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench_lookup, bench_candidates)`: returns a character score report with per-slot statuses, completion count, upgrade counts, and farming-priority score.
-- `score_domains(char_results, rules)`: groups character needs by domain and applies `domain_scoring` weights.
+- `compute_set_status(cfg, artifacts_by_slot)`: Checks the character's equipped artifacts against their configured `set`, resolved through `bench.SET_ALIASES`, and returns the active bonus (`"4pc"`, `"2pc"`, `"None"`, `"Split (unverified)"` for `/`-delimited sets, or `"N/A"` if no set is configured). This is independent of substat roll quality - a character can score "Excellent" on every slot's rolls and still show no active set bonus if the pieces are from mismatched sets.
+- `score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench_lookup, bench_candidates)`: Returns a character score report with per-slot statuses, completion count, upgrade counts, set completion status (`set_status`), a `set_bonus_mismatch` flag (true when status is Finished/Luxury but the 4pc bonus isn't actually active), and farming-priority score.
+- `score_domains(char_results, rules)`: Groups character needs by domain and applies `domain_scoring` weights.
 
 ### `recommendations.py`
 
@@ -179,11 +196,45 @@ Writes the sortable HTML dashboard.
 Functions:
 
 - `format_substats_html(substats, rarity=5, level=0)`: formats substats and adds a hidden-line marker for low-level 5-star artifacts with three visible substats. This helper is currently not used by `render_html`.
-- `render_html(char_results, domain_results, recommendations, out_path)`: writes the report and prints `Wrote <out_path>`.
+- `render_html(char_results, domain_results, recommendations, out_path)`: writes the report and prints `Wrote <out_path>`. The character table includes a Set Bonus column (from `set_status`) showing the active 2pc/4pc bonus, and adds a ⚠ next to a character's status badge when `set_bonus_mismatch` is true.
+
+## Planned / Under Consideration
+
+Ideas discussed but not yet built, kept here so they don't get lost between sessions.
+
+### 1. Run-to-run progress snapshot — approved
+
+Save each run's `char_results` (status, excellent count, set bonus, score) to a small JSON file alongside the project. On the next run, diff against the saved snapshot and surface what changed since last time (e.g. "Bennett: Needs Work → Luxury, +2 excellent pieces") instead of just showing current state.
+
+**Needs a minimum time interval between snapshots.** Without one, running the scorer repeatedly during testing/tweaking would make it look like meaningful progress happened every few minutes. Snapshot should only be overwritten/compared if enough real time has passed since the last saved snapshot (e.g. a configurable minimum, start at one day, not a fixed run-count).
+
+### 2. Config pre-flight validation — approved
+
+A lint pass over `roster.yaml`/`rules.yaml` run at the start of `score.py`, before scoring, that catches config issues that currently fail silently:
+
+- Unquoted YAML booleans (the `NO` gotcha already documented above).
+- `usage|role` combos with no matching entry in `base_thresholds`.
+- `set` values with no coverage in `bench.SET_ALIASES`.
+- Slot names referenced in `main_stats` that aren't real slot names (`Flower`/`Feather`/`Sands`/`Goblet`/`Circlet`).
+
+Goal is to catch this class of typo/config-drift bug at startup with a clear warning, rather than discovering it later as an artifact/character that mysteriously never gets bench matches.
+
+### 3. Lock-field-aware inventory cleanup — undecided
+
+GOOD exports carry a `lock` field per artifact (whether it's locked in-game) that `inventory.py` currently ignores entirely - locked pieces get the same SAFE_STRONGBOX/SANCTIFY_ELIXIR treatment as everything else. Value is unclear right now since lock is barely used in practice (currently only used to protect Instructor pieces from accidental 4-star fodder use) - may not be worth building unless lock usage becomes more deliberate/widespread. Revisit if that changes.
+
+### 4. Resin cost-aware recommendation ranking — needs rethinking
+
+Originally proposed as a simple tiebreaker in `build_recommendations` favoring candidates with fewer `levels_needed` to reach their ceiling. Rejected as too simplistic: leveling from 0→4 (or from a level where the hidden 4th substat line unlocks) can reveal more useful information per resin spent than leveling from 16→20, since early levels have outsized chances of revealing whether a piece is worth continuing at all, while late levels are refining an already-known outcome. What's actually needed is a cost-per-information (or marginal-value) analysis, not a flat cost tiebreaker - e.g. weighting early upgrade events (especially ones that could reveal a hidden useful line) more heavily than late ones when ranking "worth leveling now" vs "worth leveling later." Needs more design thought before implementation - not a quick add.
+
+### 5. Dashboard search/filter box — approved
+
+Client-side text input above the character table (and possibly others) that filters rows by name/domain/status as-you-type. Small, self-contained, vanilla JS only, no backend/data changes.
 
 ## Scoring Notes
 
 - Only equipped artifacts are used for character scores.
+- Set completion (2pc/4pc) is checked independently from substat roll quality - a character's per-slot statuses (Needs Work/Good/Excellent) say nothing about whether their equipped pieces share a set, so always check the Set Bonus column/warning alongside the slot statuses, not instead of them.
 - Bench/recommendation logic considers under-leveled artifacts and ignores artifacts already at their rarity's max level.
 - Main-stat validation is enforced for bench candidates through each character's `main_stats` config.
 - Expected rolls are probability-weighted from the currently active useful substats. Optimistic ceilings assume all remaining upgrades land on useful stats after any known hidden line is revealed.

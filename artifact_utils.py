@@ -28,6 +28,7 @@ This module is intended to remain lightweight and focused on artifact parsing an
 """
 
 from collections import defaultdict
+from itertools import product
 
 SLOT_MAP = {
     "flower": "Flower", "plume": "Feather", "sands": "Sands",
@@ -53,73 +54,205 @@ def all_substats(artifact):
     )
 
 
-def total_rolls_so_far(artifact):
-    """Deterministic (or safely-bounded) count of total roll-events across
-    ALL active substats so far - derived purely from level/line-state, never
-    from substat values. This is the actual constraint roll allocation must
-    respect.
+def possible_substat_rolls(substat, possible_rolls, tolerance=None):
+    initial = substat.get("initialValue", 0)
+    current = substat.get("value", 0)
+    increase = current - initial
 
-    Unambiguous when a hidden line is still waiting to be revealed: total =
-    active_lines + events_used, since every event so far has been a pure
-    increment.
+    key = substat.get("key")
 
-    Ambiguous when 4 lines are active and none are hidden: the export can't
-    tell us whether this piece started with 4 lines (all events were
-    increments) or started with 3 and already revealed the 4th (one event
-    was a reveal, not an increment). Those two histories differ by exactly
-    1. We take the lower bound - it can undercount by 1 on a 4-line-native
-    artifact, but it can never claim more rolls happened than the piece
-    could physically have received.
+    if tolerance is None:
+        if key in ("hp", "atk", "def"):
+            tolerance = 1.5
+        elif key == "eleMas":
+            tolerance = 1.0
+        else:
+            tolerance = 0.15
+
+    if abs(increase) < tolerance:
+        return [
+            {
+                "rolls": 0,
+                "error": 0
+            }
+        ]
+
+    solutions = []
+
+    for upgrades in range(1, 6):
+        for combo in product(possible_rolls, repeat=upgrades):
+            error = abs(sum(combo) - increase)
+
+            if error <= tolerance:
+                solutions.append({
+                    "rolls": upgrades,
+                    "error": error
+                })
+
+    best_by_count = {}
+
+    for solution in solutions:
+        rolls = solution["rolls"]
+
+        if (
+            rolls not in best_by_count
+            or solution["error"] < best_by_count[rolls]["error"]
+        ):
+            best_by_count[rolls] = solution
+
+    return list(best_by_count.values())
+
+def resolve_artifact_rolls(artifact, roll_values):
     """
-    level = artifact.get("level", 0)
-    events_used = level // 4
-    active_lines = len(artifact.get("substats", []))
-    hidden = artifact.get("unactivatedSubstats", [])
+    Resolve actual upgrade rolls across the entire artifact using GOOD's
+    totalRolls as the constraint.
 
-    if hidden or active_lines < 4:
-        return active_lines + events_used
-
-    return active_lines - 1 + events_used  # conservative: assume a reveal already happened
-
-
-def roll_count_for_artifact(artifact, useful_stats, roll_values, rarity):
+    Returns a dictionary:
+        {
+            "substat_rolls": {key: rolls},
+            "total_upgrade_rolls": N
+        }
     """
-    Real substats only ever land on one of ~4 discrete per-roll values, so
-    the true roll count for the whole artifact is a known integer (see
-    total_rolls_so_far). Rounding each substat independently and summing
-    ignores that shared budget and can invent rolls that never happened.
-    Instead, allocate the artifact's actual roll budget across its active
-    substats using the largest-remainder method, then report the useful
-    slice of that allocation.
+
+    rarity = artifact.get("rarity", 5)
+
+    table = (
+        roll_values["five_star"]
+        if rarity >= 5
+        else roll_values["four_star"]
+    )
+
+    substats = artifact.get("substats", [])
+
+    upgrade_budget = (
+        artifact.get("totalRolls", len(substats))
+        - len(substats)
+    )
+
+    possibilities = []
+
+    for sub in substats:
+        options = possible_substat_rolls(
+            sub,
+            table[sub["key"]]
+        )
+
+        possibilities.append({
+            "key": sub["key"],
+            "options": options
+        })
+
+    # Search combinations of possible solutions
+    best = None
+
+    option_lists = [
+        p["options"]
+        for p in possibilities
+    ]
+
+    for combination in product(*option_lists):
+        total_upgrades = sum(
+            option["rolls"]
+            for option in combination
+        )
+
+        if total_upgrades != upgrade_budget:
+            continue
+
+        total_error = sum(
+            option["error"]
+            for option in combination
+        )
+
+        candidate = {
+            "error": total_error,
+            "rolls": {
+                possibilities[i]["key"]: combination[i]["rolls"]
+                for i in range(len(possibilities))
+            }
+        }
+
+        if (
+            best is None
+            or candidate["error"] < best["error"]
+        ):
+            best = candidate
+
+    return best
+
+
+def roll_count_for_artifact(artifact, useful_stats, roll_values):
     """
-    table = roll_values["five_star"] if rarity >= 5 else roll_values["four_star"]
-    active = artifact.get("substats", [])
-    if not active:
-        return 0
+    Count useful substat rolls using artifact-level roll resolution.
 
-    budget = total_rolls_so_far(artifact)
+    GOOD totalRolls is treated as the source of truth. The resolver determines
+    how those upgrade rolls were distributed across substats while accounting
+    for rounding ambiguity. Each substat also carries 1 "base" roll simply for
+    being one of the artifact's initial lines, on top of any upgrade rolls
+    resolved for it - resolve_artifact_rolls only measures value gained past
+    that initial roll, so it has to be added back in here.
+    """
+    substats = artifact.get("substats", [])
 
-    entries = []
-    for sub in active:
-        key = sub.get("key")
-        avg = table.get(key, 0)
-        estimate = (sub.get("value", 0) / avg) if avg else 0.0
-        entries.append({"label": STAT_LABEL.get(key), "floor": int(estimate), "frac": estimate - int(estimate)})
+    base_rolls = sum(
+        1
+        for s in substats
+        if STAT_LABEL.get(s.get("key")) in useful_stats
+    )
 
-    diff = budget - sum(e["floor"] for e in entries)
+    resolved = resolve_artifact_rolls(
+        artifact,
+        roll_values
+    )
 
-    if diff > 0:
-        # leftover budget goes to the substats closest to their next roll
-        for e in sorted(entries, key=lambda e: -e["frac"])[:diff]:
-            e["floor"] += 1
-    elif diff < 0:
-        # floors already overshoot the known budget - trim from the
-        # substats with the weakest evidence for that extra roll first
-        for e in sorted(entries, key=lambda e: e["frac"])[: -diff]:
-            e["floor"] = max(0, e["floor"] - 1)
+    if resolved is not None:
+        upgrade_rolls = sum(
+            rolls
+            for key, rolls in resolved["rolls"].items()
+            if STAT_LABEL.get(key) in useful_stats
+        )
+        return base_rolls + upgrade_rolls
 
-    return sum(e["floor"] for e in entries if e["label"] in useful_stats)
+    # No combination of per-substat rolls summed to exactly match totalRolls
+    # (missing/bad totalRolls, tolerance mismatch, etc). Rather than treating
+    # the artifact as having zero upgrades, fall back to each useful
+    # substat's own best-fit roll estimate from its observed initial->current
+    # growth, ignoring whether the total reconciles against totalRolls. A
+    # substat that visibly grew still gets credit even when the artifact-level
+    # budget doesn't add up.
+    rarity = artifact.get("rarity", 5)
+    table = (
+        roll_values["five_star"]
+        if rarity >= 5
+        else roll_values["four_star"]
+    )
 
+    upgrade_rolls = 0
+
+    for sub in substats:
+        label = STAT_LABEL.get(sub.get("key"))
+        if label not in useful_stats:
+            continue
+
+        options = possible_substat_rolls(sub, table[sub["key"]])
+
+        if options:
+            best = min(options, key=lambda o: o["error"])
+            upgrade_rolls += best["rolls"]
+        else:
+            # Even the single-substat search found no 1-5 roll combination
+            # within tolerance (e.g. an odd rounding artifact in the export).
+            # Fall back to a coarse estimate: raw increase divided by the
+            # average possible roll value, clamped to a sane 0-5 range,
+            # so a substat with visible growth still contributes something
+            # instead of silently contributing zero.
+            possible_rolls = table[sub["key"]]
+            increase = sub.get("value", 0) - sub.get("initialValue", 0)
+            avg_roll = sum(possible_rolls) / len(possible_rolls)
+            estimate = round(increase / avg_roll) if avg_roll else 0
+            upgrade_rolls += max(0, min(5, estimate))
+
+    return base_rolls + upgrade_rolls
 
 def effective_useful_pool(main_stat_key, useful_stats):
     main_label = STAT_LABEL.get(main_stat_key)
