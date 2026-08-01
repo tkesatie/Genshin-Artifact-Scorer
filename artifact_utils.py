@@ -53,26 +53,72 @@ def all_substats(artifact):
     )
 
 
-def roll_count_for_artifact(artifact, useful_stats, roll_values, rarity):
-    """Estimate total useful rolls on this artifact.
+def total_rolls_so_far(artifact):
+    """Deterministic (or safely-bounded) count of total roll-events across
+    ALL active substats so far - derived purely from level/line-state, never
+    from substat values. This is the actual constraint roll allocation must
+    respect.
 
-    Real substats only ever land on one of ~4 discrete per-roll values, so the
-    true roll count for any single substat is always a whole number. Dividing
-    by the average roll value gives a noisy estimate (e.g. 1.89 instead of 2)
-    because a roll can land below or above that average - so each substat's
-    estimate is rounded to the nearest whole roll before summing, rather than
-    left as a raw fraction.
+    Unambiguous when a hidden line is still waiting to be revealed: total =
+    active_lines + events_used, since every event so far has been a pure
+    increment.
+
+    Ambiguous when 4 lines are active and none are hidden: the export can't
+    tell us whether this piece started with 4 lines (all events were
+    increments) or started with 3 and already revealed the 4th (one event
+    was a reveal, not an increment). Those two histories differ by exactly
+    1. We take the lower bound - it can undercount by 1 on a 4-line-native
+    artifact, but it can never claim more rolls happened than the piece
+    could physically have received.
+    """
+    level = artifact.get("level", 0)
+    events_used = level // 4
+    active_lines = len(artifact.get("substats", []))
+    hidden = artifact.get("unactivatedSubstats", [])
+
+    if hidden or active_lines < 4:
+        return active_lines + events_used
+
+    return active_lines - 1 + events_used  # conservative: assume a reveal already happened
+
+
+def roll_count_for_artifact(artifact, useful_stats, roll_values, rarity):
+    """
+    Real substats only ever land on one of ~4 discrete per-roll values, so
+    the true roll count for the whole artifact is a known integer (see
+    total_rolls_so_far). Rounding each substat independently and summing
+    ignores that shared budget and can invent rolls that never happened.
+    Instead, allocate the artifact's actual roll budget across its active
+    substats using the largest-remainder method, then report the useful
+    slice of that allocation.
     """
     table = roll_values["five_star"] if rarity >= 5 else roll_values["four_star"]
-    total = 0
-    for sub in artifact.get("substats", []):
-        key = sub.get("key")
-        val = sub.get("value", 0)
-        label = STAT_LABEL.get(key)
-        if label and label in useful_stats and key in table and table[key] > 0:
-            total += round(val / table[key])
+    active = artifact.get("substats", [])
+    if not active:
+        return 0
 
-    return total
+    budget = total_rolls_so_far(artifact)
+
+    entries = []
+    for sub in active:
+        key = sub.get("key")
+        avg = table.get(key, 0)
+        estimate = (sub.get("value", 0) / avg) if avg else 0.0
+        entries.append({"label": STAT_LABEL.get(key), "floor": int(estimate), "frac": estimate - int(estimate)})
+
+    diff = budget - sum(e["floor"] for e in entries)
+
+    if diff > 0:
+        # leftover budget goes to the substats closest to their next roll
+        for e in sorted(entries, key=lambda e: -e["frac"])[:diff]:
+            e["floor"] += 1
+    elif diff < 0:
+        # floors already overshoot the known budget - trim from the
+        # substats with the weakest evidence for that extra roll first
+        for e in sorted(entries, key=lambda e: e["frac"])[: -diff]:
+            e["floor"] = max(0, e["floor"] - 1)
+
+    return sum(e["floor"] for e in entries if e["label"] in useful_stats)
 
 
 def effective_useful_pool(main_stat_key, useful_stats):
@@ -86,7 +132,7 @@ def effective_useful_pool(main_stat_key, useful_stats):
 def valid_main_stat(artifact, cfg, slot):
     """Check whether an artifact has an acceptable main stat for this character slot."""
     allowed = cfg.get("main_stats", {}).get(slot, [])
-    if not allowed:
+    if not allowed or "ANY" in allowed:
         return True
 
     main_label = STAT_LABEL.get(artifact.get("mainStatKey"))

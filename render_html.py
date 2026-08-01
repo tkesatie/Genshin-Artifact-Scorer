@@ -34,6 +34,30 @@ STATUS_COLOR = {
     "Excellent": "#4ec97a", "Missing": "#999999",
 }
 
+INVENTORY_COLOR = {
+    "KEEP": "#4ec97a", "REVIEW": "#e0a94e",
+    "SANCTIFY_ELIXIR": "#4e8ee0", "SAFE_STRONGBOX": "#999999",
+}
+
+def substat_display_for(artifact, useful_stats):
+    """Render an artifact's active + hidden substats, bolding whatever
+    counts as useful for the given stat list."""
+    from artifact_utils import STAT_LABEL
+    parts = []
+    for sub in artifact.get("substats", []):
+        label = STAT_LABEL.get(sub.get("key"), sub.get("key"))
+        text = f"{label}+{sub.get('value')}"
+        if label in useful_stats:
+            text = f"<b>{text}</b>"
+        parts.append(text)
+    for sub in artifact.get("unactivatedSubstats", []):
+        label = STAT_LABEL.get(sub.get("key"), sub.get("key"))
+        text = f"{label}+{sub.get('value')}"
+        if label in useful_stats:
+            text = f"<b>{text}</b>"
+        parts.append(f'{text} <span style="font-size:10px;color:#888;">(hidden)</span>')
+    return ", ".join(parts) if parts else "—"
+
 
 def format_substats_html(substats, rarity=5, level=0):
     """Formats substats list.
@@ -43,21 +67,22 @@ def format_substats_html(substats, rarity=5, level=0):
     formatted = []
 
     for label, val, is_useful in substats:
-        # Format existing lines
         text = f"{label}+{val}" if val else label
         if is_useful:
             text = f"<b>{text}</b>"
         formatted.append(text)
 
-    # Check if a 4th slot is missing (unactivated 4th substat at lower levels)
-    # A 5-star artifact starts with 3 or 4 substats. If level < 4 and len == 3:
     if rarity == 5 and level < 4 and len(substats) == 3:
         formatted.append("<i>+1 Hidden Line</i>")
 
     return ", ".join(formatted)
 
 
-def render_html(char_results, domain_results, recommendations, out_path):
+def render_html(char_results, domain_results, recommendations, out_path,
+                 flex_results=None, inventory_results=None):
+    flex_results = flex_results or []
+    inventory_results = inventory_results or []
+
     char_results_sorted = sorted(char_results, key=lambda r: -r["score"])
     domain_sorted = sorted(domain_results.items(), key=lambda kv: -kv[1]["score"])
 
@@ -68,7 +93,7 @@ def render_html(char_results, domain_results, recommendations, out_path):
     rows = []
     for r in char_results_sorted:
         slot_html = " ".join(
-            f'<span title="{slot}: {s["roll_count"]} rolls equipped (need {s["good"]}/{s["excellent"]}); best bench candidate could reach {s["bench_ceiling"]}">{badge(s["status"])}{"↑" if s["upgradeable"] else ""}</span>'
+            f'<span title="{slot}: {s["roll_count"]} rolls equipped (need {s["good"]}/{s["excellent"]}); best bench candidate: EV {s["bench_expected"]}, max {s["bench_ceiling"]}">{badge(s["status"])}{"↑" if s["upgradeable"] else ""}</span>'
             for slot, s in r["slots"].items()
         )
         rows.append(f"""
@@ -97,16 +122,21 @@ def render_html(char_results, domain_results, recommendations, out_path):
         </tr>""")
 
     VERDICT_COLOR = {
-        "Major Breakthrough": "#9c27b0", # Purple / Highlight
-        "Patch / Fix": "#e05a4e",         # Red
-        "Luxury Upgrade": "#4ec97a",      # Green
-        "Minor Polish": "#e0a94e",        # Yellow
+        "Major Breakthrough": "#9c27b0",
+        "Patch / Fix": "#e05a4e",
+        "Luxury Upgrade": "#4ec97a",
+        "Minor Polish": "#e0a94e",
         "Dead end": "#999999"
     }
 
     def vbadge(text):
         color = VERDICT_COLOR.get(text, "#999")
         return f'<span style="background:{color};color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">{text}</span>'
+
+    def ibadge(text):
+        color = INVENTORY_COLOR.get(text, "#999")
+        label = text.replace("_", " ").title()
+        return f'<span style="background:{color};color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">{label}</span>'
 
     def substat_str(substats):
         parts = []
@@ -118,12 +148,8 @@ def render_html(char_results, domain_results, recommendations, out_path):
                 is_unactivated = False
 
             text = f"{label} +{val}" if val else label
-
-            # Apply bolding if useful for character
             if is_useful:
                 text = f"<b>{text}</b>"
-
-            # Append a clear badge tag if unactivated
             if is_unactivated:
                 text = f'{text} <span style="font-size:10px;color:#888;border:1px solid #555;padding:0 3px;border-radius:3px;">UNLOCKED</span>'
 
@@ -134,7 +160,6 @@ def render_html(char_results, domain_results, recommendations, out_path):
     rec_rows = []
     for b in recommendations:
         gain = b["max_rolls"] - b["equipped_rolls"]
-
         slot_display = f"{b['slot']} <span style='font-size:11px;color:#88aaff;'>(Equipped)</span>" if b.get("is_self_equipped") else b['slot']
 
         rec_rows.append(f"""
@@ -148,6 +173,56 @@ def render_html(char_results, domain_results, recommendations, out_path):
           <td>{b['current_rolls']} → EV {b['expected_rolls']}<br>(Max {b['max_rolls']})</td>
           <td>{vbadge(b['verdict'])}</td>
         </tr>""")
+
+    flex_rows = []
+    for f in flex_results:
+        gain = round(f["expected_rolls"] - f["equipped_rolls"], 2)
+        flex_rows.append(f"""
+        <tr>
+          <td>{f['character']}</td>
+          <td>{f['slot']}</td>
+          <td>{f['set']} <span style="font-size:11px;color:#888;">(off-set)</span></td>
+          <td>{f['rarity']}★ Lv{f['level']}</td>
+          <td>{f['equipped_rolls']}</td>
+          <td>{f['expected_rolls']}</td>
+          <td style="color:#4ec97a;">+{gain}</td>
+        </tr>""")
+
+    inventory_rows = []
+    inventory_sorted = sorted(
+        inventory_results,
+        key=lambda i: ({"REVIEW": 0, "SANCTIFY_ELIXIR": 1, "SAFE_STRONGBOX": 2}.get(i["action"], 3), -i["ceiling"])
+    )
+    for i in inventory_sorted:
+        art = i["artifact"]
+        main_label = art.get("mainStatKey", "?")
+        fits = i.get("fits", [])
+
+        if fits:
+            best = fits[0]
+            best_fit_display = f"{best['character']}{'' if best['in_set'] else ' (off-set)'} — ceiling {best['ceiling']}"
+            substats_display = substat_display_for(art, best["useful_stats"])
+            alt_display = ", ".join(f"{f['character']} ({f['ceiling']})" for f in fits[1:]) or "—"
+        else:
+            best_fit_display = "No valid roster user"
+            substats_display = substat_display_for(art, [])
+            alt_display = "—"
+
+        inventory_rows.append(f"""
+        <tr>
+        <td>{art.get('setKey', '?')}</td>
+        <td>{i['slot']}</td>
+        <td>{art.get('rarity', '?')}★ Lv{art.get('level', 0)}</td>
+        <td>{main_label}</td>
+        <td>{substats_display}</td>
+        <td>{best_fit_display}</td>
+        <td>{alt_display}</td>
+        <td>{ibadge(i['action'])}</td>
+        <td>{i['reason']}</td>
+        </tr>""")
+
+    strongbox_count = sum(1 for i in inventory_results if i["action"] == "SAFE_STRONGBOX")
+    elixir_count = sum(1 for i in inventory_results if i["action"] == "SANCTIFY_ELIXIR")
 
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Artifact Farming Dashboard</title>
@@ -182,6 +257,29 @@ are the ones that count for this character. Up to 3 candidates shown per slot wh
 <thead><tr><th>Character</th><th>Slot</th><th>Set</th><th>Artifact</th><th>Level</th>
 <th>Equipped Now</th><th>Current → Ceiling</th><th>Verdict</th></tr></thead>
 <tbody>{''.join(rec_rows)}</tbody>
+</table>
+
+<h2>Flex Slot Suggestions (4pc-locked characters only)</h2>
+<p style="color:#999;font-size:13px;max-width:750px;">Off-set candidates for a single weak slot, evaluated without
+breaking the character's 4pc bonus - the other four slots stay in-set. This does not price in the value of the 4pc
+set bonus itself, so treat these as leads to sanity-check, not auto-swaps.</p>
+<table id="flexTable">
+<thead><tr><th>Character</th><th>Slot</th><th>Off-Set Candidate</th><th>Level</th>
+<th>Equipped EV</th><th>Candidate EV</th><th>Gain</th></tr></thead>
+<tbody>{''.join(flex_rows) if flex_rows else '<tr><td colspan="7" style="color:#999;">No flex candidates cleared the EV-gain threshold.</td></tr>'}</tbody>
+</table>
+
+<h2>Inventory Cleanup ({strongbox_count} strongbox, {elixir_count} elixir fodder)</h2>
+<p style="color:#999;font-size:13px;max-width:750px;">"Ceiling" is this artifact's maximum possible useful-roll
+count for its single best-fit roster character - any character whose main-stat rules allow this slot, in-set or
+not. <b>Bold</b> substats are the ones that count for that character. "Alt Homes" lists other characters this piece
+could also work for, ranked by ceiling. <b>Review</b>: beats that character's current equipped piece for the slot.
+<b>Sanctify Elixir</b>: loses to what's equipped, but has EXP invested (level 1+), so route to Elixir. <b>Safe
+Strongbox</b>: loses to what's equipped, level 0, nothing lost either way.</p>
+<table id="inventoryTable">
+<thead><tr><th>Set</th><th>Slot</th><th>Level</th><th>Main Stat</th><th>Substats</th>
+<th>Best Fit</th><th>Alt Homes</th><th>Action</th><th>Reason</th></tr></thead>
+<tbody>{''.join(inventory_rows) if inventory_rows else '<tr><td colspan="9" style="color:#999;">No unequipped artifacts found.</td></tr>'}</tbody>
 </table>
 
 <script>

@@ -1,62 +1,87 @@
 """
 Genshin artifact farming scorer.
-
-Purpose:
-    This module serves as the central orchestrator for scoring and analyzing Genshin Impact artifacts based on user exports. It processes character configurations, scoring rules, and roll values to generate a comprehensive dashboard of recommendations and insights.
-
-Responsibilities:
-    1. **Artifact Parsing**: Reads and parses JSON exports from Irminsul/GOOD.
-    2. **Scoring Calculations**: Computes scores for individual characters and domains based on artifact attributes and configuration rules.
-    3. **Benchmarking**: Identifies potential benchmark candidates and expected values for artifacts.
-    4. **Recommendation Logic**: Generates actionable recommendations based on the scoring results.
-    5. **HTML Rendering**: Outputs the final analysis as an interactive HTML dashboard.
-
-Architectural Role:
-    This module acts as the orchestration layer of the application, coordinating interactions between various components such as artifact parsing, scoring logic, and rendering utilities. It is expected to be used by higher-level modules or scripts that require a complete scoring workflow.
-
-Intended Dependencies:
-    - **Configuration Files**: Relies on `roster.yaml`, `rules.yaml`, and `roll_values.yaml` for character roles/builds, scoring rules, and substat roll-value references.
-    - **Utility Modules**:
-        - `artifact_utils`: For parsing artifact exports.
-        - `bench`: For benchmarking calculations.
-        - `character_scoring`: For character-specific scoring logic.
-        - `config`: For loading configuration files.
-        - `recommendations`: For generating recommendations.
-        - `render_html`: For rendering the final HTML output.
-
-Boundaries:
-    - **Presentation Layer**: This module does not handle user interface elements directly. It focuses on data processing and analysis, leaving presentation to the `render_html` module.
-    - **Utility Functions**: While this module uses utility functions from other modules, it should not contain low-level utility logic itself. Such logic belongs in dedicated utility modules.
-
-Public API:
-    - `main()`: The primary entry point for executing the scoring workflow. Accepts command-line arguments for input JSON export and output HTML file.
-"""
-
-#!/usr/bin/env python3
-"""
-Genshin artifact farming scorer.
-
-Usage:
-    python3 score.py <good_export.json> [--out dashboard.html]
-
-Reads:
-    roster.yaml        - character role/build config (edit this as your roster changes)
-    rules.yaml          - thresholds, adjustments, domain weighting (rarely needs edits)
-    roll_values.yaml     - substat roll-value reference table
-
-Writes:
-    dashboard.html (or whatever --out points to) - open it in any browser.
+...
 """
 import argparse
 import json
 from pathlib import Path
 
-from artifact_utils import parse_good_export
-from bench import bench_candidates_lookup, bench_expected_lookup, find_bench_potential
+from artifact_utils import parse_good_export, SLOT_MAP, valid_main_stat
+from bench import (
+    bench_candidates_lookup,
+    bench_potential_lookup,
+    find_bench_potential,
+    max_possible_useful_rolls,
+    matched_characters_for_set
+)
 from character_scoring import score_character, score_domains
 from config import load_configs
+from flex import find_flex_candidates
+from inventory import classify_inventory_artifact
 from recommendations import build_recommendations
 from render_html import render_html
+
+
+def build_equipped_baseline_lookup(char_results):
+    """(character, slot) -> equipped roll_count, for inventory comparisons."""
+    lookup = {}
+    for r in char_results:
+        for slot, s in r["slots"].items():
+            lookup[(r["name"], slot)] = s["roll_count"]
+    return lookup
+
+
+def best_fit_for_artifact(artifact, roster, slot, roll_values):
+    """Evaluate this artifact against every roster character whose main-stat
+    config allows this slot, regardless of set. Returns fits sorted by
+    ceiling, descending, so fits[0] is the best possible home for this piece."""
+    fits = []
+    for name, cfg in roster.items():
+        if not valid_main_stat(artifact, cfg, slot):
+            continue
+        useful_stats = [str(s) for s in cfg["useful_stats"]]
+        current, ceiling = max_possible_useful_rolls(artifact, useful_stats, roll_values)
+        fits.append({
+            "character": name,
+            "ceiling": ceiling,
+            "current_rolls": current,
+            "useful_stats": useful_stats,
+            "in_set": name in matched_characters_for_set(artifact.get("setKey"), roster),
+        })
+    fits.sort(key=lambda f: (-f["ceiling"], not f["in_set"]))
+    return fits
+
+
+def build_inventory_results(good_json, roster, rules, roll_values, char_results):
+    """Classify every unequipped artifact against its single best-fit roster
+    character (any character whose main-stat config allows this slot, not
+    just set-matched ones)."""
+    equipped_lookup = build_equipped_baseline_lookup(char_results)
+    results = []
+
+    for art in good_json.get("artifacts", []):
+        if art.get("location"):
+            continue
+
+        slot = SLOT_MAP.get(art.get("slotKey"))
+        if slot is None:
+            continue
+
+        fits = best_fit_for_artifact(art, roster, slot, roll_values)
+        best = fits[0] if fits else None
+        equipped_baseline = equipped_lookup.get((best["character"], slot), 0) if best else 0
+        ceiling = best["ceiling"] if best else 0
+
+        classification = classify_inventory_artifact(
+            art, rules, ceiling, equipped_baseline, best
+        )
+        classification["artifact"] = art
+        classification["slot"] = slot
+        classification["ceiling"] = ceiling
+        classification["fits"] = fits[:3]  # top 3 alternate homes, for display
+        results.append(classification)
+
+    return results
 
 
 def main():
@@ -70,7 +95,7 @@ def main():
 
     by_char = parse_good_export(good_json, roster)
     bench_results = find_bench_potential(good_json, roster, rules, roll_values)
-    bench_lookup = bench_expected_lookup(bench_results)
+    bench_lookup = bench_potential_lookup(bench_results)
     bench_candidates = bench_candidates_lookup(bench_results)
 
     char_results = []
@@ -80,7 +105,27 @@ def main():
 
     domain_results = score_domains(char_results, rules)
     recommendations = build_recommendations(bench_results, char_results)
-    render_html(char_results, domain_results, recommendations, args.out)
+
+    flex_min_gain = rules.get("flex_rules", {}).get("min_ev_gain", 2.0)
+    flex_results = find_flex_candidates(
+        good_json, roster, char_results, roll_values, min_ev_gain=flex_min_gain
+    )
+
+    inventory_results = build_inventory_results(
+        good_json, roster, rules, roll_values, char_results
+    )
+
+    strongbox_count = sum(1 for i in inventory_results if i["action"] == "SAFE_STRONGBOX")
+    elixir_count = sum(1 for i in inventory_results if i["action"] == "SANCTIFY_ELIXIR")
+    print(f"Flex slot suggestions: {len(flex_results)}")
+    print(f"Inventory: {strongbox_count} strongbox, {elixir_count} elixir fodder, "
+          f"{sum(1 for i in inventory_results if i['action'] == 'KEEP')} keep, "
+          f"{sum(1 for i in inventory_results if i['action'] == 'REVIEW')} review")
+
+    render_html(
+        char_results, domain_results, recommendations, args.out,
+        flex_results=flex_results, inventory_results=inventory_results,
+    )
 
 
 if __name__ == "__main__":

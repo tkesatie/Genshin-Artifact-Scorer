@@ -286,15 +286,21 @@ def find_bench_potential(good_json, roster, rules, roll_values):
     return results
 
 
-def bench_expected_lookup(bench_results):
-    """(character, slot) -> best expected bench value."""
+def bench_potential_lookup(bench_results):
+    """(character, slot) -> {"expected": best EV bench value, "max": that
+    same candidate's optimistic ceiling}.
+
+    Both numbers describe the single best bench candidate (ranked by EV),
+    so they tell a consistent story about one piece rather than mixing the
+    top-EV candidate's average with a different candidate's ceiling.
+    """
     lookup = {}
 
     for b in bench_results:
         key = (b["character"], b["slot"])
 
-        if key not in lookup or b["expected_rolls"] > lookup[key]:
-            lookup[key] = b["expected_rolls"]
+        if key not in lookup or b["expected_rolls"] > lookup[key]["expected"]:
+            lookup[key] = {"expected": b["expected_rolls"], "max": b["max_rolls"]}
 
     return lookup
 

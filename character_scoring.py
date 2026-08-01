@@ -39,12 +39,14 @@ def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench
     slots_result = {}
     for slot in ["Flower", "Feather", "Sands", "Goblet", "Circlet"]:
         art = artifacts_by_slot.get(slot)
-        bench_ceiling = bench_lookup.get((char_name, slot), 0)
+        bench_info = bench_lookup.get((char_name, slot), {"expected": 0, "max": 0})
+        bench_expected, bench_ceiling = bench_info["expected"], bench_info["max"]
         if art is None:
             slots_result[slot] = {
                 "status": "Missing", "roll_status": "Fail",
                 "roll_count": 0, "good": None, "excellent": None,
-                "bench_ceiling": bench_ceiling, "upgradeable": bench_ceiling > 0,
+                "bench_expected": bench_expected, "bench_ceiling": bench_ceiling,
+                "upgradeable": bench_ceiling > 0,
             }
             continue
         rarity = art.get("rarity", 5)
@@ -61,7 +63,8 @@ def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench
         slots_result[slot] = {
             "status": status, "roll_status": roll_status,
             "roll_count": round(rc, 2), "good": good, "excellent": excellent,
-            "bench_ceiling": bench_ceiling, "upgradeable": bench_ceiling > rc,
+            "bench_expected": bench_expected, "bench_ceiling": bench_ceiling,
+            "upgradeable": bench_ceiling > rc,
         }
 
     completion = sum(1 for s in slots_result.values() if s["status"] not in ("Needs Work", "Missing"))

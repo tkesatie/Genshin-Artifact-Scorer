@@ -16,7 +16,7 @@ Mualani:      {usage: Active,  role: DPS,     set: Obsidian,     domain: "Natlan
 Zibai:        {usage: Active,  role: DPS,     set: "Night Sky",  domain: "Nod Krai 1",       useful_stats: [CD, CR, "DEF%", EM, ER], main_stats: {Sands: ["DEF%"], Goblet: ["DEF%"], Circlet: [CD, CR]}}
 Citlali:      {usage: Active,  role: Sub-DPS, set: Scroll,       domain: "Natlan 1",         useful_stats: [ER, EM, CD, CR], main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM]}}
 Furina:       {usage: Active,  role: Support, set: TotM,         domain: "Ridge Watch",      useful_stats: [ER, CD, CR, "HP%"], main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: [CD, CR]}}
-Mona:         {usage: Active,  role: Support, set: NO,           domain: "Clear Pool",       useful_stats: [ER, CR, CD], main_stats: {Sands: [ER], Goblet: [HydroDMG%], Circlet: [CD, CR]}}
+Mona:         {usage: Active,  role: Support, set: "NO",         domain: "Clear Pool",       useful_stats: [ER, CR, CD], main_stats: {Sands: [ER], Goblet: [HydroDMG%], Circlet: [CD, CR]}}
 Sucrose:      {usage: Active,  role: Support, set: VV,           domain: Remembrance,        useful_stats: [ER, EM], main_stats: {Sands: [EM], Goblet: [EM], Circlet: [EM]}}
 Keqing:       {usage: "IT Only", role: DPS,   set: "Thundering Fury", domain: "Midsummer Courtyard", useful_stats: [CD, CR, "ATK%", EM], main_stats: {Sands: ["ATK%"], Goblet: ["ElectroDMG%"], Circlet: [CD, CR]}}
 Lauma:        {usage: "IT Only", role: Support, set: SMS,        domain: "Nod Krai 1",       useful_stats: [ER, EM, CR, CD], main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM]}}
@@ -30,23 +30,23 @@ Xilonen:      {usage: Active,  role: Support, set: Petra,        domain: Guyun, 
 Linnea:       {usage: Active,  role: Sub-DPS, set: Husk,       domain: "Inazuma 2",       useful_stats: [ER, "DEF%", CR, CD, EM], main_stats: {Sands: ["DEF%"], Goblet: ["DEF%"], Circlet: [CR, CD, "DEF%"]}}
 Illuga:       {usage: Active,  role: Support, set: SMS,          domain: "Sumeru 1",         useful_stats: [ER, EM, CR], main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM, CR]}}
 Kachina:      {usage: "IT Only", role: Support, set: Scroll,     domain: "Natlan 1",         useful_stats: [ER, CD, CR, "DEF%"], main_stats: {Sands: ["DEF%", ER], Goblet: ["GeoDMG%"], Circlet: [CR, CD]}}
-Rosaria:      {usage: "IT Only", role: Sub-DPS, set: NO,         domain: "Clear Pool",       useful_stats: [ER, CD, CR, "ATK%"], main_stats: {Sands: [EM], Goblet: [CryoDMG%], Circlet: [CR, CD]}}
+Rosaria:      {usage: "IT Only", role: Sub-DPS, set: "NO",       domain: "Clear Pool",       useful_stats: [ER, CD, CR, "ATK%"], main_stats: {Sands: [EM], Goblet: [CryoDMG%], Circlet: [CR, CD]}}
 Fischl:       {usage: "IT Only", role: Sub-DPS, set: "Golden Troupe", domain: "Fontaine 1",  useful_stats: [ER, CD, CR, "ATK%", EM], main_stats: {Sands: ["ATK%"], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}}
 Ororon:       {usage: "IT Only", role: Sub-DPS, set: Scroll,     domain: "Natlan 1",         useful_stats: [ER, CD, CR, "ATK%", EM], main_stats: {Sands: ["ATK%", ER], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}}
 Xingqiu:      {usage: "IT Only", role: Sub-DPS, set: Emblem,     domain: "Inazuma 1",        useful_stats: [ER, CD, CR, "ATK%"], main_stats: {Sands: ["ATK%", ER], Goblet: ["HydroDMG%"], Circlet: [CR, CD]}}
-Bennett:      {usage: Active,  role: Support, set: NO,           domain: "Clear Pool",       useful_stats: [ER, CD, CR, "HP%"], main_stats: {Sands: [ER], Goblet: ["HP%"], Circlet: ["Heal%"]}}
-Xiangling:    {usage: "IT Only", role: Sub-DPS, set: Emblem,     domain: "Inazuma 1",        useful_stats: [ER, CD, CR, "ATK%", EM], main_stats: {Sands: [ER], Goblet: ["Pyro%", EM], Circlet: [CR, CD, EM]}}
+Bennett:      {usage: Active,  role: Support, set: "NO",         domain: "Clear Pool",       useful_stats: [ER, CD, CR, "HP%"], main_stats: {Sands: [ER], Goblet: ["HP%"], Circlet: ["Heal%"]}}
+Xiangling:    {usage: "IT Only", role: Sub-DPS, set: Emblem,     domain: "Inazuma 1",        useful_stats: [ER, CD, CR, "ATK%", EM], main_stats: {Sands: [ER], Goblet: ["PyroDMG%", EM], Circlet: [CR, CD, EM]}}
 Jean:         {usage: "IT Only", role: Support, set: VV,         domain: Remembrance,        useful_stats: [ER, CD, CR, "ATK%", EM], main_stats: {Sands: [ER, "ATK%"], Goblet: ["ATK%", "AnemoDMG%"], Circlet: ["Heal%", CR]}}
 Diluc:        {usage: "IT Only", role: DPS,   set: Gilded,       domain: "Sumeru 1",         useful_stats: [CR, CD, "ATK%", EM, ER], main_stats: {Sands: ["ATK%", EM], Goblet: ["PyroDMG%"], Circlet: [CR, CD]}}
-Gorou:        {usage: "IT Only", role: Support, set: NO,         domain: "Clear Pool",       useful_stats: [ER, "DEF%", CR], main_stats: {Sands: [ER], Goblet: [ANY], Circlet: [CR]}}
+Gorou:        {usage: "IT Only", role: Support, set: "NO",       domain: "Clear Pool",       useful_stats: [ER, "DEF%", CR], main_stats: {Sands: [ER], Goblet: [ANY], Circlet: [CR]}}
 Ningguang:    {usage: "IT Only", role: DPS,   set: Nighttime,    domain: "Fontaine 2",       useful_stats: [CR, CD, "ATK%", ER], main_stats: {Sands: ["ATK%"], Goblet: ["GeoDMG%"], Circlet: [CR, CD]}}
 LanYan:       {usage: "IT Only", role: Support, set: VV,         domain: Remembrance,        useful_stats: [ER, "ATK%", EM, CR], main_stats: {Sands: ["ATK%", ER], Goblet: ["ATK%", "AnemoDMG%",], Circlet: ["ATK%", CR, CD]}}
-Faruzan:      {usage: "IT Only", role: Support, set: NO,         domain: "Clear Pool",       useful_stats: [ER, CR, CD, "ATK%"], main_stats: {Sands: [ER], Goblet: [ANY], Circlet: [CR]}}
+Faruzan:      {usage: "IT Only", role: Support, set: "NO",       domain: "Clear Pool",       useful_stats: [ER, CR, CD, "ATK%"], main_stats: {Sands: [ER], Goblet: [ANY], Circlet: [CR]}}
 Layla:        {usage: "IT Only", role: Support, set: TotM,       domain: Windblume,          useful_stats: [CR, "HP%", HP], main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%", CR]}}
-Diona:        {usage: "IT Only", role: Support, set: NO,         domain: "Clear Pool",       useful_stats: [ER, "HP%", CR, HP], main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}}
+Diona:        {usage: "IT Only", role: Support, set: "NO",       domain: "Clear Pool",       useful_stats: [ER, "HP%", CR, HP], main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}}
 Kaeya:        {usage: "IT Only", role: Sub-DPS, set: Emblem,     domain: "Inazuma 1",        useful_stats: [ER, CD, "ATK%", CR], main_stats: {Sands: ["ATK%"], Goblet: ["CryoDMG%"], Circlet: [CR, CD]}}
 Kirara:       {usage: "IT Only", role: Support, set: Instructor, domain: "Nod Krai 2",       useful_stats: [ER, "HP%", CR, HP], main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: ["HP%", CR]}}
 Aino:         {usage: "IT Only", role: Support, set: SMS,        domain: "Nod Krai 1",       useful_stats: [ER, EM, CR], main_stats: {Sands: [ER, EM], Goblet: [ER, "HydroDMG%"], Circlet: [CR, EM]}}
 Barbara:      {usage: "IT Only", role: Support, set: "Ocean-Hued Clam", domain: "Inazuma 2", useful_stats: ["HP%", HP], main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: [Heal%]}}
-Chevreuse:    {usage: "IT Only", role: Support, set: NO,         domain: "Clear Pool",       useful_stats: [ER, "HP%", CR, HP, EM], main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}}
+Chevreuse:    {usage: "IT Only", role: Support, set: "NO",       domain: "Clear Pool",       useful_stats: [ER, "HP%", CR, HP, EM], main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}}
 Thoma:        {usage: "IT Only", role: Support, set: Gilded,     domain: "Sumeru 1",         useful_stats: [ER, EM, "HP%", HP, CR], main_stats: {Sands: [ER, "HP%"], Goblet: ["HP%"], Circlet: ["HP%", CR]}}

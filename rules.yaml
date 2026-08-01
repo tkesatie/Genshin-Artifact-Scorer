@@ -41,3 +41,21 @@ domain_scoring:
   active_weight: 2.0
   it_only_weight: 1.0
   finished_polish_weight: 0.2   # applied to (luxury_excellent_count - excellent_pieces) for non-Luxury chars
+
+off_piece_rules:
+  minimum_ceiling: 7
+  protected_main_stats:
+    - CR
+    - CD
+    - ER
+    - EM
+    - CryoDMG%
+    - PyroDMG%
+    - HydroDMG%
+    - ElectroDMG%
+    - AnemoDMG%
+    - GeoDMG%
+    - DendroDMG%
+
+flex_rules:
+  min_ev_gain: 2.0
