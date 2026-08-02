@@ -51,3 +51,30 @@ domain_scoring:
 
 flex_rules:
   min_ev_gain: 2.0
+
+# Imaginarium Theater filter (see README's Imaginarium Theater Filter section).
+# When enabled, scoring is narrowed to usage: Active characters plus
+# usage: IT Only characters whose `element` appears in `elements` below.
+# Filtered-out characters are excluded from character scoring, upgrade
+# recommendations, flex recommendations, inventory matching, domain priority
+# calculations, and progress snapshots for that run - score.py filters the
+# roster once, before it's threaded into every downstream module, so nothing
+# needs to re-check the filter itself.
+#
+# enabled: turn the filter on/off. When false (default), all roster
+#   characters are analyzed normally, regardless of `elements`.
+# elements: the currently active Imaginarium Theater elements, e.g.
+#   ["Pyro", "Hydro", "Cryo"]. Ignored when enabled is false.
+imaginarium_theater:
+  enabled: true
+  elements: ["Hydro", "Cryo", "Electro"]
+
+# Run-to-run progress snapshot (see README Planned Features #1).
+# min_interval_hours gates both the save AND the diff: if less than this
+# much real time has passed since the last saved snapshot, this run leaves
+# the snapshot file untouched and no progress diff is shown, so repeated
+# testing/tweaking runs don't manufacture the appearance of progress every
+# few minutes.
+snapshot:
+  path: "snapshot.json"
+  min_interval_hours: 24

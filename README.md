@@ -13,6 +13,7 @@ Genshin Artifact Scorer analyzes an Irminsul/GOOD artifact export against the lo
 - Flags off-set flex candidates for 4pc-locked characters when a piece beats their weakest equipped slot by enough expected value.
 - Classifies unequipped artifacts for inventory cleanup (review / strongbox / elixir fodder).
 - Aggregates character needs into domain farming scores.
+- Optionally narrows all of the above to characters relevant to the currently active Imaginarium Theater elements.
 - Renders the final report to a sortable standalone HTML dashboard.
 
 ## Requirements
@@ -41,7 +42,9 @@ These files must be in the project root:
 - `inventory.py`: classification of unequipped artifacts for inventory cleanup.
 - `recommendations.py`: recommendation ranking.
 - `render_html.py`: HTML report writer.
+- `snapshot.py`: run-to-run progress snapshot save/diff.
 - `thresholds.py`: threshold calculation helpers.
+- `validate_config.py`: config pre-flight validation, run before scoring.
 - `roster.yaml`: character usage, role, desired set, farming domain, useful stats, and valid main stats.
 - `rules.yaml`: base thresholds, stat-pool adjustments, slot adjustments, character overrides, and domain scoring weights.
 - `roll_values.yaml`: average substat roll values for 5-star and 4-star artifacts.
@@ -65,6 +68,11 @@ Arguments:
 
 - `<good_export.json>`: path to an Irminsul/GOOD JSON export.
 - `--out`: optional output path. Defaults to `dashboard.html`.
+- `--snapshot-path`: override the snapshot file location. Defaults to `rules.yaml`'s `snapshot.path` (`snapshot.json`).
+- `--snapshot-interval-hours`: override the minimum hours required between snapshot saves. Defaults to `rules.yaml`'s `snapshot.min_interval_hours` (`24`).
+- `--no-snapshot`: skip the run-to-run progress snapshot entirely for this run.
+- `--skip-validation`: skip the config pre-flight validation pass entirely.
+- `--validate-only`: run config pre-flight validation and exit without scoring. `<good_export.json>` is not required in this mode. Exits non-zero if any ERROR-level issue is found, so it's usable as a pre-commit/CI check on `roster.yaml`/`rules.yaml`.
 
 Example:
 
@@ -73,6 +81,8 @@ python score.py sample_export.json --out dashboard.html
 ```
 
 Open the generated HTML file in a browser after the command completes.
+
+Each run first validates `roster.yaml`/`rules.yaml` — see [Config pre-flight validation](#config-pre-flight-validation) below — then saves/diffs a small `snapshot.json` progress file — see [Run-to-run progress snapshot](#run-to-run-progress-snapshot) below.
 
 ## Configuration
 
@@ -109,6 +119,7 @@ Controls scoring thresholds and farming priority:
 - `character_overrides`: optional per-character threshold overrides.
 - `domain_scoring`: weights used by `score_domains`.
 - `flex_rules.min_ev_gain`: minimum EV gain required for `flex.find_flex_candidates` to surface an off-set flex suggestion.
+- `imaginarium_theater`: optional filter that narrows analysis to characters relevant to the currently active Imaginarium Theater elements. See [Imaginarium Theater filter](#imaginarium-theater-filter) below.
 
 ### `roll_values.yaml`
 
@@ -120,9 +131,12 @@ Maps GOOD stat keys to average roll values. `roll_count_for_artifact` divides ea
 
 Command-line orchestrator. It loads configs, reads the GOOD export, groups equipped artifacts, evaluates bench potential, scores characters/domains, builds recommendations, and calls `render_html`.
 
-Public entry point:
+Functions:
 
-- `main()`
+- `main()`: entry point.
+- `apply_imaginarium_theater_filter(roster, rules)`: see [Imaginarium Theater filter](#imaginarium-theater-filter). Called once in `main()`, after config validation (which always runs against the full, unfiltered roster) and before the roster is passed to anything else, so a possibly-narrowed roster is what every downstream module actually sees.
+- `best_fit_for_artifact(artifact, roster, slot, roll_values, rules)`: evaluates an unequipped artifact against every roster character whose main-stat config allows the slot.
+- `build_inventory_results(good_json, roster, rules, roll_values)`: classifies every unequipped artifact in the export.
 
 ### `artifact_utils.py`
 
@@ -196,40 +210,120 @@ Writes the sortable HTML dashboard.
 Functions:
 
 - `format_substats_html(substats, rarity=5, level=0)`: formats substats and adds a hidden-line marker for low-level 5-star artifacts with three visible substats. This helper is currently not used by `render_html`.
-- `render_html(char_results, domain_results, recommendations, out_path)`: writes the report and prints `Wrote <out_path>`. The character table includes a Set Bonus column (from `set_status`) showing the active 2pc/4pc bonus, and adds a ⚠ next to a character's status badge when `set_bonus_mismatch` is true.
+- `render_html(char_results, domain_results, recommendations, out_path, flex_results=None, inventory_results=None, progress_changes=None)`: writes the report and prints `Wrote <out_path>`. The character table includes a Set Bonus column (from `set_status`) showing the active 2pc/4pc bonus, and adds a ⚠ next to a character's status badge when `set_bonus_mismatch` is true. `progress_changes` (see `snapshot.py` below) drives the "Progress Since Last Snapshot" section: a list of change strings when there's a diff to show, an empty list when the snapshot was refreshed but nothing changed, or `None` when the snapshot was skipped this run (interval not yet elapsed). Every row in the character table is clickable and opens a detail modal (pure vanilla JS, no backend calls) showing that character's current per-slot status, recommended upgrades, flex candidates, and unequipped inventory pieces that fit them — all pulled from the same `recommendations`/`flex_results`/`inventory_results` data already used elsewhere on the page, just filtered and organized per character. The modal's "Inventory Pieces That Fit" section is laid out as a five-column grid, one column per artifact slot (Flower/Feather/Sands/Goblet/Circlet), echoing a character equipment screen rather than a flat list. Each candidate is a collapsed `<details>` card showing only main stat, level, current → ceiling rolls, and recommendation status; clicking it expands full detail (set, substats, reasoning) without cluttering the column. A card's left border is colored green for an in-set piece and purple for an off-set piece, so likely flex candidates stand out without reading the set name. Each of the five tables also gets a client-side text filter box above it (see `_filter_input_html`) that hides non-matching rows as you type, checked against each row's full rendered text.
+- `_filter_input_html(table_id, placeholder)`: builds the filter input + "no matching rows" message markup for one table. Actual filtering runs client-side in vanilla JS, wired up once per `.table-filter` input in the script block at the bottom of the page.
+
+### `snapshot.py`
+
+Saves and diffs run-to-run character progress so `score.py` can surface what's changed since the last real (non-testing) run.
+
+Functions:
+
+- `load_snapshot(path)`: loads a previously saved snapshot JSON file, or `None` if missing/unparseable.
+- `extract_snapshot_data(char_results)`: builds the compact per-character record that gets persisted (`status`, `excellent_pieces`, `set_bonus`, `score`).
+- `compute_progress(old_snapshot, char_results)`: diffs current results against a loaded snapshot into human-readable change strings, e.g. `"Bennett: Needs Work → Luxury, +2 excellent pieces, set bonus 2pc → 4pc"`. Characters not present in the old snapshot (new roster additions) are skipped rather than reported.
+- `maybe_update_snapshot(path, char_results, min_interval_hours=24, now=None)`: the main entry point. Gates both the diff *and* the save on a minimum real-time interval since the last saved snapshot's timestamp — if less time than `min_interval_hours` has passed, returns `None` and leaves the on-disk file untouched, so repeated testing/tweaking runs never overwrite a "real" snapshot or manufacture fake progress. Otherwise computes the diff against the old snapshot, writes a fresh snapshot with the current timestamp, and returns the (possibly empty) list of change strings.
+
+Configured via `rules.yaml`'s `snapshot.path` and `snapshot.min_interval_hours`, overridable per-run with `score.py`'s `--snapshot-path`, `--snapshot-interval-hours`, and `--no-snapshot` flags.
+
+### `validate_config.py`
+
+Pre-flight lint pass over the loaded `roster`/`rules` config, run by `score.py` before scoring.
+
+Functions:
+
+- `check_boolean_coercion(roster)`: flags roster string fields (`usage`, `role`, `set`, `domain`, `main_stats` keys/values) that PyYAML coerced into a `bool`/`None` — the unquoted `NO` gotcha and its relatives (`YES`, `ON`, `OFF`, etc.).
+- `check_usage_role_thresholds(roster, rules)`: flags `usage|role` combos with no matching entry in `rules.base_thresholds`.
+- `check_set_aliases(roster)`: flags `set` values (excluding `/`-delimited split-set labels) with no entry in `bench.SET_ALIASES`.
+- `check_slot_names(roster)`: flags `main_stats` keys that aren't real slot names, checked against `artifact_utils.SLOT_MAP`'s display values.
+- `validate_config(roster, rules)`: runs all four checks, returns the combined list of `ValidationIssue` records.
+- `has_errors(issues)`: `True` if any issue is `ERROR`-level (as opposed to `WARNING`).
+
+`ValidationIssue` carries `severity` (`"ERROR"` or `"WARNING"`), `character` (or `None` for config-wide issues), and `message`.
+
+## Run-to-run progress snapshot
+
+After each run (subject to the minimum interval below), `score.py` writes a small `snapshot.json` file recording every roster character's `status`, `excellent_pieces` count, active set bonus, and score. On the next run past the interval, it diffs the new results against that saved snapshot and prints/renders what changed, e.g.:
+
+```
+Progress since last snapshot:
+  Bennett: Needs Work → Luxury, +2 excellent pieces, set bonus 2pc → 4pc
+```
+
+This also appears as a "Progress Since Last Snapshot" section at the top of the dashboard.
+
+**Minimum time interval.** To avoid making it look like meaningful progress happened every few minutes while testing/tweaking, the snapshot is only compared *and* overwritten if at least `snapshot.min_interval_hours` (default 24, in `rules.yaml`) has passed since the last saved snapshot's timestamp. If you run the scorer again before that interval elapses, the existing `snapshot.json` is left untouched and no diff is shown or computed that run — console output notes the snapshot was skipped, and the dashboard shows a muted "not due yet" note instead of a diff.
+
+New characters added to the roster since the last snapshot won't produce a change line the first time they appear (there's nothing to diff against yet); they'll show normal diffs on runs after that.
+
+Use `--no-snapshot` to skip this entirely for a given run (e.g. one-off exports you don't want counted), or `--snapshot-path` / `--snapshot-interval-hours` to override the config file's defaults for that run only.
+
+## Config pre-flight validation
+
+Before scoring, `score.py` runs `validate_config.validate_config(roster, rules)` and prints every issue found, e.g.:
+
+```
+Config validation: 2 issue(s) found.
+  [ERROR] Bennett: `set` was read as False instead of a string - likely an unquoted YAML boolean/null keyword (e.g. NO, Yes, Null) in the source file. Quote the value in roster.yaml, e.g. set: "NO".
+  [WARNING] Skirk: set "Nihility (unreleased)" has no entry in bench.SET_ALIASES - bench.py will never surface upgrade candidates for this character's set.
+```
+
+Two severities:
+
+- **ERROR** — would break scoring outright or silently corrupt a threshold lookup (unquoted-boolean coercion, a missing `usage|role` entry in `base_thresholds`). If any ERROR-level issue is found, `score.py` prints the list and exits (code 1) **before** touching the GOOD export or scoring anything, so you fix the config rather than scoring against a broken one. Override with `--skip-validation` if you need to force a run anyway.
+- **WARNING** — won't crash the run, but silently reduces coverage in a way that's easy to miss (a `set` with no `bench.SET_ALIASES` entry, a typo'd slot name in `main_stats`). These are printed but don't block scoring.
+
+Run `python score.py --validate-only` to check config without scoring — no GOOD export path required. Exits non-zero if any ERROR-level issue is present, so it doubles as a pre-commit/CI check on `roster.yaml`/`rules.yaml`.
+
+## Imaginarium Theater filter
+
+Optionally limits artifact analysis for `IT Only` characters based on the currently active Imaginarium Theater elements, so a run only scores/recommends for characters actually relevant to the current rotation.
+
+Configured under `imaginarium_theater` in `rules.yaml`:
+
+- `enabled`: turns the filter on or off. Defaults to `false`. When disabled (or the block is absent from `rules.yaml`), all roster characters are analyzed normally.
+- `elements`: a list of the currently active Theater elements, e.g. `["Pyro", "Hydro", "Cryo"]`. Ignored while `enabled` is `false`.
+
+```yaml
+imaginarium_theater:
+  enabled: true
+  elements: [Pyro, Hydro, Cryo]
+```
+
+When enabled:
+
+- Characters with `usage: Active` are always included, regardless of element - they're farmed independent of Theater.
+- Characters with `usage: IT Only` are included only if their `element` matches one of the configured `elements`.
+- Filtered-out characters are excluded from character scoring, upgrade recommendations, flex recommendations, inventory matching, domain priority calculations, and the run-to-run progress snapshot, for that run only. Nothing is deleted from `roster.yaml`; the next run without the filter (or with different elements) sees the full roster again.
+
+Config validation (see above) always runs against the full, unfiltered roster, so an issue in an `IT Only` character's config is still caught even on a run where the Theater filter would have excluded that character from scoring.
+
+`score.py` prints a line to the console when the filter is active, e.g.:
+
+```
+Imaginarium Theater filter active (elements=['Pyro', 'Hydro', 'Cryo']): 24/41 roster characters included.
+```
 
 ## Planned / Under Consideration
 
 Ideas discussed but not yet built, kept here so they don't get lost between sessions.
 
-### 1. Run-to-run progress snapshot — approved
+### 1. Character detail modal refinements — mentioned, undecided
 
-Save each run's `char_results` (status, excellent count, set bonus, score) to a small JSON file alongside the project. On the next run, diff against the saved snapshot and surface what changed since last time (e.g. "Bennett: Needs Work → Luxury, +2 excellent pieces") instead of just showing current state.
+Follow-ups for the character detail popup's "Inventory Pieces That Fit" section:
 
-**Needs a minimum time interval between snapshots.** Without one, running the scorer repeatedly during testing/tweaking would make it look like meaningful progress happened every few minutes. Snapshot should only be overwritten/compared if enough real time has passed since the last saved snapshot (e.g. a configurable minimum, start at one day, not a fixed run-count).
+- Reduce the number of inventory pieces shown per character — right now every unequipped piece where the character appears anywhere in `fits` is listed, which can get long. Needs a cap or better filtering criteria (e.g. only pieces that would actually change the character's status, or a fixed top-N by ceiling).
+- Exclude pieces that will never actually be an upgrade for that character — currently a piece shows up in the modal purely because `valid_main_stat` allows the slot, even if its ceiling can't beat what's already equipped. Should filter dead-end pieces out rather than relying on the reader to notice.
 
-### 2. Config pre-flight validation — approved
+Needs more thought on the exact filtering rule before implementation.
 
-A lint pass over `roster.yaml`/`rules.yaml` run at the start of `score.py`, before scoring, that catches config issues that currently fail silently:
-
-- Unquoted YAML booleans (the `NO` gotcha already documented above).
-- `usage|role` combos with no matching entry in `base_thresholds`.
-- `set` values with no coverage in `bench.SET_ALIASES`.
-- Slot names referenced in `main_stats` that aren't real slot names (`Flower`/`Feather`/`Sands`/`Goblet`/`Circlet`).
-
-Goal is to catch this class of typo/config-drift bug at startup with a clear warning, rather than discovering it later as an artifact/character that mysteriously never gets bench matches.
-
-### 3. Lock-field-aware inventory cleanup — undecided
+### 2. Lock-field-aware inventory cleanup — undecided
 
 GOOD exports carry a `lock` field per artifact (whether it's locked in-game) that `inventory.py` currently ignores entirely - locked pieces get the same SAFE_STRONGBOX/SANCTIFY_ELIXIR treatment as everything else. Value is unclear right now since lock is barely used in practice (currently only used to protect Instructor pieces from accidental 4-star fodder use) - may not be worth building unless lock usage becomes more deliberate/widespread. Revisit if that changes.
 
-### 4. Resin cost-aware recommendation ranking — needs rethinking
+### 3. Resin cost-aware recommendation ranking — needs rethinking
 
 Originally proposed as a simple tiebreaker in `build_recommendations` favoring candidates with fewer `levels_needed` to reach their ceiling. Rejected as too simplistic: leveling from 0→4 (or from a level where the hidden 4th substat line unlocks) can reveal more useful information per resin spent than leveling from 16→20, since early levels have outsized chances of revealing whether a piece is worth continuing at all, while late levels are refining an already-known outcome. What's actually needed is a cost-per-information (or marginal-value) analysis, not a flat cost tiebreaker - e.g. weighting early upgrade events (especially ones that could reveal a hidden useful line) more heavily than late ones when ranking "worth leveling now" vs "worth leveling later." Needs more design thought before implementation - not a quick add.
-
-### 5. Dashboard search/filter box — approved
-
-Client-side text input above the character table (and possibly others) that filters rows by name/domain/status as-you-type. Small, self-contained, vanilla JS only, no backend/data changes.
 
 ## Scoring Notes
 

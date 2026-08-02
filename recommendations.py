@@ -24,6 +24,7 @@ Boundaries:
 Public API:
 - **determine_verdict(equipped_rolls, ceiling, good_thresh, exc_thresh)**: Categorizes the practical impact of swapping equipped artifacts based on given thresholds.
 - **build_recommendations(bench_results, char_results, top_n_per_slot=3)**: Generates and prioritizes recommendations for artifact swaps based on benchmarking results and character equipment data.
+- **build_ceiling_only_candidates(bench_results, char_results, top_n_per_slot=5)**: Surfaces "Dead end"-verdict candidates separately - pieces whose optimistic ceiling beats what's equipped but whose expected value doesn't clear the Good/Excellent threshold. Excluded from build_recommendations' confirmed list on purpose; kept available here for consumers (like the character detail modal) that want to show every real possibility, clearly tagged as higher-risk, without polluting the primary recommendation table.
 
 """
 
@@ -111,3 +112,61 @@ def build_recommendations(bench_results, char_results, top_n_per_slot=3):
     )
 
     return final_recs
+
+
+def build_ceiling_only_candidates(bench_results, char_results, top_n_per_slot=5):
+    """
+    Candidates whose optimistic ceiling (every remaining roll lands on a
+    useful stat) beats what's equipped - the same check character_scoring's
+    per-slot "upgradeable" flag uses - but whose expected value doesn't
+    clear the Good/Excellent threshold. build_recommendations deliberately
+    drops these ("Dead end" verdict) from the confirmed swap table, since
+    recommending a piece unlikely to actually pay off isn't useful there.
+
+    They're real possibilities, though, just higher-risk ones, so a
+    consumer that wants to show everything with any upside (the character
+    detail modal, tagged distinctly as "High Risk") can pull them from here
+    instead - kept as a separate function rather than folding into
+    build_recommendations so the primary recommendation table's stricter,
+    EV-based standard doesn't quietly loosen.
+    """
+    equipped_data = {}
+    for r in char_results:
+        for slot, s in r["slots"].items():
+            equipped_data[(r["name"], slot)] = s
+
+    candidates = []
+    for b in bench_results:
+        char_name, slot = b["character"], b["slot"]
+        eq = equipped_data.get((char_name, slot))
+
+        if not eq:
+            continue
+
+        eq_rolls = eq["roll_count"]
+
+        if b["max_rolls"] <= eq_rolls:
+            continue  # no ceiling upside at all - not even a long shot
+
+        verdict = determine_verdict(eq_rolls, b["expected_rolls"], b["good"], b["excellent"])
+        if verdict != "Dead end":
+            continue  # already surfaced as a confirmed recommendation
+
+        b_copy = dict(b)
+        b_copy["verdict"] = "High Risk"
+        b_copy["equipped_rolls"] = eq_rolls
+        b_copy["is_self_equipped"] = (b.get("equipped_by") == char_name)
+        candidates.append(b_copy)
+
+    grouped = defaultdict(list)
+    for b in candidates:
+        grouped[(b["character"], b["slot"])].append(b)
+
+    final = []
+    for (char_name, slot), group in grouped.items():
+        # Ranked by ceiling gain over equipped, since expected value is by
+        # definition not the differentiator for this tier.
+        group.sort(key=lambda x: (-(x["max_rolls"] - x["equipped_rolls"]), -x["max_rolls"]))
+        final.extend(group[:top_n_per_slot])
+
+    return final
