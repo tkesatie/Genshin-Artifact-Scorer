@@ -310,3 +310,84 @@ def bench_candidates_lookup(bench_results):
         if b["verdict"] != "Dead end":
             lookup[(b["character"], b["slot"])].append(b)
     return lookup
+
+# bench.py (additions)
+
+def project_artifact_to_max(artifact: dict, roll_values: dict) -> dict:
+    """
+    Returns a copy of the artifact with substats projected to max level (20 for 5-star).
+    Uses resolve_artifact_rolls to estimate per-substat roll counts at max level.
+    """
+    # Determine max level and max upgrades
+    rarity = artifact.get("rarity", 5)
+    max_level = MAX_LEVEL.get(rarity, 20)
+    current_level = artifact.get("level", 0)
+    remaining_levels = max_level - current_level
+    upgrades_per_level = 4  # every +4 levels
+    remaining_upgrades = remaining_levels // 4
+
+    if remaining_upgrades <= 0:
+        return artifact  # already maxed
+
+    # Get current roll distribution
+    resolved = resolve_artifact_rolls(artifact, roll_values)
+    if resolved is None:
+        # fallback: assume equal distribution
+        substats = artifact.get("substats", [])
+        if not substats:
+            return artifact
+        # divide remaining upgrades equally among substats
+        per_sub = remaining_upgrades // len(substats)
+        extra = remaining_upgrades % len(substats)
+        new_subs = []
+        for idx, sub in enumerate(substats):
+            extra_roll = per_sub + (1 if idx < extra else 0)
+            key = sub["key"]
+            avg = sum(roll_values["five_star"].get(key, [0])) / len(roll_values["five_star"].get(key, [1]))
+            new_val = sub.get("value", 0) + extra_roll * avg
+            new_subs.append({"key": key, "value": new_val})
+        new_artifact = artifact.copy()
+        new_artifact["substats"] = new_subs
+        new_artifact["level"] = max_level
+        return new_artifact
+
+    # Use resolved roll counts to add remaining upgrades proportionally
+    current_rolls = resolved["rolls"]  # dict key->rolls
+    total_current_rolls = sum(current_rolls.values())
+    if total_current_rolls == 0:
+        # no current rolls, distribute evenly
+        new_subs = []
+        substats = artifact.get("substats", [])
+        per_sub = remaining_upgrades // len(substats)
+        extra = remaining_upgrades % len(substats)
+        for idx, sub in enumerate(substats):
+            extra_roll = per_sub + (1 if idx < extra else 0)
+            key = sub["key"]
+            avg = sum(roll_values["five_star"].get(key, [0])) / len(roll_values["five_star"].get(key, [1]))
+            new_val = sub.get("value", 0) + extra_roll * avg
+            new_subs.append({"key": key, "value": new_val})
+    else:
+        # distribute remaining upgrades in proportion to current rolls
+        new_subs = []
+        substats = artifact.get("substats", [])
+        for sub in substats:
+            key = sub["key"]
+            current_rolls_for_sub = current_rolls.get(key, 0)
+            proportion = current_rolls_for_sub / total_current_rolls
+            extra_rolls = remaining_upgrades * proportion
+            avg = sum(roll_values["five_star"].get(key, [0])) / len(roll_values["five_star"].get(key, [1]))
+            new_val = sub.get("value", 0) + extra_rolls * avg
+            new_subs.append({"key": key, "value": new_val})
+    new_artifact = artifact.copy()
+    new_artifact["substats"] = new_subs
+    new_artifact["level"] = max_level
+    return new_artifact
+
+def find_optimizer_candidates(good_json, roster, rules, roll_values):
+    """
+    Evaluates under-leveled artifacts for each character using damage-based scoring.
+    Returns a list of candidate artifacts with projected stats and gain.
+    """
+    # Implementation similar to find_bench_potential but using damage calculation.
+    # This is a placeholder; we'll implement in the main integration.
+    pass

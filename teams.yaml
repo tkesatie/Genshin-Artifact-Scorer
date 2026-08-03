@@ -1,0 +1,33 @@
+teams:
+  "Skirk Freeze":
+    members: [Skirk, Furina, Escoffier, Mona]
+    assumptions:
+      # Reserved for a future ER-estimation phase (DAMAGE_CALCULATOR_DESIGN.md's
+      # "Future: ER Estimation"). Not used by team_damage.py today - ER
+      # requirements are still handled by stat_targets.yaml's team overrides.
+      rotation_length: 20
+
+      # Everything below is a hand-typed constant, not derived from any
+      # mechanics formula. Source these from wherever you already trust
+      # (a KQM/Akasha sheet, a build guide, your own testing) and revisit
+      # them if the team comp or rotation changes. See team_damage.py's
+      # module docstring for exactly how each one is used.
+
+      # Aggregate estimate of teammate DMG%/ATK%-equivalent buffs stacked
+      # on top of the on-field character (Furina's fanfare, etc. lumped
+      # into one number rather than modeled separately).
+      dmg_bonus_pct: 25
+
+      # Aggregate RES shred estimate from the team's kit.
+      resistance_shred_pct: 15
+
+      # Flat multiplier for whatever reaction/amplification benefit this
+      # team gets that isn't already captured above. 1.0 = no adjustment.
+      # Freeze itself doesn't buff damage - it's a control effect - so
+      # this stays at 1.0 unless you want to credit something specific
+      # (e.g. guaranteed crit against frozen enemies from certain kits).
+      reaction_multiplier: 1.0
+    notes: >
+      Starting numbers only - sanity check these against your own
+      in-game testing before trusting the Team Damage Context section
+      for real prioritization decisions.

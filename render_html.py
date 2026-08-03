@@ -22,7 +22,7 @@ Boundaries:
 - The module does not perform any file I/O operations beyond writing the generated HTML file; all data input should come from external sources.
 
 Public API:
-- `render_html(char_results, domain_results, recommendations, out_path)`: This is the main function that generates the HTML report. It takes in processed artifact data and an output path to write the HTML file.
+- `render_html(char_results, domain_results, recommendations, out_path, ..., stat_target_results=None)`: This is the main function that generates the HTML report. It takes in processed artifact data and an output path to write the HTML file. `stat_target_results` is optional output from stat_targets.score_all_stat_targets (Phase 1 of DAMAGE_CALCULATOR_DESIGN.md) - characters with no configured targets simply don't appear in that section.
 """
 
 import json
@@ -56,6 +56,10 @@ SET_BONUS_COLOR = {
 INVENTORY_COLOR = {
     "KEEP": "#4ec97a", "REVIEW": "#e0a94e",
     "SANCTIFY_ELIXIR": "#4e8ee0", "SAFE_STRONGBOX": "#999999",
+}
+
+STAT_TARGET_COLOR = {
+    "Under Target": "#e05a4e", "Near Target": "#e0a94e", "Exceeds Target": "#4ec97a",
 }
 
 def substat_display_for(artifact, useful_stats):
@@ -111,10 +115,12 @@ def _filter_input_html(table_id, placeholder):
 
 def render_html(char_results, domain_results, recommendations, out_path,
                  flex_results=None, inventory_results=None, progress_changes=None,
-                 ceiling_only_results=None):
+                 ceiling_only_results=None, stat_target_results=None, team_damage_results=None):
     flex_results = flex_results or []
     inventory_results = inventory_results or []
     ceiling_only_results = ceiling_only_results or []
+    stat_target_results = stat_target_results or []
+    team_damage_results = team_damage_results or []
 
     # `slots[slot]["upgradeable"]` (from character_scoring.py) only checks
     # whether *some* bench piece's optimistic ceiling beats what's equipped -
@@ -308,6 +314,63 @@ def render_html(char_results, domain_results, recommendations, out_path,
 
     strongbox_count = sum(1 for i in inventory_results if i["action"] == "SAFE_STRONGBOX")
     elixir_count = sum(1 for i in inventory_results if i["action"] == "SANCTIFY_ELIXIR")
+
+    def stat_badge(text):
+        color = STAT_TARGET_COLOR.get(text, "#999")
+        return f'<span style="background:{color};color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">{text}</span>'
+
+    # One row per (character, context, stat) rather than per character, so
+    # the table stays sortable/filterable at the same granularity as the
+    # rest of the dashboard. Context is "Default" or a team name (Phase 2:
+    # team overrides) - typing a team name into the filter box narrows to
+    # just that context. "over"/"under" notes are only shown for stats
+    # that are actually in the character's useful_stats pool - a stat with
+    # a target but not in useful_stats isn't something farming touches
+    # anyway, so calling it a priority/deprioritize target would be noise.
+    stat_target_rows = []
+    for rep in sorted(stat_target_results, key=lambda r: (r["name"], r["context"] != "Default", r["context"])):
+        context_display = (
+            rep["context"] if rep["context"] == "Default"
+            else f'{rep["context"]} <span style="font-size:11px;color:#888;">(team)</span>'
+        )
+        for stat, s in sorted(rep["stats"].items()):
+            note = ""
+            if stat in rep["over_target"]:
+                note = '<span style="color:#4ec97a;">Deprioritize \u2014 redirect future rolls elsewhere</span>'
+            elif stat in rep["under_target"]:
+                note = '<span style="color:#e05a4e;">Still a priority</span>'
+            sign = "+" if s["delta"] >= 0 else ""
+            stat_target_rows.append(f"""
+            <tr>
+              <td>{rep['name']}</td>
+              <td>{context_display}</td>
+              <td>{stat}</td>
+              <td>{s['current']}</td>
+              <td>{s['target']}</td>
+              <td>{sign}{s['delta']}</td>
+              <td>{stat_badge(s['status'])}</td>
+              <td>{note}</td>
+            </tr>""")
+
+    # One row per (character, team). RDI is intentionally shown broken
+    # into its factors (see team_damage.py module docstring) rather than
+    # just the final number, so it's sanity-checkable at a glance instead
+    # of a black box you either have to trust or ignore.
+    team_damage_rows = []
+    for rep in sorted(team_damage_results, key=lambda r: (r["team"], r["name"])):
+        scaling_display = rep["scaling_stat"] or '<span style="color:#888;">none tracked</span>'
+        team_damage_rows.append(f"""
+        <tr>
+          <td>{rep['name']}</td>
+          <td>{rep['team']}</td>
+          <td>{scaling_display}</td>
+          <td>{rep['crit_multiplier']}\u00d7</td>
+          <td>{rep['stat_multiplier']}\u00d7</td>
+          <td>{rep['dmg_multiplier']}\u00d7</td>
+          <td>{rep['res_multiplier']}\u00d7</td>
+          <td>{rep['reaction_multiplier']}\u00d7</td>
+          <td><b>{rep['rdi']}</b></td>
+        </tr>""")
 
     # --- Per-character detail modal content ---
     # Pre-render one HTML block per character, keyed by name, so the click
@@ -540,6 +603,36 @@ piece's optimistic ceiling beats what's equipped, but none clear the threshold o
 <thead><tr><th>Character</th><th>Usage</th><th>Role</th><th>Status</th><th>Set Bonus</th><th>Completion</th>
 <th>Excellent</th><th>Good / Exc Upgrades</th><th>Slots</th><th>Domain</th><th>Score</th></tr></thead>
 <tbody>{''.join(rows)}</tbody>
+</table>
+
+<h2>Stat Targets (Phase 1-2)</h2>
+<p style="color:#999;font-size:13px;max-width:750px;">Opt-in, manually-configured targets from stat_targets.yaml -
+characters with none configured don't appear here. Each character can have a Default target plus per-team
+overrides (Phase 2) shown side by side, since the same character can need different things in different teams
+(e.g. less ER when someone else is holding the field). Totals are main stat + activated substats, assuming every
+equipped piece is at max level (20 for 5-star), <b>not</b> its actual current level - treat these as "current at
+full investment," not exact. Only ER/CR/CD/EM/ATK%/HP%/DEF% are supported; absolute totals like a real HP number
+aren't yet, since that needs base-stat/weapon data this project doesn't track. See DAMAGE_CALCULATOR_DESIGN.md
+for the roadmap.</p>
+{_filter_input_html("statTargetTable", "Filter by character, team, or stat...")}
+<table id="statTargetTable">
+<thead><tr><th>Character</th><th>Context</th><th>Stat</th><th>Current</th><th>Target</th><th>Delta</th><th>Status</th><th>Note</th></tr></thead>
+<tbody>{''.join(stat_target_rows) if stat_target_rows else '<tr><td colspan="8" style="color:#999;">No characters have stat targets configured yet \u2014 add them to stat_targets.yaml.</td></tr>'}</tbody>
+</table>
+
+<h2>Team Damage Context (early)</h2>
+<p style="color:#999;font-size:13px;max-width:750px;">The Relative Damage Index (RDI) is <b>not</b> a real damage
+number or a "% team damage" figure - it's a same-character comparison tool. Crit multiplier and scaling-stat
+multiplier come from this character's own equipped stats; DMG/RES/reaction multipliers are hand-typed team
+constants from teams.yaml, not derived from any mechanics formula. EM is intentionally excluded (its real
+contribution depends on which reaction formula applies - see team_damage.py's module docstring). Useful for
+sanity-checking the inputs and, later, for comparing two loadouts on the <b>same</b> character; not yet wired
+into artifact recommendations. Pure supports whose value is a buff they give teammates (not their own hit) will
+read as low RDI even when they're doing their job. See DAMAGE_CALCULATOR_DESIGN.md for the roadmap.</p>
+{_filter_input_html("teamDamageTable", "Filter by character or team...")}
+<table id="teamDamageTable">
+<thead><tr><th>Character</th><th>Team</th><th>Scaling Stat</th><th>Crit</th><th>Stat</th><th>DMG</th><th>RES</th><th>Reaction</th><th>RDI</th></tr></thead>
+<tbody>{''.join(team_damage_rows) if team_damage_rows else '<tr><td colspan="9" style="color:#999;">No teams configured yet \u2014 add them to teams.yaml.</td></tr>'}</tbody>
 </table>
 
 <h2>Domains (sorted by farming priority)</h2>

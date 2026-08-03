@@ -1,0 +1,30 @@
+# Manually-configured stat targets — one block per character. Opt-in: only
+# characters listed here (in their own block or under a team below) show
+# up in the dashboard's Stat Targets section.
+#
+# Supported stats: ER, CR, CD, EM, ATK%, HP%, DEF% (all in the same units
+# you already see elsewhere in the dashboard - CR/CD/ER/ATK%/HP%/DEF% as
+# percentages, EM as a flat number). Absolute stats like flat HP aren't
+# supported yet - see stat_targets.py's module docstring for why.
+#
+# This is Phases 1-2 from DAMAGE_CALCULATOR_DESIGN.md.
+#
+# Phase 1 — a character's default targets, used whenever no team-specific
+# override applies:
+Furina:
+  ER: 170
+  CR: 70
+  CD: 200
+
+# Phase 2 — team overrides. A team only needs to list the stats it
+# actually changes; everything else falls back to the character's default
+# block above. The dashboard shows every applicable context for a
+# character side by side (Default + each team that overrides them), so
+# you don't have to pick one team at generation time.
+#
+# Straight from the design doc's own example: Furina needs less ER when
+# she's not the one holding the field for Skirk's rotation.
+teams:
+  "Skirk Freeze":
+    Furina:
+      ER: 150

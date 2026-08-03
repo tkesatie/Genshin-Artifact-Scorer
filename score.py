@@ -22,6 +22,8 @@ from inventory import classify_inventory_artifact
 from recommendations import build_ceiling_only_candidates, build_recommendations
 from render_html import render_html
 from snapshot import maybe_update_snapshot
+from stat_targets import load_stat_targets, score_all_stat_targets
+from team_damage import load_teams, score_all_team_damage
 from thresholds import compute_thresholds
 from validate_config import has_errors, validate_config
 
@@ -164,6 +166,21 @@ def main():
     good_json = json.loads(Path(args.good_export).read_text(encoding="utf-8"))
 
     by_char = parse_good_export(good_json, roster)
+
+    stat_targets = load_stat_targets()
+    stat_target_results = score_all_stat_targets(by_char, roster, stat_targets)
+    if stat_target_results:
+        over_count = sum(len(r["over_target"]) for r in stat_target_results)
+        under_count = sum(len(r["under_target"]) for r in stat_target_results)
+        print(f"Stat targets: {len(stat_target_results)} character(s) configured "
+              f"({over_count} stat(s) over target, {under_count} still under).")
+
+    teams = load_teams()
+    team_damage_results = score_all_team_damage(by_char, roster, teams)
+    if team_damage_results:
+        print(f"Team damage context: {len(team_damage_results)} character/team combination(s) "
+              f"across {len(teams.get('teams') or {})} configured team(s).")
+
     bench_results = find_bench_potential(good_json, roster, rules, roll_values)
     bench_lookup = bench_potential_lookup(bench_results)
     bench_candidates = bench_candidates_lookup(bench_results)
@@ -217,6 +234,7 @@ def main():
         char_results, domain_results, recommendations, args.out,
         flex_results=flex_results, inventory_results=inventory_results,
         progress_changes=progress_changes, ceiling_only_results=ceiling_only_results,
+        stat_target_results=stat_target_results, team_damage_results=team_damage_results,
     )
 
 

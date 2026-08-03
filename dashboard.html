@@ -451,6 +451,129 @@ piece's optimistic ceiling beats what's equipped, but none clear the threshold o
         </tr></tbody>
 </table>
 
+<h2>Stat Targets (Phase 1-2)</h2>
+<p style="color:#999;font-size:13px;max-width:750px;">Opt-in, manually-configured targets from stat_targets.yaml -
+characters with none configured don't appear here. Each character can have a Default target plus per-team
+overrides (Phase 2) shown side by side, since the same character can need different things in different teams
+(e.g. less ER when someone else is holding the field). Totals are main stat + activated substats, assuming every
+equipped piece is at max level (20 for 5-star), <b>not</b> its actual current level - treat these as "current at
+full investment," not exact. Only ER/CR/CD/EM/ATK%/HP%/DEF% are supported; absolute totals like a real HP number
+aren't yet, since that needs base-stat/weapon data this project doesn't track. See DAMAGE_CALCULATOR_DESIGN.md
+for the roadmap.</p>
+<div class="table-filter-wrap"><input type="text" class="table-filter" data-table="statTargetTable" placeholder="Filter by character, team, or stat..."><div class="table-filter-empty" data-empty-for="statTargetTable">No matching rows.</div></div>
+<table id="statTargetTable">
+<thead><tr><th>Character</th><th>Context</th><th>Stat</th><th>Current</th><th>Target</th><th>Delta</th><th>Status</th><th>Note</th></tr></thead>
+<tbody>
+            <tr>
+              <td>Furina</td>
+              <td>Default</td>
+              <td>CD</td>
+              <td>76.4</td>
+              <td>200.0</td>
+              <td>-123.6</td>
+              <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Under Target</span></td>
+              <td><span style="color:#e05a4e;">Still a priority</span></td>
+            </tr>
+            <tr>
+              <td>Furina</td>
+              <td>Default</td>
+              <td>CR</td>
+              <td>63.3</td>
+              <td>70.0</td>
+              <td>-6.7</td>
+              <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Under Target</span></td>
+              <td><span style="color:#e05a4e;">Still a priority</span></td>
+            </tr>
+            <tr>
+              <td>Furina</td>
+              <td>Default</td>
+              <td>ER</td>
+              <td>121.4</td>
+              <td>170.0</td>
+              <td>-48.6</td>
+              <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Under Target</span></td>
+              <td><span style="color:#e05a4e;">Still a priority</span></td>
+            </tr>
+            <tr>
+              <td>Furina</td>
+              <td>Skirk Freeze <span style="font-size:11px;color:#888;">(team)</span></td>
+              <td>CD</td>
+              <td>76.4</td>
+              <td>200.0</td>
+              <td>-123.6</td>
+              <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Under Target</span></td>
+              <td><span style="color:#e05a4e;">Still a priority</span></td>
+            </tr>
+            <tr>
+              <td>Furina</td>
+              <td>Skirk Freeze <span style="font-size:11px;color:#888;">(team)</span></td>
+              <td>CR</td>
+              <td>63.3</td>
+              <td>70.0</td>
+              <td>-6.7</td>
+              <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Under Target</span></td>
+              <td><span style="color:#e05a4e;">Still a priority</span></td>
+            </tr>
+            <tr>
+              <td>Furina</td>
+              <td>Skirk Freeze <span style="font-size:11px;color:#888;">(team)</span></td>
+              <td>ER</td>
+              <td>121.4</td>
+              <td>150.0</td>
+              <td>-28.6</td>
+              <td><span style="background:#e05a4e;color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">Under Target</span></td>
+              <td><span style="color:#e05a4e;">Still a priority</span></td>
+            </tr></tbody>
+</table>
+
+<h2>Team Damage Context (early)</h2>
+<p style="color:#999;font-size:13px;max-width:750px;">The Relative Damage Index (RDI) is <b>not</b> a real damage
+number or a "% team damage" figure - it's a same-character comparison tool. Crit multiplier and scaling-stat
+multiplier come from this character's own equipped stats; DMG/RES/reaction multipliers are hand-typed team
+constants from teams.yaml, not derived from any mechanics formula. EM is intentionally excluded (its real
+contribution depends on which reaction formula applies - see team_damage.py's module docstring). Useful for
+sanity-checking the inputs and, later, for comparing two loadouts on the <b>same</b> character; not yet wired
+into artifact recommendations. Pure supports whose value is a buff they give teammates (not their own hit) will
+read as low RDI even when they're doing their job. See DAMAGE_CALCULATOR_DESIGN.md for the roadmap.</p>
+<div class="table-filter-wrap"><input type="text" class="table-filter" data-table="teamDamageTable" placeholder="Filter by character or team..."><div class="table-filter-empty" data-empty-for="teamDamageTable">No matching rows.</div></div>
+<table id="teamDamageTable">
+<thead><tr><th>Character</th><th>Team</th><th>Scaling Stat</th><th>Crit</th><th>Stat</th><th>DMG</th><th>RES</th><th>Reaction</th><th>RDI</th></tr></thead>
+<tbody>
+        <tr>
+          <td>Escoffier</td>
+          <td>Skirk Freeze</td>
+          <td>ATK%</td>
+          <td>1.824×</td>
+          <td>2.363×</td>
+          <td>1.25×</td>
+          <td>1.15×</td>
+          <td>1.0×</td>
+          <td><b>6.197</b></td>
+        </tr>
+        <tr>
+          <td>Furina</td>
+          <td>Skirk Freeze</td>
+          <td>HP%</td>
+          <td>1.484×</td>
+          <td>2.177×</td>
+          <td>1.25×</td>
+          <td>1.15×</td>
+          <td>1.0×</td>
+          <td><b>4.643</b></td>
+        </tr>
+        <tr>
+          <td>Skirk</td>
+          <td>Skirk Freeze</td>
+          <td>ATK%</td>
+          <td>1.917×</td>
+          <td>1.968×</td>
+          <td>1.25×</td>
+          <td>1.15×</td>
+          <td>1.0×</td>
+          <td><b>5.424</b></td>
+        </tr></tbody>
+</table>
+
 <h2>Domains (sorted by farming priority)</h2>
 <div class="table-filter-wrap"><input type="text" class="table-filter" data-table="domainTable" placeholder="Filter by domain or character..."><div class="table-filter-empty" data-empty-for="domainTable">No matching rows.</div></div>
 <table id="domainTable">
