@@ -301,7 +301,7 @@ def find_multi_piece_upgrades(
             continue  # fails ER requirement
 
         # Calculate raw damage
-        raw_damage = calculate_damage_score(new_stats, damage_model)
+        raw_damage = calculate_damage_score(stats, damage_model, char_config.get("modifiers"))
 
         # Apply set bonuses
         mods = apply_set_effects(new_set, new_stats)

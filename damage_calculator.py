@@ -36,7 +36,7 @@ def calculate_damage_score(stats: CharacterStats, damage_model: str, modifiers: 
     cr = min(stats['crit_rate'], 1.0)
     cd = stats['crit_damage']
     dmg = stats['dmg_bonus']
-    em = stats['elemental_mastery']
+    em = stats['elemental_mastery'] + stats.get('team_em', 0.0)
     base = stats['primary_total']
 
     # Apply kit-specific modifiers (e.g. Citlali's EM->flat damage burst bonus)
@@ -57,14 +57,15 @@ def calculate_damage_score(stats: CharacterStats, damage_model: str, modifiers: 
 
     if damage_model in ("vaporize", "melt"):
         em_bonus = get_em_bonus_amplifying(em)
-        damage = base * (1 + cr * cd) * (1 + dmg) * (1 + em_bonus)
+        reaction_dmg_bonus = stats.get('reaction_dmg_bonus', 0.0)
+        damage = base * (1 + cr * cd) * (1 + dmg) * (1 + em_bonus + reaction_dmg_bonus)
     elif damage_model in ("overloaded", "electro_charged", "superconduct", "swirl", "shatter"):
         level = stats.get("character_level", 90)  # you'll need this
         base_transformative = get_transformative_base_damage(level)  # implement this
         em_bonus = get_em_bonus_transformative(em)
         damage = base_transformative * (1 + em_bonus) * 1 # Assuming enemy resistance doesn't matter for artifact rankings
     elif damage_model == "em_max":
-        damage = stats.get('elemental_mastery', 0)
+        damage = em
     else:
         damage = base * (1 + cr * cd) * (1 + dmg)
 

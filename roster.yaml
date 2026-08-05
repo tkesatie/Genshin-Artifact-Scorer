@@ -44,7 +44,7 @@ Mualani:
   useful_stats: [CD, CR, "HP%", EM, ER]
   main_stats: {Sands: ["HP%", EM], Goblet: ["HydroDMG%", "HP%"], Circlet: [CD, CR, "HP%"]}
   primary_stat: HP
-  base_hp: 15000  # approximate
+  "damage_model": vaporize
 
 Zibai:
   usage: Active

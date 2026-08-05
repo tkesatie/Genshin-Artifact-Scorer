@@ -15,7 +15,9 @@ def calculate_build_stats(context: BuildContext) -> CharacterStats:
         "crit_damage": character_config.get("base_crit_damage", 0.50),
         "dmg_bonus": character_config.get("base_dmg_bonus", 0.0),
         "elemental_mastery": character_config.get("base_em", 0.0),
-        "energy_recharge": character_config.get("base_er", 0.0)
+        "energy_recharge": character_config.get("base_er", 0.0),
+        "reaction_dmg_bonus": character_config.get("reaction_dmg_bonus", 0.0),
+        "team_em": team_context.get("team_em", 0.0)
     }
 
     # ---- Helper: get main stat value from key and rarity ----
@@ -162,5 +164,7 @@ def calculate_build_stats(context: BuildContext) -> CharacterStats:
         "crit_damage": stats["crit_damage"],
         "dmg_bonus": stats["dmg_bonus"],
         "elemental_mastery": stats["elemental_mastery"],
-        "energy_recharge": stats["energy_recharge"]
+        "energy_recharge": stats["energy_recharge"],
+        "reaction_dmg_bonus": stats["reaction_dmg_bonus"],
+        "team_em": stats["team_em"]
     }

@@ -59,7 +59,8 @@ def project_artifact_random(artifact, roll_values):
 
 
 def evaluate_artifact_swap(char_config, current_artifacts, candidate_artifact, slot, roll_values,
-                           current_stats, current_damage, num_sims=1000, damage_model="none"):
+                           current_stats, current_damage, num_sims=1000, damage_model="none",
+                           team_context=None):
     """
     Run Monte Carlo simulation for swapping one artifact slot.
     Returns: { "win_rate": float, "avg_gain_pct": float }
@@ -74,7 +75,7 @@ def evaluate_artifact_swap(char_config, current_artifacts, candidate_artifact, s
     base_context = {
         "character_config": char_config,
         "artifacts": dict(current_artifacts),  # copy
-        "team_context": {},
+        "team_context": team_context or {},
         "roll_values": roll_values,
         "damage_model": damage_model,
     }

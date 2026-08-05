@@ -26,3 +26,11 @@ Citlali:
   base_dmg_bonus: 0
   base_er: 1.0
   base_em: 115.2
+
+Mualani:
+  base_hp: 15185              
+  base_crit_rate: 0.642     
+  base_crit_damage: 1.051       
+  base_dmg_bonus: 0.15
+  base_er: 1.0
+  reaction_dmg_bonus: 0.3

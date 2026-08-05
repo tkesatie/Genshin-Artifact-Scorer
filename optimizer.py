@@ -75,11 +75,12 @@ def _project_artifact(artifact: Dict[str, Any], roll_values: Dict) -> Dict[str, 
 
 def _compute_damage_for_build(artifacts: Dict[str, Dict], char_config: Dict,
                               roll_values: Dict, damage_model: str,
-                              stat_floors: dict = None) -> float:
+                              stat_floors: dict = None,
+                              team_context: dict = None) -> float:
     context = {
         "character_config": char_config,
         "artifacts": artifacts,
-        "team_context": {},
+        "team_context": team_context or {},
         "roll_values": roll_values,
         "damage_model": damage_model,
     }
@@ -95,8 +96,102 @@ def _compute_damage_for_build(artifacts: Dict[str, Dict], char_config: Dict,
                 # Option B: use partial penalty for ER only (see below)
 
     # ---- Damage calculation (unchanged) ----
-    raw_damage = calculate_damage_score(stats, damage_model)
+    raw_damage = calculate_damage_score(stats, damage_model, char_config.get("modifiers"))
     return raw_damage
+
+def compute_marginal_swap_probabilities(
+    char_config: Dict,
+    in_set_pools: Dict[str, List[Dict]],
+    off_set_pools: Dict[str, List[Dict]],
+    current_artifacts: Dict[str, Dict],
+    roll_values: Dict,
+    target_set_keys: set,
+    num_sims: int = 1000,
+    stat_floors: dict = None,
+    damage_model: str = "none",
+    team_context: dict = None
+) -> Dict[str, Dict[Any, float]]:
+    """
+    Marginal (single-slot) swap probabilities - the GO-style metric.
+
+    Unlike compute_optimal_probabilities (which jointly re-optimizes all 5
+    slots and reports P(artifact is part of the global-best combo)), this
+    holds the OTHER four slots fixed at currently-equipped and reports
+    P(this candidate is the best choice for THIS slot alone, other slots
+    unchanged). Compare against compute_optimal_probabilities output to see
+    how much of the gap was joint-vs-marginal framing vs. something else.
+
+    Returns: {slot: {artifact_id: probability}}
+    """
+    slot_names = ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
+
+    slot_candidates = {}
+    for slot in slot_names:
+        candidates = []
+        for art in in_set_pools.get(slot, []):
+            candidates.append((art['id'], art, True))
+        for art in off_set_pools.get(slot, []):
+            candidates.append((art['id'], art, False))
+        current = current_artifacts.get(slot)
+        if current is not None and not any(c[0] == current['id'] for c in candidates):
+            is_in = current.get('setKey') in target_set_keys
+            candidates.append((current['id'], current, is_in))
+        seen, unique = set(), []
+        for art_id, art, is_in in candidates:
+            if art_id not in seen:
+                seen.add(art_id)
+                unique.append((art_id, art, is_in))
+        slot_candidates[slot] = unique
+
+    results = {slot: {art_id: 0 for art_id, _, _ in slot_candidates[slot]} for slot in slot_names}
+
+    for target_slot in slot_names:
+        other_slots = [s for s in slot_names if s != target_slot]
+        other_current = {}
+        for s in other_slots:
+            cur = current_artifacts.get(s)
+            if cur is None:
+                continue
+            is_in = cur.get('setKey') in target_set_keys
+            other_current[s] = (cur, is_in)
+
+        for _ in range(num_sims):
+            # Project the four fixed slots once per sim - their own roll RNG
+            # still applies, we're just not letting the *choice* of piece vary.
+            fixed_build = {}
+            fixed_in_count = 0
+            for s, (cur, is_in) in other_current.items():
+                fixed_build[s] = _project_artifact(cur, roll_values)
+                fixed_in_count += 1 if is_in else 0
+
+            best_damage = -1.0
+            best_id = None
+            for art_id, art, is_in in slot_candidates[target_slot]:
+                proj = _project_artifact(art, roll_values)
+                build_artifacts = dict(fixed_build)
+                build_artifacts[target_slot] = proj
+
+                in_count = fixed_in_count + (1 if is_in else 0)
+                if in_count < 4:
+                    continue
+
+                dmg = _compute_damage_for_build(
+                    build_artifacts, char_config, roll_values, damage_model, stat_floors, team_context
+                )
+                if dmg < 0:
+                    continue
+                if dmg > best_damage:
+                    best_damage = dmg
+                    best_id = art_id
+
+            if best_id is not None:
+                results[target_slot][best_id] += 1
+
+    for slot in slot_names:
+        for art_id in results[slot]:
+            results[slot][art_id] = results[slot][art_id] / num_sims
+
+    return results
 
 
 def compute_optimal_probabilities(
@@ -108,7 +203,8 @@ def compute_optimal_probabilities(
     target_set_keys: set,                  # set of setKeys for the target set
     num_sims: int = 1000,
     stat_floors: dict = None,
-    damage_model: str = "none"
+    damage_model: str = "none",
+    team_context: dict = None
 ) -> Dict[Any, float]:
     """
     Main optimizer.
@@ -179,7 +275,7 @@ def compute_optimal_probabilities(
 
             # Compute damage (with ER check)
             dmg = _compute_damage_for_build(
-                build_artifacts, char_config, roll_values, damage_model, stat_floors
+                build_artifacts, char_config, roll_values, damage_model, stat_floors, team_context
             )
             if dmg < 0:
                 continue

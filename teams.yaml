@@ -31,3 +31,42 @@ teams:
       Starting numbers only - sanity check these against your own
       in-game testing before trusting the Team Damage Context section
       for real prioritization decisions.
+
+  "Mualani Vape":
+    members: [Mualani, Mavuika, Mona, Sucrose]
+    assumptions:
+      # Reserved for a future ER-estimation phase (DAMAGE_CALCULATOR_DESIGN.md's
+      # "Future: ER Estimation"). Not used by team_damage.py today - ER
+      # requirements are still handled by stat_targets.yaml's team overrides.
+      rotation_length: 20
+
+      # Everything below is a hand-typed constant, not derived from any
+      # mechanics formula. Source these from wherever you already trust
+      # (a KQM/Akasha sheet, a build guide, your own testing) and revisit
+      # them if the team comp or rotation changes. See team_damage.py's
+      # module docstring for exactly how each one is used.
+
+      # Aggregate estimate of teammate DMG%/ATK%-equivalent buffs stacked
+      # on top of the on-field character (Mavuika's buffs, Mona's Omen,
+      # Sucrose's EM share, etc. lumped into one number rather than
+      # modeled separately).
+      dmg_bonus_pct: 25
+
+      # Aggregate RES shred estimate from the team's kit.
+      resistance_shred_pct: 15
+
+      # Flat multiplier for whatever reaction/amplification benefit this
+      # team gets that isn't already captured above. 1.0 = no adjustment.
+      # Mualani's Vaporize is already handled by her damage_model in
+      # roster.yaml, so this stays at 1.0 unless you want to credit
+      # something specific.
+      reaction_multiplier: 1.0
+
+      # Team-provided Elemental Mastery bonus (e.g. Sucrose's EM share)
+      # that applies to the on-field character's reaction damage. Only
+      # used by the damage calculator when this team context is active.
+      team_em: 188.75
+    notes: >
+      Starting numbers only - sanity check these against your own
+      in-game testing before trusting the Team Damage Context section
+      for real prioritization decisions.

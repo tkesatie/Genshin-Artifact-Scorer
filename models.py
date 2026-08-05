@@ -22,6 +22,8 @@ class CharacterStats(TypedDict):
     dmg_bonus: float
     elemental_mastery: float
     energy_recharge: float
+    reaction_dmg_bonus: float
+    team_em: float
 
 class DamageModifiers(TypedDict):
     burst_multiplier: float

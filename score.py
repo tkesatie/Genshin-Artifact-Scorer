@@ -152,6 +152,37 @@ def compute_expected_20_roll_value(artifact, roll_values, useful_stats):
     return expected
 
 
+def apply_single_character_filter(roster, character_name):
+    """Narrows the roster to only the specified character, if provided.
+    """
+    if character_name is None:
+        return roster
+    
+    if character_name not in roster:
+        print(f"Warning: Character '{character_name}' not found in roster. Scoring all characters.")
+        return roster
+        
+    return {character_name: roster[character_name]}
+
+
+def build_team_context_lookup(teams):
+    """Build a {character_name: team_context} lookup from teams.yaml.
+
+    For each team, every member gets that team's `assumptions` dict as
+    their team_context (so team-provided bonuses like `team_em` only
+    apply when the character is actually on a configured team). If a
+    character is on multiple teams, the first team listed wins - the
+    main scoring loop scores each character once, so it can only carry
+    one team context.
+    """
+    lookup = {}
+    for team_cfg in (teams.get("teams") or {}).values():
+        assumptions = team_cfg.get("assumptions", {}) or {}
+        for char_name in (team_cfg.get("members", []) or []):
+            if char_name not in lookup:
+                lookup[char_name] = assumptions
+    return lookup
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("good_export", nargs="?", default=None,
@@ -165,6 +196,8 @@ def main():
                      help="Skip the run-to-run progress snapshot entirely for this run.")
     ap.add_argument("--skip-validation", action="store_true",
                      help="Skip the config pre-flight validation pass entirely.")
+    ap.add_argument("--char", default=None,
+                     help="Restrict scoring to a single character from the roster.")
     ap.add_argument("--validate-only", action="store_true",
                      help="Run config pre-flight validation and exit without scoring.")
     args = ap.parse_args()
@@ -196,6 +229,9 @@ def main():
 
     total_roster_count = len(roster)
     roster = apply_imaginarium_theater_filter(roster, rules)
+    roster = apply_single_character_filter(roster, args.char)
+    if args.char:
+        print(f"Single character filter active: {len(roster)}/{total_roster_count} roster characters included.")
     theater_cfg = rules.get("imaginarium_theater", {}) or {}
     if theater_cfg.get("enabled"):
         print(
@@ -244,6 +280,8 @@ def main():
         print(f"Team damage context: {len(team_damage_results)} character/team combination(s) "
               f"across {len(teams.get('teams') or {})} configured team(s).")
 
+    team_context_lookup = build_team_context_lookup(teams)
+
     bench_results = find_bench_potential(good_json, roster, rules, roll_values)
     bench_lookup = bench_potential_lookup(bench_results)
     bench_candidates = bench_candidates_lookup(bench_results)
@@ -251,7 +289,8 @@ def main():
     char_results = []
     for name, cfg in roster.items():
         artifacts = by_char.get(name, {})
-        char_results.append(score_character(name, cfg, artifacts, rules, roll_values, bench_lookup, bench_candidates, team_context={}))
+        team_context = team_context_lookup.get(name, {})
+        char_results.append(score_character(name, cfg, artifacts, rules, roll_values, bench_lookup, bench_candidates, team_context=team_context))
 
     domain_results = score_domains(char_results, rules)
     recommendations = build_recommendations(bench_results, char_results)
@@ -359,6 +398,15 @@ def main():
         stat_floors = stat_floors_by_char.get(char_name)   # None means no constraint
         damage_model = cfg.get("damage_model", "none")
 
+        # Team context for build optimality: Active characters use the first
+        # team in teams.yaml order that lists them; IT Only characters get no
+        # team context (their builds are evaluated without team bonuses).
+        team_context = (
+            team_context_lookup.get(char_name, {})
+            if cfg.get("usage") == "Active"
+            else {}
+        )
+
         probs = compute_optimal_probabilities(
             char_config=cfg,
             in_set_pools=in_set_pools,
@@ -368,7 +416,8 @@ def main():
             target_set_keys=target_keys,
             num_sims=num_sims,
             stat_floors=stat_floors,
-            damage_model=damage_model
+            damage_model=damage_model,
+            team_context=team_context
         )
 
         for slot in required_slots:
