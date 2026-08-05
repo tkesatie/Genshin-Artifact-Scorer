@@ -22,22 +22,14 @@ Responsibilities:
 4. Detect slot names used as `main_stats` keys that aren't real slot names,
    drawn from `artifact_utils.SLOT_MAP`'s display values so this check stays
    in sync with the actual slot vocabulary instead of a hardcoded copy.
-
-Architectural Role:
-Utility/lint module used by score.py, run once at startup against the
-already-loaded `roster`/`rules` dicts from `config.load_configs()`. Performs
-no scoring, no file I/O beyond the config already loaded by the caller.
-
-Boundaries:
-This module never mutates config data and never raises on a bad config — it
-returns ValidationIssue records so the caller (score.py) decides how to
-react (currently: print everything, then refuse to score if any ERROR-level
-issue is present, unless overridden).
-
-Public API:
-- ValidationIssue: severity ("ERROR" | "WARNING"), character/context, message.
-- validate_config(roster, rules): runs all checks, returns a list of issues.
-- has_errors(issues): True if any issue is ERROR-level.
+5. (NEW) Validate new fields introduced for damage calculation:
+   - `damage_model`: must be one of "amplifying", "transformative", "none".
+   - `primary_stat`: must be one of "ATK", "HP", "DEF", "EM".
+   - If `primary_stat` is ATK/HP/DEF, the corresponding `base_atk`/`base_hp`/`base_def`
+     must be present and be a positive number.
+   - `er_minimum`: if set, must be a positive number (float/int).
+   - `er_minimum_by_role` (global rules): if present, must be a dict mapping role -> number.
+   - `team_context` (global rules): warn about unknown keys.
 """
 
 from dataclasses import dataclass
@@ -223,6 +215,129 @@ def check_slot_names(roster):
     return issues
 
 
+# ============================================================================
+# NEW CHECKS FOR DAMAGE CALCULATOR FIELDS
+# ============================================================================
+
+def check_damage_model(roster):
+    """Check that `damage_model`, if set, is one of the allowed values."""
+    issues = []
+    allowed = {"vaporize", "melt","overloaded", "electro_charged", "superconduct", "swirl", "shatter", "none"}
+    for name, cfg in roster.items():
+        if not isinstance(cfg, dict):
+            continue
+        dm = cfg.get("damage_model")
+        if dm is None:
+            continue  # default "none" is fine, no warning needed
+        if not isinstance(dm, str) or dm.lower() not in allowed:
+            issues.append(ValidationIssue(
+                "WARNING", name,
+                f'damage_model "{dm}" is not one of {allowed} - default "none" will be used.'
+            ))
+    return issues
+
+
+def check_primary_stat(roster):
+    """Check that `primary_stat`, if set, is one of the allowed values,
+    and that the corresponding base stat is present and positive."""
+    issues = []
+    allowed = {"ATK", "HP", "DEF", "EM"}
+    for name, cfg in roster.items():
+        if not isinstance(cfg, dict):
+            continue
+        ps = cfg.get("primary_stat", "ATK")
+        if ps not in allowed:
+            issues.append(ValidationIssue(
+                "ERROR", name,
+                f'primary_stat "{ps}" is not one of {allowed}.'
+            ))
+            continue
+
+        if ps == "ATK":
+            base = cfg.get("base_atk")
+            if base is None or not isinstance(base, (int, float)) or base <= 0:
+                issues.append(ValidationIssue(
+                    "ERROR", name,
+                    f"primary_stat is ATK but base_atk is missing or invalid (must be a positive number)."
+                ))
+        elif ps == "HP":
+            base = cfg.get("base_hp")
+            if base is None or not isinstance(base, (int, float)) or base <= 0:
+                issues.append(ValidationIssue(
+                    "ERROR", name,
+                    f"primary_stat is HP but base_hp is missing or invalid (must be a positive number)."
+                ))
+        elif ps == "DEF":
+            base = cfg.get("base_def")
+            if base is None or not isinstance(base, (int, float)) or base <= 0:
+                issues.append(ValidationIssue(
+                    "ERROR", name,
+                    f"primary_stat is DEF but base_def is missing or invalid (must be a positive number)."
+                ))
+        # EM requires no base stat
+    return issues
+
+
+def check_er_minimum(roster, rules):
+    """Check that each character's `er_minimum`, if set, is a positive number.
+    Also check that rules.yaml contains an `er_minimum_by_role` mapping; if missing,
+    warn (since fallback is 180)."""
+    issues = []
+
+    # Warn if rules.yaml is missing er_minimum_by_role
+    er_by_role = rules.get("er_minimum_by_role")
+    if er_by_role is None:
+        issues.append(ValidationIssue(
+            "WARNING", None,
+            "rules.yaml does not define `er_minimum_by_role` - will default to 180 for all roles."
+        ))
+    elif not isinstance(er_by_role, dict):
+        issues.append(ValidationIssue(
+            "WARNING", None,
+            "`er_minimum_by_role` in rules.yaml is not a mapping - will default to 180."
+        ))
+
+    for name, cfg in roster.items():
+        if not isinstance(cfg, dict):
+            continue
+        er = cfg.get("er_minimum")
+        if er is None:
+            continue
+        if not isinstance(er, (int, float)) or er <= 0:
+            issues.append(ValidationIssue(
+                "ERROR", name,
+                f'er_minimum "{er}" must be a positive number (float/int).'
+            ))
+    return issues
+
+
+def check_team_context(rules):
+    """Warn about unknown keys inside `team_context` if present."""
+    issues = []
+    tc = rules.get("team_context")
+    if tc is None:
+        return issues
+    if not isinstance(tc, dict):
+        issues.append(ValidationIssue(
+            "WARNING", None,
+            "`team_context` in rules.yaml is not a mapping - will be ignored."
+        ))
+        return issues
+
+    allowed_keys = {"external_flat_stat", "external_dmg_bonus", "external_em"}
+    for key in tc.keys():
+        if key not in allowed_keys:
+            issues.append(ValidationIssue(
+                "WARNING", None,
+                f'team_context key "{key}" is unrecognized - allowed: {allowed_keys}.'
+            ))
+    return issues
+
+
+# ============================================================================
+# MAIN VALIDATION ENTRY POINT
+# ============================================================================
+
 def validate_config(roster, rules):
     """Run all pre-flight checks and return the combined list of issues."""
     issues = []
@@ -230,6 +345,11 @@ def validate_config(roster, rules):
     issues += check_usage_role_thresholds(roster, rules)
     issues += check_set_aliases(roster)
     issues += check_slot_names(roster)
+    # New checks
+    issues += check_damage_model(roster)
+    issues += check_primary_stat(roster)
+    issues += check_er_minimum(roster, rules)
+    issues += check_team_context(rules)
     return issues
 
 

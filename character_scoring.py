@@ -25,7 +25,7 @@ Boundaries:
 
 Public API:
 - `compute_set_status(cfg, artifacts_by_slot)`: Determines whether the character's equipped pieces satisfy their target set's 2pc/4pc bonus.
-- `score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench_lookup, bench_candidates)`: Evaluates a character's artifact setup and returns a detailed score report, including set completion status.
+- `score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench_lookup, bench_candidates, team_context=None)`: Evaluates a character's artifact setup and returns a detailed score report, including set completion status and now also current_stats/current_damage.
 - `score_domains(char_results, rules)`: Aggregates scores for characters within domains and applies domain-specific scoring rules.
 
 """
@@ -35,6 +35,11 @@ from collections import defaultdict
 from artifact_utils import effective_useful_pool, roll_count_for_artifact
 from bench import SET_ALIASES
 from thresholds import compute_thresholds
+
+# New imports for stat/damage calculations
+from models import BuildContext
+from stats_calculator import calculate_build_stats
+from damage_calculator import calculate_damage_score
 
 
 def compute_set_status(cfg, artifacts_by_slot):
@@ -96,10 +101,35 @@ def compute_set_status(cfg, artifacts_by_slot):
     }
 
 
-def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench_lookup, bench_candidates):
+def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench_lookup, bench_candidates, team_context=None):
+    """
+    Evaluate a character's artifact setup and return a score report.
+
+    New fields added to the return dict:
+        - "current_stats": CharacterStats dict from calculate_build_stats
+        - "current_damage": float from calculate_damage_score (raw damage before multipliers)
+    """
+    if team_context is None:
+        team_context = {}
+
     usage, role = cfg["usage"], cfg["role"]
     useful_stats = [str(s) for s in cfg["useful_stats"]]
     set_status = compute_set_status(cfg, artifacts_by_slot)
+
+    # --- NEW: Compute current stats and damage ---
+    damage_model = cfg.get("damage_model", "none")
+    context = BuildContext(
+        character_config=cfg,
+        artifacts=artifacts_by_slot,   # dict slot->Artifact
+        team_context=team_context,
+        roll_values=roll_values,
+        damage_model=damage_model
+    )
+    current_stats = calculate_build_stats(context)
+    modifiers = cfg.get("modifiers", [])
+    current_damage = calculate_damage_score(current_stats, damage_model, modifiers)
+    # ----------------------------------------------
+
     slots_result = {}
     for slot in ["Flower", "Feather", "Sands", "Goblet", "Circlet"]:
         art = artifacts_by_slot.get(slot)
@@ -187,6 +217,9 @@ def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench
         "upgrades_excellent": upgrades_excellent,
         "set_status": set_status,
         "set_bonus_mismatch": set_bonus_mismatch,
+        # NEW fields:
+        "current_stats": current_stats,
+        "current_damage": current_damage,
     }
 
 

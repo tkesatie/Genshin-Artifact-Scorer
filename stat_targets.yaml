@@ -11,10 +11,90 @@
 #
 # Phase 1 — a character's default targets, used whenever no team-specific
 # override applies:
+Skirk:
+  ER: 0
+Escoffier:
+  ER: 1.80
+Mavuika:
+  ER: 0
+Mualani:
+  ER: 1
+Zibai:
+  ER: 1
+Citlali:
+  minimums:
+    energy_recharge: 1.55
+    elemental_mastery: 700
 Furina:
-  ER: 170
-  CR: 70
-  CD: 200
+  ER: 1.70
+Mona:
+  ER: 2.40
+Sucrose:
+  ER: 1.80
+Keqing:
+  ER: 1.40
+Lauma:
+  ER: 1.80
+Nahida:
+  ER: 1.40
+Columbina:
+  ER: 2.00
+Nilou:
+  ER: 1.40
+SangonomiyaKokomi:
+  ER: 1.60
+KukiShinobu:
+  ER: 1.40
+Candace:
+  ER: 2.20
+Xilonen:
+  ER: 2.00
+Linnea:
+  ER: 1.60
+Illuga:
+  ER: 1.80
+Kachina:
+  ER: 1.60
+Rosaria:
+  ER: 1.60
+Fischl:
+  ER: 1.40
+Ororon:
+  ER: 1.60
+Xingqiu:
+  ER: 2.20
+Bennett:
+  ER: 2.40
+Xiangling:
+  ER: 2.20
+Jean:
+  ER: 1.80
+Diluc:
+  ER: 1.40
+Gorou:
+  ER: 2.20
+Ningguang:
+  ER: 1.40
+LanYan:
+  ER: 1.80
+Faruzan:
+  ER: 2.60
+Layla:
+  ER: 1.60
+Diona:
+  ER: 1.80
+Kaeya:
+  ER: 1.40
+Kirara:
+  ER: 1.60
+Aino:
+  ER: 1.80
+Barbara:
+  ER: 1.40
+Chevreuse:
+  ER: 2.00
+Thoma:
+  ER: 2.20
 
 # Phase 2 — team overrides. A team only needs to list the stats it
 # actually changes; everything else falls back to the character's default

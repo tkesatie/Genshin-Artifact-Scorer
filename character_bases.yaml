@@ -1,0 +1,28 @@
+Skirk:
+  base_atk: 1033.1
+  base_crit_rate: 0.271      # 27.1% (weapon included)
+  base_crit_damage: 0.884    # 88.4% (ascension bonus)
+  base_dmg_bonus: 0.15       # 15% Cryo DMG from 4pc set bonus
+  base_er: 1.0               # 100% base ER (if you want to track it)              
+
+Mavuika:
+  base_atk: 868.37
+  base_crit_rate: 0.326    
+  base_crit_damage: 0.884    
+  base_dmg_bonus: 0       
+  base_er: 1.0          
+
+Mavuika:
+  base_atk: 868.37
+  base_crit_rate: 0.326    
+  base_crit_damage: 0.884    
+  base_dmg_bonus: 0       
+  base_er: 1.0
+
+Citlali:
+  base_atk: 473.13              
+  base_crit_rate: 0.05       
+  base_crit_damage: 0.5       
+  base_dmg_bonus: 0
+  base_er: 1.0
+  base_em: 115.2

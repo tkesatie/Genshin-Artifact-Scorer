@@ -22,7 +22,7 @@ Boundaries:
 - The module does not perform any file I/O operations beyond writing the generated HTML file; all data input should come from external sources.
 
 Public API:
-- `render_html(char_results, domain_results, recommendations, out_path, ..., stat_target_results=None)`: This is the main function that generates the HTML report. It takes in processed artifact data and an output path to write the HTML file. `stat_target_results` is optional output from stat_targets.score_all_stat_targets (Phase 1 of DAMAGE_CALCULATOR_DESIGN.md) - characters with no configured targets simply don't appear in that section.
+- `render_html(char_results, domain_results, recommendations, out_path, ..., multi_piece_results=None, prob_lookup=None)`: This is the main function that generates the HTML report. `prob_lookup` is a dict mapping (character, slot, artifact_id) -> probability percentage.
 """
 
 import json
@@ -115,24 +115,20 @@ def _filter_input_html(table_id, placeholder):
 
 def render_html(char_results, domain_results, recommendations, out_path,
                  flex_results=None, inventory_results=None, progress_changes=None,
-                 ceiling_only_results=None, stat_target_results=None, team_damage_results=None):
+                 ceiling_only_results=None, stat_target_results=None, team_damage_results=None,
+                 multi_piece_results=None, prob_lookup=None,
+                 equipped_artifacts_by_char=None, roster=None,
+                 optimizer_candidates_by_char=None):   # <-- NEW
     flex_results = flex_results or []
     inventory_results = inventory_results or []
     ceiling_only_results = ceiling_only_results or []
     stat_target_results = stat_target_results or []
     team_damage_results = team_damage_results or []
+    multi_piece_results = multi_piece_results or {}
+    prob_lookup = prob_lookup or {}
+    optimizer_candidates_by_char = optimizer_candidates_by_char or {}
+    SLOT_ORDER = ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
 
-    # `slots[slot]["upgradeable"]` (from character_scoring.py) only checks
-    # whether *some* bench piece's optimistic ceiling beats what's equipped -
-    # it says nothing about whether that piece's probability-weighted
-    # expected value actually clears the slot's Good/Excellent threshold.
-    # Recommendations and flex candidates use that stricter, EV-based check
-    # (see recommendations.determine_verdict). ceiling_only_results fills the
-    # remaining gap: pieces that pass the ceiling check but not the EV check,
-    # tagged "High Risk" below rather than hidden. Together these three sets
-    # are what "real, listed option" means - a bare "upgradeable" ceiling
-    # flag with nothing to back it up (not even a High Risk card) is the
-    # "upgrade listed but no options" mismatch this is fixing.
     slots_with_real_option = {(b["character"], b["slot"]) for b in recommendations}
     slots_with_real_option |= {(f["character"], f["slot"]) for f in flex_results}
     slots_with_real_option |= {(c["character"], c["slot"]) for c in ceiling_only_results}
@@ -145,10 +141,6 @@ def render_html(char_results, domain_results, recommendations, out_path,
         return f'<span style="background:{color};color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">{text}</span>'
 
     def slot_marker(char_name, slot, s):
-        """↑ when a real, listed recommendation/flex option exists for this
-        slot; a fainter ⌃ when only the optimistic ceiling check passes
-        (worth knowing about, but nothing concrete to act on yet); nothing
-        otherwise."""
         if (char_name, slot) in slots_with_real_option:
             return ' <span title="A bench/flex candidate clears this slot\u2019s threshold - see Upgrade Options.">\u2191</span>'
         if s["upgradeable"]:
@@ -169,7 +161,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
         bonus_text = ss.get("active_bonus", "N/A")
         bonus_color = SET_BONUS_COLOR.get(bonus_text, "#999")
         if ss.get("target"):
-            bonus_title = f'Target: {ss["target"]} · {ss.get("matching", "?")}/5 equipped pieces match'
+            bonus_title = f'Target: {ss["target"]} · {ss.get("matching", "?")}/5 pieces match'
         else:
             bonus_title = "No target set configured"
         set_bonus_html = (
@@ -252,6 +244,13 @@ def render_html(char_results, domain_results, recommendations, out_path,
     for b in recommendations:
         gain = b["max_rolls"] - b["equipped_rolls"]
         slot_display = f"{b['slot']} <span style='font-size:11px;color:#88aaff;'>(Equipped)</span>" if b.get("is_self_equipped") else b['slot']
+        opt_prob = b.get('optimal_probability')
+        if opt_prob is None:
+            # try to get from prob_lookup using artifact_id
+            art_id = b.get('artifact_id')
+            if art_id is not None:
+                opt_prob = prob_lookup.get((b['character'], b['slot'], art_id), 0.0)
+        opt_prob_display = f"{opt_prob}%" if opt_prob > 0 else "—"
 
         rec_rows.append(f"""
         <tr>
@@ -262,12 +261,15 @@ def render_html(char_results, domain_results, recommendations, out_path,
           <td>{b['rarity']}★ Lv{b['level']} ({b['levels_needed']} levels to max)</td>
           <td>{b['equipped_rolls']}</td>
           <td>{b['current_rolls']} → EV {b['expected_rolls']}<br>(Max {b['max_rolls']})</td>
+          <td>{opt_prob_display}</td>
           <td>{vbadge(b['verdict'])}</td>
         </tr>""")
 
     flex_rows = []
     for f in flex_results:
         gain = round(f["expected_rolls"] - f["equipped_rolls"], 2)
+        opt_prob = prob_lookup.get((f["character"], f["slot"], f.get("artifact_id")), 0.0)
+        opt_prob_display = f"{opt_prob}%" if opt_prob > 0 else "—"
         flex_rows.append(f"""
         <tr>
           <td>{f['character']}</td>
@@ -277,6 +279,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
           <td>{f['equipped_rolls']}</td>
           <td>{f['expected_rolls']}</td>
           <td style="color:#4ec97a;">+{gain}</td>
+          <td>{opt_prob_display}</td>
         </tr>""")
 
     inventory_rows = []
@@ -319,14 +322,6 @@ def render_html(char_results, domain_results, recommendations, out_path,
         color = STAT_TARGET_COLOR.get(text, "#999")
         return f'<span style="background:{color};color:#fff;padding:2px 8px;border-radius:10px;font-size:12px;">{text}</span>'
 
-    # One row per (character, context, stat) rather than per character, so
-    # the table stays sortable/filterable at the same granularity as the
-    # rest of the dashboard. Context is "Default" or a team name (Phase 2:
-    # team overrides) - typing a team name into the filter box narrows to
-    # just that context. "over"/"under" notes are only shown for stats
-    # that are actually in the character's useful_stats pool - a stat with
-    # a target but not in useful_stats isn't something farming touches
-    # anyway, so calling it a priority/deprioritize target would be noise.
     stat_target_rows = []
     for rep in sorted(stat_target_results, key=lambda r: (r["name"], r["context"] != "Default", r["context"])):
         context_display = (
@@ -352,10 +347,6 @@ def render_html(char_results, domain_results, recommendations, out_path,
               <td>{note}</td>
             </tr>""")
 
-    # One row per (character, team). RDI is intentionally shown broken
-    # into its factors (see team_damage.py module docstring) rather than
-    # just the final number, so it's sanity-checkable at a glance instead
-    # of a black box you either have to trust or ignore.
     team_damage_rows = []
     for rep in sorted(team_damage_results, key=lambda r: (r["team"], r["name"])):
         scaling_display = rep["scaling_stat"] or '<span style="color:#888;">none tracked</span>'
@@ -372,119 +363,208 @@ def render_html(char_results, domain_results, recommendations, out_path,
           <td><b>{rep['rdi']}</b></td>
         </tr>""")
 
-    # --- Per-character detail modal content ---
-    # Pre-render one HTML block per character, keyed by name, so the click
-    # handler just has to drop it into the modal body. Reuses the same
-    # badge/vbadge/ibadge/substat_str/substat_display_for helpers as the
-    # main tables so formatting stays consistent.
-    #
-    # Recommended-upgrade and flex-candidate cards are ranked together with
-    # this priority table when merged into one per-slot list (see below).
-    # Flex sits between Patch/Fix and Luxury Upgrade: it's already been
-    # vetted against min_ev_gain, but breaking the 4pc set bonus to take it
-    # is a bigger ask than an in-set Luxury Upgrade, so it shouldn't
-    # automatically outrank one on raw EV gain alone.
-    OPTION_VERDICT_PRIORITY = {
-        "Major Breakthrough": 5,
-        "Patch / Fix": 4,
-        "Flex Candidate": 3,
-        "Luxury Upgrade": 2,
-        "Minor Polish": 1,
-        # High Risk (ceiling-only, EV doesn't clear the threshold) is
-        # intentionally the lowest tier - it only ever fills remaining slots
-        # in the top 5 after every EV-confirmed option has had a chance.
-        "High Risk": 0,
-    }
-
+    # -------------------------------------------------------------------------
+    # MODAL GENERATION (UNIFIED)
+    # -------------------------------------------------------------------------
     character_modal_html = {}
+
     for r in char_results:
         name = r["name"]
+        char_cfg = roster.get(name, {}) if roster else {}
+        useful_stats = [str(s) for s in char_cfg.get("useful_stats", [])]
 
-        slot_blocks = []
-        for slot, s in r["slots"].items():
-            slot_blocks.append(f"""
-            <div class="modal-slot-row">
-              <span class="modal-slot-name">{slot}</span> {badge(s['status'])}{slot_marker(name, slot, s)}
-              <div class="modal-slot-detail">{s['roll_count']} rolls equipped (need {s['good']}/{s['excellent']}) ·
-              best bench: EV {s['bench_expected']}, max {s['bench_ceiling']}</div>
-            </div>""")
-        slots_html = "".join(slot_blocks) or '<p class="modal-empty">No slot data.</p>'
+        # --- Try to use optimizer candidates ---
+        char_candidates = optimizer_candidates_by_char.get(name)
+        if char_candidates:
+            # Build a 5‑column grid with equipped + top candidates per slot
+            options_columns = []
+            for slot in SLOT_ORDER:
+                candidates = char_candidates.get(slot, [])
+                # Limit to top 5 (candidates already sorted by probability descending)
+                top_candidates = candidates[:5]
+                if not top_candidates:
+                    options_columns.append(f"""
+                    <div class="modal-slot-column">
+                      <div class="modal-slot-column-head">{slot}</div>
+                      <p class="modal-empty">No candidates found.</p>
+                    </div>""")
+                    continue
 
-        # Recommended upgrades (in-set bench pieces) and flex candidates
-        # (off-set pieces for the character's weakest slot) are merged into
-        # one ranked list per slot and capped at the best 5, rather than
-        # shown as two separate flat lists - the character cares about "what
-        # are my best options for this slot", not which pipeline produced
-        # the suggestion. Flex candidates are tagged and colored distinctly
-        # since swapping one in breaks the character's 4pc set bonus, unlike
-        # every other card in the grid.
-        SLOT_ORDER = ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
-        options_by_slot = {slot: [] for slot in SLOT_ORDER}
-
-        for b in [rec for rec in recommendations if rec["character"] == name]:
-            options_by_slot.setdefault(b["slot"], []).append({
-                "verdict": b["verdict"],
-                "gain": b["expected_rolls"] - b["equipped_rolls"],
-                "html": f"""
-                <div class="modal-card">
-                  <div class="modal-card-head">{vbadge(b['verdict'])} {b['set']}</div>
-                  <div class="modal-card-body">
-                    Main: {b['main_stat']}<br>{substat_str(b['substats'])}<br>
-                    {b['rarity']}★ Lv{b['level']} ({b['levels_needed']} levels to max)<br>
-                    Equipped: {b['equipped_rolls']} rolls · This piece: {b['current_rolls']} → EV {b['expected_rolls']} (Max {b['max_rolls']})
+                # Build card for each candidate
+                cards = []
+                for c in top_candidates:
+                    art = c["artifact"]
+                    prob = c["probability"] * 100   # convert fraction to percent
+                    prob_display = f"{prob:.1f}%" if prob > 0 else "—"
+                    equipped_marker = " (Equipped)" if c.get("is_equipped", False) else ""
+                    card = f"""
+                    <div class="modal-card { 'equipped-card' if c.get('is_equipped', False) else '' }">
+                      <div class="modal-card-head">{art.get('setKey', '?')}{equipped_marker}</div>
+                      <div class="modal-card-body">
+                        Main: {art.get('mainStatKey', '?')}<br>
+                        {substat_display_for(art, useful_stats)}<br>
+                        {art.get('rarity', '?')}★ Lv{art.get('level', 0)}<br>
+                        <span style="color:#4e8ee0;">Build Optimality: {prob_display}</span>
+                      </div>
+                    </div>"""
+                    cards.append(card)
+                body = "".join(cards)
+                options_columns.append(f"""
+                <div class="modal-slot-column">
+                  <div class="modal-slot-column-head">{slot}</div>
+                  {body}
+                </div>""")
+            options_html = f'<div class="modal-slots-grid">{"".join(options_columns)}</div>'
+            current_slots_html = ""   # not used; we merged everything
+            upgrade_caption = (
+                "<p style='color:#999;font-size:13px;margin-top:-4px;'>"
+                "The currently equipped piece is marked. The sum of probabilities across candidates in a slot is approximately 100%."
+                "</p>"
+            )
+        else:
+            # --- Fallback to old separate equipped + upgrade sections ---
+            equipped_dict = equipped_artifacts_by_char.get(name, {}) if equipped_artifacts_by_char else {}
+            current_cards = []
+            for slot in SLOT_ORDER:
+                art = equipped_dict.get(slot)
+                if not art:
+                    current_cards.append(
+                        f'<div class="modal-slot-column"><div class="modal-slot-column-head">{slot}</div>'
+                        f'<p class="modal-empty">Empty</p></div>'
+                    )
+                    continue
+                substat_html = substat_display_for(art, useful_stats) or "—"
+                prob = prob_lookup.get((name, slot, art.get('id')), 0.0) if prob_lookup else 0.0
+                prob_percent = prob * 100
+                prob_display = f"{prob_percent:.1f}%" if prob_percent > 0 else "—"
+                card = f"""
+                <div class="modal-slot-column">
+                  <div class="modal-slot-column-head">{slot}</div>
+                  <div class="modal-card equipped-card" style="border-left: 3px solid #4e8ee0;">
+                    <div class="modal-card-head">{art.get('setKey', '?')} <span style="font-size:11px;color:#888;">(Equipped)</span></div>
+                    <div class="modal-card-body">
+                      Main: {art.get('mainStatKey', '?')}<br>
+                      {substat_html}<br>
+                      {art.get('rarity', '?')}★ Lv{art.get('level', 0)}<br>
+                      <span style="color:#4e8ee0;">Build Optimality: {prob_display}</span>
+                    </div>
                   </div>
-                </div>""",
-            })
+                </div>"""
+                current_cards.append(card)
+            current_slots_html = f'<div class="modal-slots-grid">{"".join(current_cards)}</div>'
 
-        for f in [fx for fx in flex_results if fx["character"] == name]:
-            gain = round(f["expected_rolls"] - f["equipped_rolls"], 2)
-            options_by_slot.setdefault(f["slot"], []).append({
-                "verdict": "Flex Candidate",
-                "gain": gain,
-                "html": f"""
-                <div class="modal-card">
-                  <div class="modal-card-head">{vbadge('Flex Candidate')} {f['set']} <span class="modal-offset-tag">(off-set)</span></div>
-                  <div class="modal-card-body">
-                    {f['rarity']}★ Lv{f['level']} · Equipped EV {f['equipped_rolls']} → Candidate EV {f['expected_rolls']}
-                    <span style="color:#4ec97a;">(+{gain})</span>
-                  </div>
-                </div>""",
-            })
+            # Build upgrade options from recommendations/flex/ceiling
+            options_by_slot = {slot: [] for slot in SLOT_ORDER}
+            for b in [rec for rec in recommendations if rec["character"] == name]:
+                prob = b.get('optimal_probability', 0.0)
+                if prob == 0.0:
+                    art_id = b.get('artifact_id')
+                    if art_id is not None:
+                        prob = prob_lookup.get((name, b['slot'], art_id), 0.0) if prob_lookup else 0.0
+                prob_line = f"Build Optimality: {prob}%" if prob > 0 else ""
+                options_by_slot.setdefault(b["slot"], []).append({
+                    "verdict": b["verdict"],
+                    "gain": b["expected_rolls"] - b["equipped_rolls"],
+                    "opt_prob": prob,
+                    "html": f"""
+                    <div class="modal-card">
+                      <div class="modal-card-head">{vbadge(b['verdict'])} {b['set']}</div>
+                      <div class="modal-card-body">
+                        Main: {b['main_stat']}<br>{substat_str(b['substats'])}<br>
+                        {b['rarity']}★ Lv{b['level']} ({b['levels_needed']} levels to max)<br>
+                        Equipped: {b['equipped_rolls']} rolls · This piece: {b['current_rolls']} → EV {b['expected_rolls']} (Max {b['max_rolls']})<br>
+                        {prob_line}
+                      </div>
+                    </div>""",
+                })
+            for f in [fx for fx in flex_results if fx["character"] == name]:
+                gain = round(f["expected_rolls"] - f["equipped_rolls"], 2)
+                prob = prob_lookup.get((name, f['slot'], f.get('artifact_id')), 0.0) if prob_lookup else 0.0
+                prob_line = f"Build Optimality: {prob}%" if prob > 0 else ""
+                options_by_slot.setdefault(f["slot"], []).append({
+                    "verdict": "Flex Candidate",
+                    "gain": gain,
+                    "opt_prob": prob,
+                    "html": f"""
+                    <div class="modal-card">
+                      <div class="modal-card-head">{vbadge('Flex Candidate')} {f['set']} <span class="modal-offset-tag">(off-set)</span></div>
+                      <div class="modal-card-body">
+                        {f['rarity']}★ Lv{f['level']} · Equipped EV {f['equipped_rolls']} → Candidate EV {f['expected_rolls']}
+                        <span style="color:#4ec97a;">(+{gain})</span><br>
+                        {prob_line}
+                      </div>
+                    </div>""",
+                })
+            for c in [co for co in ceiling_only_results if co["character"] == name]:
+                gain = c["max_rolls"] - c["equipped_rolls"]
+                prob = prob_lookup.get((name, c['slot'], c.get('artifact_id')), 0.0) if prob_lookup else 0.0
+                prob_line = f"Build Optimality: {prob}%" if prob > 0 else ""
+                options_by_slot.setdefault(c["slot"], []).append({
+                    "verdict": "High Risk",
+                    "gain": gain,
+                    "opt_prob": prob,
+                    "html": f"""
+                    <div class="modal-card high-risk">
+                      <div class="modal-card-head">{vbadge('High Risk')} {c['set']}</div>
+                      <div class="modal-card-body">
+                        Main: {c['main_stat']}<br>{substat_str(c['substats'])}<br>
+                        {c['rarity']}★ Lv{c['level']} ({c['levels_needed']} levels to max)<br>
+                        Equipped: {c['equipped_rolls']} rolls · This piece: {c['current_rolls']} → EV {c['expected_rolls']} (Max {c['max_rolls']})<br>
+                        <span style="color:#b8860b;font-size:11px;">Ceiling-only: best case beats equipped, but expected value doesn't clear your threshold.</span><br>
+                        {prob_line}
+                      </div>
+                    </div>""",
+                })
+            options_columns = []
+            for slot in SLOT_ORDER:
+                candidates = options_by_slot.get(slot, [])
+                candidates.sort(key=lambda c: (-c.get('opt_prob', 0.0), -c.get('gain', 0)))
+                top5 = candidates[:5]
+                body = "".join(c["html"] for c in top5) or '<p class="modal-empty">No options beat what’s equipped.</p>'
+                options_columns.append(f"""
+                <div class="modal-slot-column">
+                  <div class="modal-slot-column-head">{slot}</div>
+                  {body}
+                </div>""")
+            options_html = f'<div class="modal-slots-grid">{"".join(options_columns)}</div>'
+            upgrade_caption = (
+                "<p class='modal-options-caption'>Dashed amber cards are High Risk: best-case ceiling beats what's equipped, but expected value doesn't clear your threshold yet - a bigger gamble than anything else shown here.</p>"
+            )
 
-        # Ceiling-only "High Risk" candidates: the piece's best-case upside
-        # beats what's equipped (same check as the ⌃/↑ marker above), but
-        # its expected value doesn't clear the Good/Excellent threshold, so
-        # it's genuinely a bigger gamble than anything else in this grid -
-        # dashed border plus a distinct amber badge instead of blending in.
-        for c in [co for co in ceiling_only_results if co["character"] == name]:
-            gain = c["max_rolls"] - c["equipped_rolls"]
-            options_by_slot.setdefault(c["slot"], []).append({
-                "verdict": "High Risk",
-                "gain": gain,
-                "html": f"""
-                <div class="modal-card high-risk">
-                  <div class="modal-card-head">{vbadge('High Risk')} {c['set']}</div>
-                  <div class="modal-card-body">
-                    Main: {c['main_stat']}<br>{substat_str(c['substats'])}<br>
-                    {c['rarity']}★ Lv{c['level']} ({c['levels_needed']} levels to max)<br>
-                    Equipped: {c['equipped_rolls']} rolls · This piece: {c['current_rolls']} → EV {c['expected_rolls']} (Max {c['max_rolls']})<br>
-                    <span style="color:#b8860b;font-size:11px;">Ceiling-only: best case beats equipped, but expected value doesn't clear your threshold.</span>
-                  </div>
-                </div>""",
-            })
-
-        options_columns = []
-        for slot in SLOT_ORDER:
-            candidates = options_by_slot.get(slot, [])
-            candidates.sort(key=lambda c: (-OPTION_VERDICT_PRIORITY.get(c["verdict"], 0), -c["gain"]))
-            top5 = candidates[:5]
-            body = "".join(c["html"] for c in top5) or '<p class="modal-empty">No options beat what\u2019s equipped.</p>'
-            options_columns.append(f"""
-            <div class="modal-slot-column">
-              <div class="modal-slot-column-head">{slot}</div>
-              {body}
-            </div>""")
-        options_html = f'<div class="modal-slots-grid">{"".join(options_columns)}</div>'
+        # --- Multi-piece (unchanged) ---
+        multi_piece_list = multi_piece_results.get(name, [])
+        multi_piece_html = ""
+        if multi_piece_list:
+            rows_mp = []
+            for idx, combo in enumerate(multi_piece_list, start=1):
+                gain_pct = combo.get("gain", 0) * 100
+                gain_str = f"{gain_pct:.1f}%"
+                slots_swapped = "Multiple slots"
+                synergy = combo.get("synergy", None)
+                synergy_str = f"+{synergy*100:.1f}%" if synergy is not None and synergy > 0.005 else "—"
+                rows_mp.append(f"""
+                <tr>
+                  <td>{idx}</td>
+                  <td>{slots_swapped}</td>
+                  <td style="color:#4ec97a;">{gain_str}</td>
+                  <td>{synergy_str}</td>
+                </tr>
+                """)
+            multi_piece_html = f"""
+            <h4>Multi‑Piece Upgrade Pathways</h4>
+            <p style="color:#999;font-size:13px;">Top multi‑slot combinations that improve damage when swapped together. Gain is relative to current build. Synergy calculation is not yet implemented (placeholder).</p>
+            <table style="width:auto; margin-bottom:12px; font-size:13px;">
+              <thead>
+                <tr><th>Rank</th><th>Slots Swapped</th><th>Expected Gain</th><th>Synergy</th></tr>
+              </thead>
+              <tbody>{''.join(rows_mp)}</tbody>
+            </table>
+            """
+        else:
+            multi_piece_html = f"""
+            <h4>Multi‑Piece Upgrade Pathways</h4>
+            <p class="modal-empty">No multi‑piece combos found for this character.</p>
+            """
 
         ss = r.get("set_status", {})
         target_line = (
@@ -492,19 +572,32 @@ def render_html(char_results, domain_results, recommendations, out_path,
             if ss.get("target") else "No target set configured"
         )
 
-        character_modal_html[name] = f"""
-        <div class="modal-meta">{r['usage']} · {r['role']} · Domain: {r['domain']} · Score {round(r['score'], 1)}<br>{target_line}</div>
-        <h4>Current Slots</h4>
-        {slots_html}
-        <h4>Upgrade Options (best 5 per slot, upgrades + flex combined)</h4>
-        <p class="modal-options-caption">Dashed amber cards are High Risk: best-case ceiling beats what's equipped, but expected value doesn't clear your threshold yet - a bigger gamble than anything else shown here.</p>
-        {options_html}
-        """
+        # Build modal HTML - unified view when optimizer data exists, else split view
+        if optimizer_candidates_by_char.get(name):
+            # Unified: only one grid
+            character_modal_html[name] = f"""
+            <div class="modal-meta">{r['usage']} · {r['role']} · Domain: {r['domain']} · Score {round(r['score'], 1)}<br>{target_line}</div>
+            <h4>Artifact Candidates per Slot (sorted by Build Optimality)</h4>
+            {upgrade_caption}
+            {options_html}
+            {multi_piece_html}
+            """
+        else:
+            # Fallback: split view
+            character_modal_html[name] = f"""
+            <div class="modal-meta">{r['usage']} · {r['role']} · Domain: {r['domain']} · Score {round(r['score'], 1)}<br>{target_line}</div>
+            <h4>Current Equipped Artifacts</h4>
+            <p style="color:#999;font-size:13px;margin-top:-4px;">Build Optimality reflects how close this piece is to the best found for this slot.</p>
+            {current_slots_html}
+            <h4>Upgrade Options (top 5 per slot, sorted by Build Optimality)</h4>
+            {upgrade_caption}
+            {options_html}
+            {multi_piece_html}
+            """
 
-    # Guard against a stray "</script>" inside any artifact/set/reason text
-    # breaking out of the embedded <script> block.
     character_modal_json = json.dumps(character_modal_html).replace("</", "<\\/")
 
+    # ------------------------ HTML template (unchanged) ------------------------
     if progress_changes is None:
         progress_html = (
             '<p style="color:#999;font-size:13px;">Snapshot not due yet — '
@@ -578,6 +671,7 @@ tr:hover {{ background: #242424; }}
 .table-filter::placeholder {{ color: #777; }}
 .table-filter:focus {{ outline: none; border-color: #4e8ee0; }}
 .table-filter-empty {{ color: #999; font-size: 13px; padding: 8px 12px; display: none; }}
+.equipped-card {{ background: #1e2a3a; }}
 </style></head>
 <body>
 <h1>Artifact Farming Dashboard</h1>
@@ -645,23 +739,24 @@ read as low RDI even when they're doing their job. See DAMAGE_CALCULATOR_DESIGN.
 <h2>Recommended Swaps (bench pieces that beat what's currently equipped)</h2>
 <p style="color:#999;font-size:13px;max-width:750px;">"Ceiling" assumes every remaining upgrade lands on a useful
 stat - not a guarantee, but tells you whether leveling this specific piece is worth the resin. <b>Bold</b> substats
-are the ones that count for this character. Up to 3 candidates shown per slot when more than one qualifies.</p>
+are the ones that count for this character. Up to 3 candidates shown per slot when more than one qualifies.<br>
+<b>Build Optimality</b> estimates how close the equipped build is to the best build found by the optimizer for this character's current objective. It is intended for comparing artifact quality, not predicting in-game damage. (<span style="color:#888;">—</span> means damage optimization is not applicable for this character.)</p>
 {_filter_input_html("recTable", "Filter by character, slot, set, verdict...")}
 <table id="recTable">
 <thead><tr><th>Character</th><th>Slot</th><th>Set</th><th>Artifact</th><th>Level</th>
-<th>Equipped Now</th><th>Current → Ceiling</th><th>Verdict</th></tr></thead>
+<th>Equipped Now</th><th>Current → Ceiling</th><th>Build Optimality</th><th>Verdict</th></tr></thead>
 <tbody>{''.join(rec_rows)}</tbody>
 </table>
 
 <h2>Flex Slot Suggestions (4pc-locked characters only)</h2>
 <p style="color:#999;font-size:13px;max-width:750px;">Off-set candidates for a single weak slot, evaluated without
 breaking the character's 4pc bonus - the other four slots stay in-set. This does not price in the value of the 4pc
-set bonus itself, so treat these as leads to sanity-check, not auto-swaps.</p>
+set bonus itself, so treat these as leads to sanity-check, not auto-swaps. <b>Build Optimality</b> displayed for informational purposes; flex pieces are evaluated independently.</p>
 {_filter_input_html("flexTable", "Filter by character or slot...")}
 <table id="flexTable">
 <thead><tr><th>Character</th><th>Slot</th><th>Off-Set Candidate</th><th>Level</th>
-<th>Equipped EV</th><th>Candidate EV</th><th>Gain</th></tr></thead>
-<tbody>{''.join(flex_rows) if flex_rows else '<tr><td colspan="7" style="color:#999;">No flex candidates cleared the EV-gain threshold.</td></tr>'}</tbody>
+<th>Equipped EV</th><th>Candidate EV</th><th>Gain</th><th>Build Optimality</th></tr></thead>
+<tbody>{''.join(flex_rows) if flex_rows else '<tr><td colspan="8" style="color:#999;">No flex candidates cleared the EV-gain threshold.</td></tr>'}</tbody>
 </table>
 
 <h2>Inventory Cleanup ({strongbox_count} strongbox, {elixir_count} elixir fodder)</h2>

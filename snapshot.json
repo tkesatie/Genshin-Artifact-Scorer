@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-08-02T00:45:33.475315+00:00",
+  "timestamp": "2026-08-04T22:16:24.773144+00:00",
   "characters": {
     "Skirk": {
       "status": "Luxury",
@@ -61,18 +61,6 @@
       "set_bonus": "4pc",
       "score": 780
     },
-    "Lauma": {
-      "status": "Luxury",
-      "excellent_pieces": 2,
-      "set_bonus": "4pc",
-      "score": 448
-    },
-    "Nahida": {
-      "status": "Farming",
-      "excellent_pieces": 0,
-      "set_bonus": "4pc",
-      "score": 780
-    },
     "Columbina": {
       "status": "Farming",
       "excellent_pieces": 0,
@@ -121,12 +109,6 @@
       "set_bonus": "4pc",
       "score": 858
     },
-    "Kachina": {
-      "status": "Luxury",
-      "excellent_pieces": 4,
-      "set_bonus": "4pc",
-      "score": 446
-    },
     "Rosaria": {
       "status": "Farming",
       "excellent_pieces": 0,
@@ -157,48 +139,6 @@
       "set_bonus": "4pc",
       "score": 859
     },
-    "Xiangling": {
-      "status": "Farming",
-      "excellent_pieces": 1,
-      "set_bonus": "4pc",
-      "score": 789
-    },
-    "Jean": {
-      "status": "Farming",
-      "excellent_pieces": 0,
-      "set_bonus": "4pc",
-      "score": 780
-    },
-    "Diluc": {
-      "status": "Farming",
-      "excellent_pieces": 1,
-      "set_bonus": "None",
-      "score": 769
-    },
-    "Gorou": {
-      "status": "Farming",
-      "excellent_pieces": 1,
-      "set_bonus": "4pc",
-      "score": 769
-    },
-    "Ningguang": {
-      "status": "Farming",
-      "excellent_pieces": 0,
-      "set_bonus": "None",
-      "score": 800
-    },
-    "LanYan": {
-      "status": "Farming",
-      "excellent_pieces": 0,
-      "set_bonus": "4pc",
-      "score": 780
-    },
-    "Faruzan": {
-      "status": "Farming",
-      "excellent_pieces": 0,
-      "set_bonus": "4pc",
-      "score": 790
-    },
     "Layla": {
       "status": "Farming",
       "excellent_pieces": 0,
@@ -217,12 +157,6 @@
       "set_bonus": "4pc",
       "score": 789
     },
-    "Kirara": {
-      "status": "Farming",
-      "excellent_pieces": 1,
-      "set_bonus": "4pc",
-      "score": 789
-    },
     "Aino": {
       "status": "Farming",
       "excellent_pieces": 0,
@@ -234,18 +168,6 @@
       "excellent_pieces": 0,
       "set_bonus": "4pc",
       "score": 770
-    },
-    "Chevreuse": {
-      "status": "Farming",
-      "excellent_pieces": 0,
-      "set_bonus": "4pc",
-      "score": 790
-    },
-    "Thoma": {
-      "status": "Farming",
-      "excellent_pieces": 2,
-      "set_bonus": "2pc",
-      "score": 778
     }
   }
 }

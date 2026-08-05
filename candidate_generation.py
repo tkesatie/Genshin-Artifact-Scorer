@@ -1,65 +1,70 @@
-# candidate_generation.py
-from artifact_utils import SLOT_MAP, STAT_LABEL, valid_main_stat
-from collections import defaultdict
+# Import necessary modules
+from typing import List, Dict
+from artifact_utils import valid_main_stat
+from bench import project_artifact_to_max
 
-def inherent_value(artifact: dict, useful_stats: list, roll_values: dict) -> float:
-    """
-    Sums the raw values of substats (active + hidden) that are in useful_stats,
-    divided by the average roll value for that stat.
-    """
-    total = 0.0
-    for sub in artifact.get("substats", []) + artifact.get("unactivatedSubstats", []):
-        key = sub.get("key")
-        label = STAT_LABEL.get(key)
-        if label in useful_stats:
-            avg = sum(roll_values["five_star"].get(key, [0])) / len(roll_values["five_star"].get(key, [1]))
-            total += sub.get("value", 0) / avg
-    return total
+def projected_inherent_value(artifact: dict, useful_stats: list, roll_values: dict) -> float:
+    """Project the artifact to max level, then compute its inherent value."""
+    projected = project_artifact_to_max(artifact, roll_values)
+    return inherent_value(projected, useful_stats, roll_values)
 
-def top_k_diversity_filter(unequipped_artifacts: list, slot: str, useful_stats: list,
-                           roll_values: dict, k: int = 5) -> list:
-    """
-    Groups unequipped artifacts by mainStatKey, picks the highest inherent_value in each group,
-    and selects a diverse set of up to k artifacts.
-    """
-    # Group by main stat key (for diversity)
-    groups = defaultdict(list)
-    for art in unequipped_artifacts:
-        if SLOT_MAP.get(art.get("slotKey")) != slot:
-            continue
-        main_key = art.get("mainStatKey")
-        groups[main_key].append(art)
+class Artifact:
+    def __init__(self, substats: List[Dict], unactivatedSubstats: List[Dict],
+                 mainStatKey: str, mainStatValue: float, location: str = None):
+        self.substats = substats
+        self.unactivatedSubstats = unactivatedSubstats
+        self.mainStatKey = mainStatKey
+        self.mainStatValue = mainStatValue
+        self.location = location
 
-    # Score each group's top artifact
-    group_scores = []
-    for main_key, arts in groups.items():
-        best = max(arts, key=lambda a: inherent_value(a, useful_stats, roll_values))
-        group_scores.append((main_key, best, inherent_value(best, useful_stats, roll_values)))
+def inherent_value(artifact: Artifact, useful_stats: List[str], roll_values: Dict[str, float]) -> float:
+    val = 0.0
+    for sub in artifact.substats + artifact.unactivatedSubstats:
+        if sub['key'] in useful_stats:
+            val += sub['value'] / roll_values[sub['key']]
+    return val
 
-    # Sort groups by best value descending
-    group_scores.sort(key=lambda x: x[2], reverse=True)
+def get_top_k_candidates(character_config: Dict, inventory_artifacts: List[Artifact],
+                         roll_values: Dict, current_artifacts: Dict[str, Artifact],
+                         k: int = 5) -> Dict[str, List[Artifact]]:
+    result = {}
+    slots = ['flower', 'feather', 'sands', 'goblet', 'circlet']
+    useful_stats = character_config['useful_stats']
 
-    selected = []
-    # Force include top 2 from highest group, top 1 from 2nd, top 1 from 3rd
-    if group_scores:
-        # Highest group: take top 2
-        highest_key = group_scores[0][0]
-        top_arts = sorted([a for a in groups[highest_key] if a != group_scores[0][1]], 
-                          key=lambda a: inherent_value(a, useful_stats, roll_values), reverse=True)
-        selected.append(group_scores[0][1])
-        if top_arts:
-            selected.append(top_arts[0])
-        # Second group
-        if len(group_scores) > 1:
-            selected.append(group_scores[1][1])
-        # Third group
-        if len(group_scores) > 2:
-            selected.append(group_scores[2][1])
+    for slot in slots:
+        # 1. Filter: valid main stat and unequipped
+        filtered = [
+            art for art in inventory_artifacts
+            if valid_main_stat(art, character_config, slot)
+            and (art.get('location') is None or art.get('location') == '')
+        ]
 
-    # Backfill from highest group to reach k
-    if len(selected) < k:
-        remaining = [a for a in groups.get(highest_key, []) if a not in selected]
-        remaining.sort(key=lambda a: inherent_value(a, useful_stats, roll_values), reverse=True)
-        selected.extend(remaining[:k - len(selected)])
+        # 2. Score each artifact by its projected max‑level value
+        scored = []
+        for art in filtered:
+            score = projected_inherent_value(art, useful_stats, roll_values)
+            scored.append((score, art))
 
-    return selected[:k]
+        # 3. Sort descending by score
+        scored.sort(key=lambda x: x[0], reverse=True)
+
+        # 4. Take top k (but we’ll ensure the equipped piece is included)
+        top_k = [art for _, art in scored[:k]]
+
+        # 5. Ensure equipped artifact is always in the list
+        equipped = current_artifacts.get(slot)
+        if equipped is not None:
+            # If equipped is not already in top_k, replace the lowest‑scoring candidate
+            if equipped not in top_k:
+                # Remove the last (lowest score) candidate if we have k already
+                if len(top_k) == k:
+                    top_k.pop()  # drop the worst
+                top_k.append(equipped)
+            # If equipped is already there, no change needed
+
+        # 6. (Optional) You may want to re‑sort to show scores descending after swap
+        # but it's not necessary for correctness – the dashboard can display in any order.
+
+        result[slot] = top_k  # always length == k (or less if not enough artifacts)
+
+    return result

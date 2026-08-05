@@ -7,6 +7,7 @@ This module is responsible for loading configuration data required by the Artifa
 Responsibilities:
 1. Configuration Loading: Load and parse YAML configuration files.
 2. Data Provisioning: Provide access to loaded configuration data to other modules in the project.
+3. Default Injection: Fill missing optional fields with safe defaults to avoid downstream KeyError.
 
 Architectural Role:
 This module serves as a utility layer within the overall application. It is expected to be used by higher-level modules that require configuration settings for their operations, such as `score.py` and `test.py`.
@@ -34,4 +35,21 @@ def load_configs():
     roster = yaml.safe_load((HERE / "roster.yaml").read_text(encoding="utf-8"))
     rules = yaml.safe_load((HERE / "rules.yaml").read_text(encoding="utf-8"))
     roll_values = yaml.safe_load((HERE / "roll_values.yaml").read_text(encoding="utf-8"))
+    bases = yaml.safe_load((HERE / "character_bases.yaml").read_text(encoding="utf-8"))
+
+    for name, base_cfg in bases.items():
+        if name in roster:
+            roster[name].update(base_cfg)
+        else:
+            roster[name] = base_cfg
+
+    # Inject defaults for optional fields so downstream modules don't have to check existence.
+    # This is purely for convenience; the validation module will still warn about invalid values.
+    for name, cfg in roster.items():
+        if isinstance(cfg, dict):
+            # Default damage_model to "none" if missing
+            cfg.setdefault("damage_model", "none")
+            # Default primary_stat to "ATK" if missing
+            cfg.setdefault("primary_stat", "ATK")
+
     return roster, rules, roll_values

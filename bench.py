@@ -25,10 +25,12 @@ Public API:
 - `find_bench_potential(good_json, roster, rules, roll_values)`: Evaluates the upgrade potential of all artifacts on the bench.
 - `bench_expected_lookup(bench_results)`: Provides a lookup table for the best expected bench value per character and slot.
 - `bench_candidates_lookup(bench_results)`: Returns a list of valid bench candidates (excluding dead ends) for each character and slot.
-
+- `best_projected_artifact_lookup(bench_results)`: (NEW) Returns the best projected +20 Artifact per (character, slot) based on expected rolls.
+- `all_projected_artifacts_lookup(bench_results)`: (NEW) Returns all projected +20 Artifacts (excluding dead ends) per (character, slot).
 """
 
 from collections import defaultdict
+from itertools import product
 
 from artifact_utils import (
     MAX_LEVEL,
@@ -37,6 +39,7 @@ from artifact_utils import (
     effective_useful_pool,
     roll_count_for_artifact,
     valid_main_stat,
+    resolve_artifact_rolls
 )
 from thresholds import compute_thresholds
 
@@ -270,6 +273,12 @@ def find_bench_potential(good_json, roster, rules, roll_values):
                 is_useful = label in useful_stats
                 substat_display.append((label, sub.get("value"), is_useful, True))
 
+            # --- NEW: generate projected +20 artifact ---
+            projected = project_artifact_to_max(art, roll_values)
+            # clear location and unactivated substats as per requirement
+            projected["location"] = None
+            projected["unactivatedSubstats"] = []
+
             results.append({
                 "character": char_name, "slot": slot, "set": set_key,
                 "level": level, "rarity": rarity, "current_rolls": current,
@@ -277,7 +286,10 @@ def find_bench_potential(good_json, roster, rules, roll_values):
                 "verdict": verdict, "main_stat": main_label,
                 "substats": substat_display,
                 "levels_needed": MAX_LEVEL.get(rarity, 20) - level,
-                "equipped_by": equipped_by  # track who holds it
+                "equipped_by": equipped_by,  # track who holds it
+                "projected_artifact": projected,   # new key for combo generator
+                "original_artifact": art,          # <-- NEW: store original artifact for simulation
+                "artifact_id": art.get('id'),      # <-- NEW: unique ID
             })
 
     results.sort(key=lambda r: (-r["max_rolls"], -r["current_rolls"]))
@@ -311,7 +323,46 @@ def bench_candidates_lookup(bench_results):
             lookup[(b["character"], b["slot"])].append(b)
     return lookup
 
-# bench.py (additions)
+
+# =============================================================================
+# NEW HELPER FUNCTIONS FOR PROJECTED ARTIFACT LOOKUPS
+# =============================================================================
+
+def best_projected_artifact_lookup(bench_results):
+    """
+    Returns a dict mapping (character, slot) -> projected Artifact (the one with
+    the highest expected rolls). The artifact is a copy projected to max level,
+    with unactivatedSubstats cleared and location set to None.
+    """
+    lookup = {}
+    for b in bench_results:
+        key = (b["character"], b["slot"])
+        if key not in lookup or b["expected_rolls"] > lookup[key]["expected_rolls"]:
+            # Store a copy of the projected artifact to avoid reference issues
+            lookup[key] = {
+                "artifact": b["projected_artifact"].copy(),
+                "expected_rolls": b["expected_rolls"]
+            }
+    # Return only the artifact for each key
+    return {key: data["artifact"] for key, data in lookup.items()}
+
+
+def all_projected_artifacts_lookup(bench_results):
+    """
+    Returns a dict mapping (character, slot) -> list of projected Artifacts
+    for all candidates that are not "Dead end". Each artifact is a copy projected
+    to max level, with unactivatedSubstats cleared and location set to None.
+    """
+    lookup = defaultdict(list)
+    for b in bench_results:
+        if b["verdict"] != "Dead end":
+            lookup[(b["character"], b["slot"])].append(b["projected_artifact"].copy())
+    return dict(lookup)
+
+
+# -----------------------------------------------------------------------------
+# Existing helper: project_artifact_to_max (already defined in bench.py)
+# -----------------------------------------------------------------------------
 
 def project_artifact_to_max(artifact: dict, roll_values: dict) -> dict:
     """
@@ -327,7 +378,11 @@ def project_artifact_to_max(artifact: dict, roll_values: dict) -> dict:
     remaining_upgrades = remaining_levels // 4
 
     if remaining_upgrades <= 0:
-        return artifact  # already maxed
+        # Already maxed: return a copy with location cleared and unactivated removed
+        new_artifact = artifact.copy()
+        new_artifact["location"] = None
+        new_artifact["unactivatedSubstats"] = []
+        return new_artifact
 
     # Get current roll distribution
     resolved = resolve_artifact_rolls(artifact, roll_values)
@@ -335,7 +390,12 @@ def project_artifact_to_max(artifact: dict, roll_values: dict) -> dict:
         # fallback: assume equal distribution
         substats = artifact.get("substats", [])
         if not substats:
-            return artifact
+            # No substats to project
+            new_artifact = artifact.copy()
+            new_artifact["location"] = None
+            new_artifact["unactivatedSubstats"] = []
+            new_artifact["level"] = max_level
+            return new_artifact
         # divide remaining upgrades equally among substats
         per_sub = remaining_upgrades // len(substats)
         extra = remaining_upgrades % len(substats)
@@ -349,6 +409,8 @@ def project_artifact_to_max(artifact: dict, roll_values: dict) -> dict:
         new_artifact = artifact.copy()
         new_artifact["substats"] = new_subs
         new_artifact["level"] = max_level
+        new_artifact["location"] = None
+        new_artifact["unactivatedSubstats"] = []
         return new_artifact
 
     # Use resolved roll counts to add remaining upgrades proportionally
@@ -381,13 +443,15 @@ def project_artifact_to_max(artifact: dict, roll_values: dict) -> dict:
     new_artifact = artifact.copy()
     new_artifact["substats"] = new_subs
     new_artifact["level"] = max_level
+    new_artifact["location"] = None
+    new_artifact["unactivatedSubstats"] = []
     return new_artifact
+
 
 def find_optimizer_candidates(good_json, roster, rules, roll_values):
     """
     Evaluates under-leveled artifacts for each character using damage-based scoring.
     Returns a list of candidate artifacts with projected stats and gain.
     """
-    # Implementation similar to find_bench_potential but using damage calculation.
-    # This is a placeholder; we'll implement in the main integration.
+    # Placeholder (existing)
     pass
