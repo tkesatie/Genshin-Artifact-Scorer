@@ -22,7 +22,7 @@ Escoffier:
   useful_stats: [ER, CD, CR, "ATK%"]
   main_stats: {Sands: ["ATK%"], Goblet: ["CryoDMG%"], Circlet: [CD, CR]}
   primary_stat: ATK
-  base_atk: 999   # unknown
+  "damage_model": none
 
 Mavuika:
   usage: Active
@@ -55,7 +55,7 @@ Zibai:
   useful_stats: [CD, CR, "DEF%", EM, ER]
   main_stats: {Sands: ["DEF%"], Goblet: ["DEF%"], Circlet: [CD, CR]}
   primary_stat: DEF
-  base_def: 999   # unknown
+  "damage_model": none
 
 Citlali:
   usage: Active
@@ -82,7 +82,7 @@ Furina:
   useful_stats: [ER, CD, CR, "HP%"]
   main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: [CD, CR]}
   primary_stat: HP
-  base_hp: 15000  # approximate
+  damage_model: none
 
 Mona:
   usage: Active
@@ -93,7 +93,7 @@ Mona:
   useful_stats: [ER, CR, CD]
   main_stats: {Sands: [ER], Goblet: [HydroDMG%], Circlet: [CD, CR]}
   primary_stat: ATK
-  base_atk: 328   # known
+  damage_model: none
 
 Sucrose:
   usage: Active
@@ -103,7 +103,8 @@ Sucrose:
   domain: Remembrance
   useful_stats: [ER, EM]
   main_stats: {Sands: [EM], Goblet: [EM], Circlet: [EM]}
-  primary_stat: EM
+  primary_stat: ATK
+  damage_model: em_max
 
 Keqing:
   usage: "IT Only"
@@ -114,7 +115,7 @@ Keqing:
   useful_stats: [CD, CR, "ATK%", EM]
   main_stats: {Sands: ["ATK%"], Goblet: ["ElectroDMG%"], Circlet: [CD, CR]}
   primary_stat: ATK
-  base_atk: 323   # known
+  damage_model: none
 
 Lauma:
   usage: "IT Only"
@@ -125,6 +126,12 @@ Lauma:
   useful_stats: [ER, EM, CR, CD]
   main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM]}
   primary_stat: EM
+  damage_model: none
+  modifiers:
+    - source_stat: elemental_mastery
+      target: dmg_bonus
+      coefficient: .0004
+      cap: .32
 
 Nahida:
   usage: "IT Only"
@@ -134,7 +141,22 @@ Nahida:
   domain: "Sumeru 1"
   useful_stats: [ER, EM, CD, CR, "ATK%"]
   main_stats: {Sands: [EM], Goblet: [EM, "DendroDMG%"], Circlet: [EM, CR, CD]}
-  primary_stat: EM
+  primary_stat: ATK
+  damage_model: none
+  modifiers:
+    - source_stat: elemental_mastery
+      target: flat_damage_add
+      coefficient: 2.0
+    - source_stat: elemental_mastery
+      target: dmg_bonus
+      coefficient: 0.001
+      threshold: 200
+      cap: 0.80
+    - source_stat: elemental_mastery
+      target: crit_rate
+      coefficient: 0.0003
+      threshold: 200
+      cap: 0.24
 
 Columbina:
   usage: Active

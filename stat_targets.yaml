@@ -14,7 +14,7 @@
 Skirk:
   ER: 0
 Escoffier:
-  ER: 1.80
+  ER: 2
 Mavuika:
   ER: 0
 Mualani:
@@ -26,9 +26,11 @@ Citlali:
     energy_recharge: 1.55
     elemental_mastery: 700
 Furina:
-  ER: 1.70
+  minimums:
+    energy_recharge: 2
+    hp: 40000
 Mona:
-  ER: 2.40
+  ER: 2.50
 Sucrose:
   ER: 1.80
 Keqing:

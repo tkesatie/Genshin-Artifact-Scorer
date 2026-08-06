@@ -257,12 +257,12 @@ def main():
         else:
             char_targets = targets
 
-        floors = char_targets.get("minimums", {}) or {}
+        floors = dict(char_targets.get("minimums", {}) or {})
         
         # Optional: keep ER in the main block for compatibility, merge it
         er_val = char_targets.get("ER")
         if er_val is not None and er_val > 0:
-            floors["energy_recharge"] = er_val / 100.0  # if you still use percentages
+            floors["energy_recharge"] = er_val
 
         if floors:
             stat_floors_by_char[char] = floors
@@ -318,6 +318,10 @@ def main():
 
     # We'll store probabilities in a dict: (character, slot, artifact_id) -> probability
     optimal_probabilities = {}
+    # Fraction of simulations where no combo met the stat floors, per character
+    infeasible_rate_by_char = {}
+
+    required_slots = {"Flower", "Feather", "Sands", "Goblet", "Circlet"}
 
     char_items = list(roster.items())
     if HAS_TQDM:
@@ -329,7 +333,6 @@ def main():
     for char_name, cfg in iterator:
         # Get current equipped artifacts
         current_artifacts = by_char.get(char_name, {})
-        required_slots = {"Flower", "Feather", "Sands", "Goblet", "Circlet"}
         if not all(s in current_artifacts for s in required_slots):
             continue  # skip if missing pieces
 
@@ -371,7 +374,7 @@ def main():
             if apply_ceiling_filter:
                 _, ceiling = max_possible_useful_rolls(art, useful_stats, roll_values)
                 current_rolls = current_rolls_cache.get(slot, 0)
-                if ceiling <= current_rolls:
+                if ceiling < current_rolls:
                     continue  # skip this candidate, it can never beat the current piece
 
             expected_val = compute_expected_20_roll_value(art, roll_values, useful_stats)
@@ -379,6 +382,45 @@ def main():
                 in_set_pools[slot].append((expected_val, art))
             else:
                 off_set_pools[slot].append((expected_val, art))
+
+        # ------------------------------------------------------------------
+        # Seed off-set pools from the FULL inventory, not just bench results.
+        #
+        # bench.find_bench_potential only evaluates an artifact for characters
+        # whose configured SET matches that artifact's setKey
+        # (matched_characters_for_set). That means a non-Deepwood piece never
+        # appears in Nahida's bench results, so char_benches alone can never
+        # populate her off-set pool - the dashboard would show zero off-pieces
+        # even when her inventory has plenty of strong options.
+        #
+        # flex.py already ignores setKey when finding off-set flex candidates;
+        # the optimizer should do the same. Scan the whole export for pieces
+        # that fit this character's slot + main stat, are actually available
+        # (unequipped or self-equipped), and aren't the character's own set.
+        # ------------------------------------------------------------------
+        for art in good_json.get("artifacts", []):
+            slot = SLOT_MAP.get(art.get("slotKey"))
+            if slot not in required_slots:
+                continue
+            if art.get("setKey") in target_keys:
+                continue  # in-set: already handled by bench results above
+            if art.get("location") not in (None, "", char_name):
+                continue  # equipped by someone else - not available
+            # Skip duplicates already added (from bench results, if any)
+            # off_set_pools[slot] contains (expected_val, art) tuples
+            if any(existing[1].get("id") == art.get("id") for existing in off_set_pools[slot]):
+                continue
+            if not valid_main_stat(art, cfg, slot):
+                continue
+
+            if apply_ceiling_filter:
+                _, ceiling = max_possible_useful_rolls(art, useful_stats, roll_values)
+                current_rolls = current_rolls_cache.get(slot, 0)
+                if ceiling < current_rolls:
+                    continue  # can never beat the currently equipped piece
+
+            expected_val = compute_expected_20_roll_value(art, roll_values, useful_stats)
+            off_set_pools[slot].append((expected_val, art))
 
         # Sort and slice each pool
         for slot in required_slots:
@@ -407,7 +449,7 @@ def main():
             else {}
         )
 
-        probs = compute_optimal_probabilities(
+        probs_result = compute_optimal_probabilities(
             char_config=cfg,
             in_set_pools=in_set_pools,
             off_set_pools=off_set_pools,
@@ -419,6 +461,8 @@ def main():
             damage_model=damage_model,
             team_context=team_context
         )
+        probs = probs_result["probabilities"]
+        infeasible_rate_by_char[char_name] = probs_result["infeasible_rate"]
 
         for slot in required_slots:
             for art in in_set_pools[slot] + off_set_pools[slot]:
@@ -429,7 +473,7 @@ def main():
     optimizer_candidates_by_char = {}
     for char_name, pools in candidate_pools_by_char.items():
         slot_candidates = {}
-        for slot in required_slots:  # required_slots is defined earlier
+        for slot in required_slots:
             candidates = []
             # Combine in-set and off-set
             for art in pools["in_set"][slot] + pools["off_set"][slot]:
@@ -438,8 +482,10 @@ def main():
                     prob = optimal_probabilities.get((char_name, slot, art_id), 0.0)
                 else:
                     prob = 0.0
-                # Determine if this is the equipped piece (by identity)
-                is_equipped = art is pools["current"].get(slot)
+                # Determine if this is the equipped piece (match by id)
+                is_equipped = (
+                    art.get('id') == pools["current"].get(slot, {}).get('id')
+                )
                 candidates.append({
                     "artifact": art,
                     "probability": prob,
@@ -469,6 +515,8 @@ def main():
                 if b.get("artifact_id") == art_id and b["character"] == rec["character"] and b["slot"] == rec["slot"]:
                     rec["optimal_probability"] = b["optimal_probability"]
                     break
+        else:
+            rec["optimal_probability"] = 0.0
 
     print("Optimizer complete.")
 
@@ -519,6 +567,7 @@ def main():
         equipped_artifacts_by_char=by_char,
         roster=roster,
         optimizer_candidates_by_char=optimizer_candidates_by_char,   # <-- NEW
+        infeasible_rate_by_char=infeasible_rate_by_char,
     )
 
 

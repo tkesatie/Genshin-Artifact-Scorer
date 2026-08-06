@@ -40,7 +40,8 @@ STAT_LABEL = {
     "def_": "DEF%", "enerRech_": "ER", "eleMas": "EM",
     "hp": "HP", "atk": "ATK", "def": "DEF", "heal_": "Heal%",
     "cryo_dmg_": "CryoDMG%", "pyro_dmg_": "PyroDMG%", "hydro_dmg_": "HydroDMG%",
-    "electro_dmg_": "ElectroDMG%", "anemo_dmg_": "AnemoDMG%", "geo_dmg_": "GeoDMG%", "dendro_dmg_": "DendroDMG%"
+    "electro_dmg_": "ElectroDMG%", "anemo_dmg_": "AnemoDMG%", "geo_dmg_": "GeoDMG%", "dendro_dmg_": "DendroDMG%",
+    "physical_dmg_": "PhysicalDMG%"
 }
 
 MAX_LEVEL = {5: 20, 4: 16, 3: 12, 2: 8, 1: 4}

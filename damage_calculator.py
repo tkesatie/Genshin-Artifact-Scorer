@@ -21,13 +21,25 @@ def get_modifier_bonus(mod: dict, stats: CharacterStats) -> float:
     """
     Evaluate one kit-specific modifier against the current stat block.
 
-    Expected shape (matches what roster.yaml['modifiers'] entries look like
-    once loaded by yaml.safe_load - plain dicts, no dataclass conversion):
-        {"source_stat": "elemental_mastery", "target": "flat_damage_add",
-         "coefficient": 6.077, "cap": None}
+    Example:
+        {
+            "source_stat": "elemental_mastery",
+            "target": "crit_rate",
+            "coefficient": 0.0003,
+            "threshold": 200,
+            "cap": 0.24
+        }
     """
     coefficient = mod.get("coefficient", 0.0)
-    raw = coefficient * stats.get(mod["source_stat"], 0)
+
+    value = stats.get(mod["source_stat"], 0)
+
+    threshold = mod.get("threshold", 0)
+    if threshold:
+        value = max(0, value - threshold)
+
+    raw = coefficient * value
+
     cap = mod.get("cap")
     return min(raw, cap) if cap is not None else raw
 

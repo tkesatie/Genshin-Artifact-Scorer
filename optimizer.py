@@ -205,12 +205,21 @@ def compute_optimal_probabilities(
     stat_floors: dict = None,
     damage_model: str = "none",
     team_context: dict = None
-) -> Dict[Any, float]:
+) -> Dict[str, Any]:
     """
     Main optimizer.
 
-    Returns a dict mapping artifact_id -> probability of being in the optimal build.
+    Returns a dict:
+        {
+            "probabilities": {artifact_id: probability of being in the optimal build},
+            "infeasible_rate": float,  # fraction of sims where NO combo met the stat floors
+        }
     The artifact_id is taken from the artifact dict's 'id' field (must be present).
+
+    `infeasible_rate` is the share of simulations where every candidate combo
+    failed the configured stat floors (e.g. ER/EM minimums from stat_targets.yaml).
+    When it's non-zero, the per-artifact probabilities won't sum to 100% - the
+    missing mass is exactly the builds that couldn't reach the minimum thresholds.
     """
     # Build combined candidate lists per slot: include both in-set and off-set,
     # but we need to know which are in-set for the set rule.
@@ -241,6 +250,7 @@ def compute_optimal_probabilities(
 
     # Initialize win counters per artifact_id
     win_counts = {art_id: 0 for slot in slot_candidates for art_id, _, _ in slot_candidates[slot]}
+    no_valid_sims = 0
 
     # Run simulations
     for _ in range(num_sims):
@@ -287,8 +297,15 @@ def compute_optimal_probabilities(
         if best_combo is not None:
             for art_id, _, _ in best_combo:
                 win_counts[art_id] += 1
+        else:
+            # No combo in this sim met the stat floors - count it so the
+            # dashboard can show how much of the build space is unreachable.
+            no_valid_sims += 1
 
     # Compute probabilities
     total = num_sims
     probs = {art_id: win_counts[art_id] / total for art_id in win_counts}
-    return probs
+    return {
+        "probabilities": probs,
+        "infeasible_rate": no_valid_sims / total if total > 0 else 0.0,
+    }

@@ -7,15 +7,19 @@ def calculate_build_stats(context: BuildContext) -> CharacterStats:
     primary_stat = character_config.get("primary_stat", "ATK")  # ATK, HP, DEF, EM
 
     # Start with universal base stats
+    # base_{stat}_percent (e.g. base_hp_percent, base_def_percent) from
+    # character_bases.yaml is applied to primary_percent so characters with
+    # innate % bonuses (e.g. Zibai's 20% DEF, Furina's 20% HP) get them.
+    base_percent_key = f"base_{primary_stat.lower()}_percent"
     stats = {
         "primary_base": 0.0,
-        "primary_percent": 0.0,
+        "primary_percent": character_config.get(base_percent_key, 0.0),
         "primary_flat": 0.0,
         "crit_rate": character_config.get("base_crit_rate", 0.05),
         "crit_damage": character_config.get("base_crit_damage", 0.50),
         "dmg_bonus": character_config.get("base_dmg_bonus", 0.0),
         "elemental_mastery": character_config.get("base_em", 0.0),
-        "energy_recharge": character_config.get("base_er", 0.0),
+        "energy_recharge": character_config.get("base_er", 1.0),
         "reaction_dmg_bonus": character_config.get("reaction_dmg_bonus", 0.0),
         "team_em": team_context.get("team_em", 0.0)
     }

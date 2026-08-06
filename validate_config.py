@@ -222,7 +222,7 @@ def check_slot_names(roster):
 def check_damage_model(roster):
     """Check that `damage_model`, if set, is one of the allowed values."""
     issues = []
-    allowed = {"vaporize", "melt","overloaded", "electro_charged", "superconduct", "swirl", "shatter", "none"}
+    allowed = {"em_max","vaporize", "melt","overloaded", "electro_charged", "superconduct", "swirl", "shatter", "none"}
     for name, cfg in roster.items():
         if not isinstance(cfg, dict):
             continue

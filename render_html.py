@@ -118,7 +118,8 @@ def render_html(char_results, domain_results, recommendations, out_path,
                  ceiling_only_results=None, stat_target_results=None, team_damage_results=None,
                  multi_piece_results=None, prob_lookup=None,
                  equipped_artifacts_by_char=None, roster=None,
-                 optimizer_candidates_by_char=None):   # <-- NEW
+                 optimizer_candidates_by_char=None,   # <-- NEW
+                 infeasible_rate_by_char=None):       # <-- NEW
     flex_results = flex_results or []
     inventory_results = inventory_results or []
     ceiling_only_results = ceiling_only_results or []
@@ -127,6 +128,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
     multi_piece_results = multi_piece_results or {}
     prob_lookup = prob_lookup or {}
     optimizer_candidates_by_char = optimizer_candidates_by_char or {}
+    infeasible_rate_by_char = infeasible_rate_by_char or {}
     SLOT_ORDER = ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
 
     slots_with_real_option = {(b["character"], b["slot"]) for b in recommendations}
@@ -174,6 +176,14 @@ def render_html(char_results, domain_results, recommendations, out_path,
             status_html += (
                 ' <span title="Roll quality looks great, but the set bonus isn\'t actually active - '
                 'check equipped pieces against the target set." style="color:#e0a94e;">⚠</span>'
+            )
+        infeasible_rate = infeasible_rate_by_char.get(r['name'], 0.0)
+        if infeasible_rate > 0:
+            infeasible_pct = infeasible_rate * 100
+            status_html += (
+                f' <span title="{infeasible_pct:.1f}% of simulations couldn\'t reach the minimum stat targets '
+                f'(ER/EM floors from stat_targets.yaml) - see the character detail view." '
+                f'style="color:#e0a94e;">⚠</span>'
             )
 
         rows.append(f"""
@@ -416,11 +426,22 @@ def render_html(char_results, domain_results, recommendations, out_path,
                 </div>""")
             options_html = f'<div class="modal-slots-grid">{"".join(options_columns)}</div>'
             current_slots_html = ""   # not used; we merged everything
-            upgrade_caption = (
-                "<p style='color:#999;font-size:13px;margin-top:-4px;'>"
-                "The currently equipped piece is marked. The sum of probabilities across candidates in a slot is approximately 100%."
-                "</p>"
-            )
+            infeasible_rate = infeasible_rate_by_char.get(name, 0.0)
+            if infeasible_rate > 0:
+                infeasible_pct = infeasible_rate * 100
+                upgrade_caption = (
+                    f"<p style='color:#e0a94e;font-size:13px;margin-top:-4px;'>"
+                    f"<b>{infeasible_pct:.1f}%</b> of simulations couldn't reach the minimum stat targets "
+                    f"(ER/EM floors from stat_targets.yaml) - those builds are excluded, so the probabilities "
+                    f"below won't sum to 100%. The remaining {100 - infeasible_pct:.1f}% is distributed across candidates."
+                    f"</p>"
+                )
+            else:
+                upgrade_caption = (
+                    "<p style='color:#999;font-size:13px;margin-top:-4px;'>"
+                    "The currently equipped piece is marked. The sum of probabilities across candidates in a slot is approximately 100%."
+                    "</p>"
+                )
         else:
             # --- Fallback to old separate equipped + upgrade sections ---
             equipped_dict = equipped_artifacts_by_char.get(name, {}) if equipped_artifacts_by_char else {}

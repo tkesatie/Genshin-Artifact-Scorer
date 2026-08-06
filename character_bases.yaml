@@ -2,29 +2,17 @@ Skirk:
   base_atk: 1033.1
   base_crit_rate: 0.271      # 27.1% (weapon included)
   base_crit_damage: 0.884    # 88.4% (ascension bonus)
-  base_dmg_bonus: 0.15       # 15% Cryo DMG from 4pc set bonus
-  base_er: 1.0               # 100% base ER (if you want to track it)              
+  base_dmg_bonus: 0.15       # 15% Cryo DMG from 4pc set bonus             # 100% base ER (if you want to track it)              
 
 Mavuika:
   base_atk: 868.37
   base_crit_rate: 0.326    
   base_crit_damage: 0.884    
-  base_dmg_bonus: 0       
-  base_er: 1.0          
-
-Mavuika:
-  base_atk: 868.37
-  base_crit_rate: 0.326    
-  base_crit_damage: 0.884    
-  base_dmg_bonus: 0       
-  base_er: 1.0
 
 Citlali:
   base_atk: 473.13              
   base_crit_rate: 0.05       
   base_crit_damage: 0.5       
-  base_dmg_bonus: 0
-  base_er: 1.0
   base_em: 115.2
 
 Mualani:
@@ -32,5 +20,46 @@ Mualani:
   base_crit_rate: 0.642     
   base_crit_damage: 1.051       
   base_dmg_bonus: 0.15
-  base_er: 1.0
   reaction_dmg_bonus: 0.3
+
+Escoffier:
+  base_atk: 887.21
+  base_crit_rate: 0.242
+  base_er: 1.36
+
+Zibai:
+  base_def: 956.85
+  base_def_percent: 0.2
+  base_em: 80
+  base_crit_rate: 0.35
+  base_crit_damage: 1.766
+
+Furina:
+  base_hp: 15307
+  base_hp_percent: 0.2
+  base_er: 1.613
+  base_crit_rate: 0.242
+
+Mona:
+  base_atk: 575.85
+  base_er: 1.32
+
+Sucrose:
+  base_atk: 604.95
+  base_em: 220.51
+  base_dmg_bonus: 0.33
+  
+Keqing:
+  base_atk: 724.18
+  base_crit_damage: 1.352
+  base_dmg_bonus: 0.616
+
+Lauma:
+  base_em: 635.2
+  base_er: 1.659
+  
+Nahida:
+  base_atk: 484.4
+  base_em: 115.2
+  base_dmg_bonus: 0.616
+  

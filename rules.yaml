@@ -66,7 +66,7 @@ flex_rules:
 # elements: the currently active Imaginarium Theater elements, e.g.
 #   ["Pyro", "Hydro", "Cryo"]. Ignored when enabled is false.
 imaginarium_theater:
-  enabled: true
+  enabled: false
   elements: ["Hydro", "Cryo", "Electro"]
 
 # Run-to-run progress snapshot (see README Planned Features #1).
