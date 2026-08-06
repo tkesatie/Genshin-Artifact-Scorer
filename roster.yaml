@@ -167,7 +167,7 @@ Columbina:
   useful_stats: [ER, EM, CD, CR, "HP%"]
   main_stats: {Sands: [ER, "HP%"], Goblet: ["HP%"], Circlet: [CR, CD, "HP%"]}
   primary_stat: HP
-  base_hp: 999   # unknown
+  damage_model: none
 
 Nilou:
   usage: "IT Only"
@@ -178,7 +178,7 @@ Nilou:
   useful_stats: ["HP%", HP, EM]
   main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: ["HP%"]}
   primary_stat: HP
-  base_hp: 15000  # approximate
+  damage_model: hp_max
 
 SangonomiyaKokomi:
   usage: "IT Only"
@@ -189,7 +189,7 @@ SangonomiyaKokomi:
   useful_stats: ["HP%", ER, "ATK%", HP]
   main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: ["Heal%"]}
   primary_stat: HP
-  base_hp: 13000  # approximate
+  damage_model: hp_max
 
 KukiShinobu:
   usage: "IT Only"

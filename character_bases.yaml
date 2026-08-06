@@ -62,4 +62,25 @@ Nahida:
   base_atk: 484.4
   base_em: 115.2
   base_dmg_bonus: 0.616
-  
+
+Columbina:
+  base_hp: 14695
+  base_hp_percent: 0.413
+  base_em: 80
+  base_crit_rate: 0.242
+
+Nilou:
+  base_hp: 15185
+  base_hp_percent: 1.008
+  base_er: 1.13
+
+SangonomiyaKokomi:
+  base_hp: 13471
+  base_hp_percent: 0.413
+  base_crit_rate: -0.95
+  base_dmg_bonus: 0.288
+
+KukiShinobu:
+  base_hp: 13471
+  base_hp_percent: 0.413
+  base_er: 1.36

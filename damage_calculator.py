@@ -78,6 +78,8 @@ def calculate_damage_score(stats: CharacterStats, damage_model: str, modifiers: 
         damage = base_transformative * (1 + em_bonus) * 1 # Assuming enemy resistance doesn't matter for artifact rankings
     elif damage_model == "em_max":
         damage = em
+    elif damage_model == "hp_max":
+        damage = base
     else:
         damage = base * (1 + cr * cd) * (1 + dmg)
 

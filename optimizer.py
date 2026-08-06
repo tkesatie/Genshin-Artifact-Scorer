@@ -13,11 +13,10 @@ Returns:
 
 import itertools
 import random
-from copy import deepcopy
 from typing import Dict, List, Any, Tuple
 
 from artifact_utils import MAX_LEVEL
-from stats_calculator import calculate_build_stats
+from stats_calculator import calculate_build_stats, compute_artifact_delta, combine_artifact_deltas
 from damage_calculator import calculate_damage_score
 
 
@@ -32,6 +31,11 @@ def _project_artifact(artifact: Dict[str, Any], roll_values: Dict) -> Dict[str, 
     """
     Project the given artifact to +20 by randomly distributing remaining upgrades.
     Returns a new artifact dict with updated level, substats, and cleared unactivated.
+
+    Only substats/level/unactivatedSubstats actually change here, so we shallow-copy
+    the artifact dict and make fresh copies of just the substat dicts we mutate,
+    instead of deepcopy()'ing the whole artifact (id, setKey, slotKey, mainStatKey,
+    etc. are all immutable and safe to share by reference).
     """
     rarity = artifact.get("rarity", 5)
     max_level = MAX_LEVEL.get(rarity, 20)
@@ -39,20 +43,22 @@ def _project_artifact(artifact: Dict[str, Any], roll_values: Dict) -> Dict[str, 
     remaining_levels = max_level - current_level
     remaining_events = remaining_levels // 4
 
+    new_art = dict(artifact)  # shallow copy - cheap, no recursive walk
+
     if remaining_events <= 0:
-        # Already maxed: just return a clean copy
-        new_art = deepcopy(artifact)
+        # Already maxed: substats don't change, but copy the list defensively
+        # in case a caller mutates it later.
         new_art["unactivatedSubstats"] = []
+        new_art["substats"] = list(artifact.get("substats", []))
         return new_art
 
-    new_art = deepcopy(artifact)
-    active_subs = new_art.get("substats", [])
-    hidden_subs = new_art.get("unactivatedSubstats", [])
+    # Fresh dict per substat since we mutate "value" below.
+    active_subs = [dict(s) for s in artifact.get("substats", [])]
+    hidden_subs = artifact.get("unactivatedSubstats", [])
 
     # First upgrade reveals the hidden line if present
     if hidden_subs and remaining_events > 0:
-        revealed = hidden_subs[0]
-        active_subs.append(revealed)
+        active_subs.append(dict(hidden_subs[0]))
         remaining_events -= 1
 
     new_art["unactivatedSubstats"] = []
@@ -98,6 +104,27 @@ def _compute_damage_for_build(artifacts: Dict[str, Dict], char_config: Dict,
     # ---- Damage calculation (unchanged) ----
     raw_damage = calculate_damage_score(stats, damage_model, char_config.get("modifiers"))
     return raw_damage
+
+
+def _compute_damage_for_stats(stats: Dict, char_config: Dict, damage_model: str,
+                              stat_floors: dict = None) -> float:
+    """
+    Same stat-floor + damage-score logic as _compute_damage_for_build, but
+    takes an already-combined CharacterStats block instead of raw artifacts.
+
+    Used by compute_optimal_probabilities, where `stats` comes from
+    combine_artifact_deltas(precomputed per-candidate deltas) rather than
+    re-parsing 5 artifact dicts from scratch via calculate_build_stats - the
+    per-artifact parsing is done once per candidate per sim (see the
+    projection loop below), not once per combo.
+    """
+    if stat_floors:
+        for stat_key, floor_value in stat_floors.items():
+            current = stats.get(stat_key, 0)
+            if current < floor_value:
+                return -1.0
+
+    return calculate_damage_score(stats, damage_model, char_config.get("modifiers"))
 
 def compute_marginal_swap_probabilities(
     char_config: Dict,
@@ -251,51 +278,86 @@ def compute_optimal_probabilities(
     # Initialize win counters per artifact_id
     win_counts = {art_id: 0 for slot in slot_candidates for art_id, _, _ in slot_candidates[slot]}
     no_valid_sims = 0
+    primary_stat = char_config.get("primary_stat", "ATK")
 
     # Run simulations
     for _ in range(num_sims):
-        # Project each candidate to +20
+        # Project each candidate to +20, and precompute its stat delta ONCE
+        # here (not once per combo). Each candidate appears in many combos
+        # within this sim - previously, the full 5-artifact stat aggregation
+        # (calculate_build_stats) was re-derived from scratch for every one
+        # of those combos, redundantly re-parsing the same 4 shared artifacts
+        # over and over. Since stat contributions are purely additive per
+        # artifact (see stats_calculator.compute_artifact_delta), we can
+        # compute each candidate's contribution once and just sum 5
+        # precomputed deltas per combo instead - same math, far less work.
         projected_lists = {}
         for slot, cand_list in slot_candidates.items():
             projected_list = []
             for art_id, art, is_in in cand_list:
                 proj = _project_artifact(art, roll_values)
-                projected_list.append((art_id, proj, is_in))
+                delta = compute_artifact_delta(proj, primary_stat)
+                projected_list.append((art_id, proj, is_in, delta))
             projected_lists[slot] = projected_list
 
-        # Enumerate all combinations and find the best valid one
+        # Enumerate only combos that can legally satisfy the >=4-in-set rule,
+        # instead of enumerating the full cartesian product and discarding
+        # ~80% of it after the fact. With 5 slots and a 50/50 in/off-set pool
+        # split, ~81% of the full product is invalid - generating and then
+        # per-tuple-filtering that invalid 81% (itertools.product + a Python
+        # sum() over each tuple, done up to 100k times per sim) was the
+        # dominant cost, well above the actual damage-formula evaluations.
+        #
+        # A legal build is either:
+        #   (a) all 5 slots in-set, or
+        #   (b) exactly 4 slots in-set + 1 slot off-set (5 choices of which
+        #       slot is the off-set one).
+        # Both cases are generated directly, so every tuple product() yields
+        # here is already guaranteed valid - no filtering needed.
+        slot_names = list(projected_lists.keys())
+        n_slots = len(slot_names)
+        in_lists = [[c for c in projected_lists[slot] if c[2]] for slot in slot_names]
+        off_lists = [[c for c in projected_lists[slot] if not c[2]] for slot in slot_names]
+
         best_damage = -1.0
         best_combo = None
 
-        # Generate all combinations using product
-        slot_names = list(projected_lists.keys())
-        lists = [projected_lists[slot] for slot in slot_names]
-        for combo_tuple in itertools.product(*lists):
-            # combo_tuple is a tuple of (art_id, proj_art, is_in) for each slot
-            # Check legality: at least 4 in-set
-            in_count = sum(1 for _, _, is_in in combo_tuple if is_in)
-            if in_count < 4:
-                continue
-
-            # Build full artifact set
-            build_artifacts = {}
-            for i, slot in enumerate(slot_names):
-                art_id, proj_art, _ = combo_tuple[i]
-                build_artifacts[slot] = proj_art
-
-            # Compute damage (with ER check)
-            dmg = _compute_damage_for_build(
-                build_artifacts, char_config, roll_values, damage_model, stat_floors, team_context
-            )
+        def _evaluate(combo_tuple):
+            nonlocal best_damage, best_combo
+            deltas = [combo_tuple[i][3] for i in range(n_slots)]
+            stats = combine_artifact_deltas(deltas, char_config, team_context)
+            dmg = _compute_damage_for_stats(stats, char_config, damage_model, stat_floors)
             if dmg < 0:
-                continue
+                return
             if dmg > best_damage:
                 best_damage = dmg
                 best_combo = combo_tuple
 
+        # Case (a): all 5 slots in-set.
+        if all(in_lists):
+            for combo_tuple in itertools.product(*in_lists):
+                _evaluate(combo_tuple)
+
+        # Case (b): exactly one slot uses an off-set candidate.
+        for off_idx in range(n_slots):
+            if not off_lists[off_idx]:
+                continue
+            # The other n_slots-1 slots must all be in-set; if any of them
+            # has no in-set candidates at all, this case is impossible for
+            # that off_idx (itertools.product would yield nothing anyway,
+            # but we skip building the generator entirely).
+            if any(not in_lists[i] for i in range(n_slots) if i != off_idx):
+                continue
+            per_slot_lists = [
+                off_lists[i] if i == off_idx else in_lists[i]
+                for i in range(n_slots)
+            ]
+            for combo_tuple in itertools.product(*per_slot_lists):
+                _evaluate(combo_tuple)
+
         # Increment win counts for the best combo
         if best_combo is not None:
-            for art_id, _, _ in best_combo:
+            for art_id, _, _, _ in best_combo:
                 win_counts[art_id] += 1
         else:
             # No combo in this sim met the stat floors - count it so the
