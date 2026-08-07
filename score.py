@@ -4,7 +4,9 @@ Genshin artifact farming scorer.
 """
 import argparse
 import json
+import os
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from collections import defaultdict
 
@@ -183,6 +185,155 @@ def build_team_context_lookup(teams):
                 lookup[char_name] = assumptions
     return lookup
 
+# =============================================================================
+# Multiprocessing support for the global optimizer
+# =============================================================================
+# Each character's candidate-pool construction + compute_optimal_probabilities
+# call is fully independent of every other character, so this is close to
+# embarrassingly parallel. Two pieces make that safe:
+#
+#   1. _init_optimizer_worker runs ONCE per worker process (not once per
+#      character) via ProcessPoolExecutor's `initializer`, loading the data
+#      that's identical across every character (the full inventory,
+#      roll_values, pool-size settings) into a module-level dict in that
+#      worker's own memory. Without this, the same large objects would get
+#      re-pickled and re-sent over IPC for every single character task.
+#
+#   2. _optimize_one_character is a standalone, module-level function (a
+#      hard requirement for pickling - it can't be a closure/nested function)
+#      that takes only the per-character-varying inputs and returns a plain
+#      dict of results. It doesn't touch or mutate anything in the parent
+#      process; all merging back into candidate_pools_by_char / etc. happens
+#      in main() after the pool completes.
+_worker_ctx = {}
+
+
+def _init_optimizer_worker(good_json_artifacts, roll_values, required_slots,
+                            apply_ceiling_filter, in_set_pool_size, off_set_pool_size,
+                            num_sims):
+    _worker_ctx["good_json_artifacts"] = good_json_artifacts
+    _worker_ctx["roll_values"] = roll_values
+    _worker_ctx["required_slots"] = required_slots
+    _worker_ctx["apply_ceiling_filter"] = apply_ceiling_filter
+    _worker_ctx["in_set_pool_size"] = in_set_pool_size
+    _worker_ctx["off_set_pool_size"] = off_set_pool_size
+    _worker_ctx["num_sims"] = num_sims
+
+
+def _optimize_one_character(task):
+    """
+    Runs in a worker process. `task` carries only what varies per character;
+    everything shared across characters comes from _worker_ctx, populated
+    once by _init_optimizer_worker. Same logic as the original inlined loop
+    body in main() - just restructured so it can run standalone.
+    """
+    good_json_artifacts = _worker_ctx["good_json_artifacts"]
+    roll_values = _worker_ctx["roll_values"]
+    required_slots = _worker_ctx["required_slots"]
+    apply_ceiling_filter = _worker_ctx["apply_ceiling_filter"]
+    in_set_pool_size = _worker_ctx["in_set_pool_size"]
+    off_set_pool_size = _worker_ctx["off_set_pool_size"]
+    num_sims = _worker_ctx["num_sims"]
+
+    char_name = task["char_name"]
+    cfg = task["cfg"]
+    current_artifacts = task["current_artifacts"]
+    char_benches = task["char_benches"]
+    stat_floors = task["stat_floors"]
+    team_context = task["team_context"]
+
+    target_short = cfg.get("set")
+    target_keys = set(SET_ALIASES.get(target_short, [target_short]))
+
+    in_set_pools = {slot: [] for slot in required_slots}
+    off_set_pools = {slot: [] for slot in required_slots}
+    useful_stats = [str(s) for s in cfg.get("useful_stats", [])]
+
+    # Pre-compute current roll counts per slot for ceiling filter
+    current_rolls_cache = {}
+    for slot in required_slots:
+        art = current_artifacts.get(slot)
+        if art:
+            current_rolls_cache[slot] = roll_count_for_artifact(art, useful_stats, roll_values)
+        else:
+            current_rolls_cache[slot] = 0
+
+    for b in char_benches:
+        slot = b["slot"]
+        art = b["original_artifact"]
+        is_in_set = art.get("setKey") in target_keys
+
+        if apply_ceiling_filter:
+            _, ceiling = max_possible_useful_rolls(art, useful_stats, roll_values)
+            current_rolls = current_rolls_cache.get(slot, 0)
+            if ceiling < current_rolls:
+                continue  # skip this candidate, it can never beat the current piece
+
+        expected_val = compute_expected_20_roll_value(art, roll_values, useful_stats)
+        if is_in_set:
+            in_set_pools[slot].append((expected_val, art))
+        else:
+            off_set_pools[slot].append((expected_val, art))
+
+    # Seed off-set pools from the full inventory (see the original comment
+    # in main() history - bench.find_bench_potential only evaluates
+    # set-matched pieces, so this scan catches everything else).
+    for art in good_json_artifacts:
+        slot = SLOT_MAP.get(art.get("slotKey"))
+        if slot not in required_slots:
+            continue
+        if art.get("setKey") in target_keys:
+            continue
+        if art.get("location") not in (None, "", char_name):
+            continue
+        if any(existing[1].get("id") == art.get("id") for existing in off_set_pools[slot]):
+            continue
+        if not valid_main_stat(art, cfg, slot):
+            continue
+        if apply_ceiling_filter:
+            _, ceiling = max_possible_useful_rolls(art, useful_stats, roll_values)
+            current_rolls = current_rolls_cache.get(slot, 0)
+            if ceiling < current_rolls:
+                continue
+        expected_val = compute_expected_20_roll_value(art, roll_values, useful_stats)
+        off_set_pools[slot].append((expected_val, art))
+
+    # Sort and slice each pool
+    for slot in required_slots:
+        in_set_pools[slot].sort(key=lambda x: x[0], reverse=True)
+        off_set_pools[slot].sort(key=lambda x: x[0], reverse=True)
+        in_set_pools[slot] = [art for _, art in in_set_pools[slot][:in_set_pool_size]]
+        off_set_pools[slot] = [art for _, art in off_set_pools[slot][:off_set_pool_size]]
+
+        current = current_artifacts.get(slot)
+        if current is not None:
+            is_in_set = current.get("setKey") in target_keys
+            pool = in_set_pools if is_in_set else off_set_pools
+            if not any(art.get('id') == current.get('id') for art in pool[slot]):
+                pool[slot].append(current)
+
+    probs_result = compute_optimal_probabilities(
+        char_config=cfg,
+        in_set_pools=in_set_pools,
+        off_set_pools=off_set_pools,
+        current_artifacts=current_artifacts,
+        roll_values=roll_values,
+        target_set_keys=target_keys,
+        num_sims=num_sims,
+        stat_floors=stat_floors,
+        team_context=team_context,
+    )
+
+    return {
+        "char_name": char_name,
+        "in_set_pools": in_set_pools,
+        "off_set_pools": off_set_pools,
+        "current_artifacts": current_artifacts,
+        "useful_stats": useful_stats,
+        "probs_result": probs_result,
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("good_export", nargs="?", default=None,
@@ -279,10 +430,13 @@ def main():
             if mapped is not None:
                 floors[mapped] = v
 
-        # Optional: keep ER in the main block for compatibility, merge it
+        # Optional: keep ER in the main block for compatibility, merge it.
+        # YAML ER is a full percentage (e.g. 160 = 160%), but the optimizer's
+        # energy_recharge stat is a decimal multiplier (1.0 base + artifacts),
+        # so divide by 100 to keep the floor in the same unit.
         er_val = char_targets.get("ER")
         if er_val is not None and er_val > 0:
-            floors["energy_recharge"] = er_val
+            floors["energy_recharge"] = er_val / 100.0
 
         if floors:
             stat_floors_by_char[char] = floors
@@ -343,18 +497,18 @@ def main():
 
     required_slots = {"Flower", "Feather", "Sands", "Goblet", "Circlet"}
 
-    char_items = list(roster.items())
-    if HAS_TQDM:
-        iterator = tqdm(char_items, desc="Optimizing characters", unit="char")
-    else:
-        iterator = char_items
-        print(f"Processing {len(char_items)} characters...")
-
-    for char_name, cfg in iterator:
-        # Get current equipped artifacts
+    # Build the list of per-character tasks. The same eligibility checks that
+    # used to be inline "continue"s in the loop are applied here instead, so
+    # only characters that would have actually run the optimizer get
+    # submitted to the pool.
+    tasks = []
+    for char_name, cfg in roster.items():
         current_artifacts = by_char.get(char_name, {})
-        if not all(s in current_artifacts for s in required_slots):
-            continue  # skip if missing pieces
+        # Allow characters with missing equipped slots to run the optimizer -
+        # candidate artifacts (bench/inventory) can fill the gap. Require at
+        # least one equipped piece so we don't run for characters with nothing.
+        if not current_artifacts:
+            continue  # skip if no equipped pieces at all
 
         char_benches = char_bench_results.get(char_name, [])
         if not char_benches:
@@ -363,99 +517,6 @@ def main():
         target_short = cfg.get("set")
         if not target_short or "/" in target_short:
             continue  # split-set not supported for optimizer yet
-        target_keys = set(SET_ALIASES.get(target_short, [target_short]))
-
-        in_set_pools = {slot: [] for slot in required_slots}
-        off_set_pools = {slot: [] for slot in required_slots}
-        useful_stats = [str(s) for s in cfg.get("useful_stats", [])]
-
-        candidate_pools_by_char[char_name] = {
-            "in_set": in_set_pools,
-            "off_set": off_set_pools,
-            "current": current_artifacts,
-            "useful_stats": useful_stats,
-        }
-
-        # Pre-compute current roll counts per slot for ceiling filter
-        current_rolls_cache = {}
-        for slot in required_slots:
-            art = current_artifacts.get(slot)
-            if art:
-                current_rolls_cache[slot] = roll_count_for_artifact(art, useful_stats, roll_values)
-            else:
-                current_rolls_cache[slot] = 0
-
-        for b in char_benches:
-            slot = b["slot"]
-            art = b["original_artifact"]
-            is_in_set = art.get("setKey") in target_keys
-
-            # --- CEILING FILTER ---
-            if apply_ceiling_filter:
-                _, ceiling = max_possible_useful_rolls(art, useful_stats, roll_values)
-                current_rolls = current_rolls_cache.get(slot, 0)
-                if ceiling < current_rolls:
-                    continue  # skip this candidate, it can never beat the current piece
-
-            expected_val = compute_expected_20_roll_value(art, roll_values, useful_stats)
-            if is_in_set:
-                in_set_pools[slot].append((expected_val, art))
-            else:
-                off_set_pools[slot].append((expected_val, art))
-
-        # ------------------------------------------------------------------
-        # Seed off-set pools from the FULL inventory, not just bench results.
-        #
-        # bench.find_bench_potential only evaluates an artifact for characters
-        # whose configured SET matches that artifact's setKey
-        # (matched_characters_for_set). That means a non-Deepwood piece never
-        # appears in Nahida's bench results, so char_benches alone can never
-        # populate her off-set pool - the dashboard would show zero off-pieces
-        # even when her inventory has plenty of strong options.
-        #
-        # flex.py already ignores setKey when finding off-set flex candidates;
-        # the optimizer should do the same. Scan the whole export for pieces
-        # that fit this character's slot + main stat, are actually available
-        # (unequipped or self-equipped), and aren't the character's own set.
-        # ------------------------------------------------------------------
-        for art in good_json.get("artifacts", []):
-            slot = SLOT_MAP.get(art.get("slotKey"))
-            if slot not in required_slots:
-                continue
-            if art.get("setKey") in target_keys:
-                continue  # in-set: already handled by bench results above
-            if art.get("location") not in (None, "", char_name):
-                continue  # equipped by someone else - not available
-            # Skip duplicates already added (from bench results, if any)
-            # off_set_pools[slot] contains (expected_val, art) tuples
-            if any(existing[1].get("id") == art.get("id") for existing in off_set_pools[slot]):
-                continue
-            if not valid_main_stat(art, cfg, slot):
-                continue
-
-            if apply_ceiling_filter:
-                _, ceiling = max_possible_useful_rolls(art, useful_stats, roll_values)
-                current_rolls = current_rolls_cache.get(slot, 0)
-                if ceiling < current_rolls:
-                    continue  # can never beat the currently equipped piece
-
-            expected_val = compute_expected_20_roll_value(art, roll_values, useful_stats)
-            off_set_pools[slot].append((expected_val, art))
-
-        # Sort and slice each pool
-        for slot in required_slots:
-            in_set_pools[slot].sort(key=lambda x: x[0], reverse=True)
-            off_set_pools[slot].sort(key=lambda x: x[0], reverse=True)
-            in_set_pools[slot] = [art for _, art in in_set_pools[slot][:in_set_pool_size]]
-            off_set_pools[slot] = [art for _, art in off_set_pools[slot][:off_set_pool_size]]
-
-            # Include current equipped piece if not already present
-            current = current_artifacts.get(slot)
-            if current is not None:
-                is_in_set = current.get("setKey") in target_keys
-                pool = in_set_pools if is_in_set else off_set_pools
-                if not any(art.get('id') == current.get('id') for art in pool[slot]):
-                    pool[slot].append(current)
 
         stat_floors = stat_floors_by_char.get(char_name)   # None means no constraint
 
@@ -468,22 +529,57 @@ def main():
             else {}
         )
 
-        probs_result = compute_optimal_probabilities(
-            char_config=cfg,
-            in_set_pools=in_set_pools,
-            off_set_pools=off_set_pools,
-            current_artifacts=current_artifacts,
-            roll_values=roll_values,
-            target_set_keys=target_keys,
-            num_sims=num_sims,
-            stat_floors=stat_floors,
-            team_context=team_context
-        )
+        tasks.append({
+            "char_name": char_name,
+            "cfg": cfg,
+            "current_artifacts": current_artifacts,
+            "char_benches": char_benches,
+            "stat_floors": stat_floors,
+            "team_context": team_context,
+        })
+
+    worker_count = opt_cfg.get("workers") or max(1, (os.cpu_count() or 2) - 1)
+    print(f"Running global optimizer across {worker_count} worker process(es) "
+          f"for {len(tasks)} character(s)...")
+
+    results_by_char = {}
+    with ProcessPoolExecutor(
+        max_workers=worker_count,
+        initializer=_init_optimizer_worker,
+        initargs=(
+            good_json.get("artifacts", []), roll_values, required_slots,
+            apply_ceiling_filter, in_set_pool_size, off_set_pool_size, num_sims,
+        ),
+    ) as executor:
+        futures = {executor.submit(_optimize_one_character, t): t["char_name"] for t in tasks}
+        iterator = as_completed(futures)
+        if HAS_TQDM:
+            iterator = tqdm(iterator, total=len(futures), desc="Optimizing characters", unit="char")
+        for future in iterator:
+            char_name = futures[future]
+            results_by_char[char_name] = future.result()
+
+    # Merge results back in character-name order (order doesn't affect
+    # correctness - every downstream dict is keyed by character/slot/id -
+    # but keeps output ordering stable and diff-friendly run to run).
+    for char_name, cfg in roster.items():
+        result = results_by_char.get(char_name)
+        if result is None:
+            continue
+
+        candidate_pools_by_char[char_name] = {
+            "in_set": result["in_set_pools"],
+            "off_set": result["off_set_pools"],
+            "current": result["current_artifacts"],
+            "useful_stats": result["useful_stats"],
+        }
+
+        probs_result = result["probs_result"]
         probs = probs_result["probabilities"]
         infeasible_rate_by_char[char_name] = probs_result["infeasible_rate"]
 
         for slot in required_slots:
-            for art in in_set_pools[slot] + off_set_pools[slot]:
+            for art in result["in_set_pools"][slot] + result["off_set_pools"][slot]:
                 art_id = art.get('id')
                 if art_id is not None and art_id in probs:
                     optimal_probabilities[(char_name, slot, art_id)] = probs[art_id]
