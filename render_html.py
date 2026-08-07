@@ -391,8 +391,15 @@ def render_html(char_results, domain_results, recommendations, out_path,
             options_columns = []
             for slot in SLOT_ORDER:
                 candidates = char_candidates.get(slot, [])
+                # Filter to only show candidates with >= 5% build optimality,
+                # but always keep the currently equipped piece.
+                MIN_OPTIMALITY = 0.05  # 5% as a fraction
+                top_candidates = [
+                    c for c in candidates
+                    if c["probability"] >= MIN_OPTIMALITY or c.get("is_equipped", False)
+                ]
                 # Limit to top 5 (candidates already sorted by probability descending)
-                top_candidates = candidates[:5]
+                top_candidates = top_candidates[:5]
                 if not top_candidates:
                     options_columns.append(f"""
                     <div class="modal-slot-column">
@@ -483,6 +490,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
                     art_id = b.get('artifact_id')
                     if art_id is not None:
                         prob = prob_lookup.get((name, b['slot'], art_id), 0.0) if prob_lookup else 0.0
+                        prob = prob * 100  # convert fraction to percentage
                 prob_line = f"Build Optimality: {prob}%" if prob > 0 else ""
                 options_by_slot.setdefault(b["slot"], []).append({
                     "verdict": b["verdict"],
@@ -502,7 +510,8 @@ def render_html(char_results, domain_results, recommendations, out_path,
             for f in [fx for fx in flex_results if fx["character"] == name]:
                 gain = round(f["expected_rolls"] - f["equipped_rolls"], 2)
                 prob = prob_lookup.get((name, f['slot'], f.get('artifact_id')), 0.0) if prob_lookup else 0.0
-                prob_line = f"Build Optimality: {prob * 100:.1f}%" if prob > 0 else ""
+                prob = prob * 100  # convert fraction to percentage
+                prob_line = f"Build Optimality: {prob:.1f}%" if prob > 0 else ""
                 options_by_slot.setdefault(f["slot"], []).append({
                     "verdict": "Flex Candidate",
                     "gain": gain,
@@ -520,7 +529,8 @@ def render_html(char_results, domain_results, recommendations, out_path,
             for c in [co for co in ceiling_only_results if co["character"] == name]:
                 gain = c["max_rolls"] - c["equipped_rolls"]
                 prob = prob_lookup.get((name, c['slot'], c.get('artifact_id')), 0.0) if prob_lookup else 0.0
-                prob_line = f"Build Optimality: {prob * 100:.1f}%" if prob > 0 else ""
+                prob = prob * 100  # convert fraction to percentage
+                prob_line = f"Build Optimality: {prob:.1f}%" if prob > 0 else ""
                 options_by_slot.setdefault(c["slot"], []).append({
                     "verdict": "High Risk",
                     "gain": gain,
@@ -541,6 +551,9 @@ def render_html(char_results, domain_results, recommendations, out_path,
             for slot in SLOT_ORDER:
                 candidates = options_by_slot.get(slot, [])
                 candidates.sort(key=lambda c: (-c.get('opt_prob', 0.0), -c.get('gain', 0)))
+                # Filter to only show candidates with >= 5% build optimality
+                MIN_OPTIMALITY_PCT = 5.0  # 5% as a percentage
+                candidates = [c for c in candidates if c.get('opt_prob', 0.0) >= MIN_OPTIMALITY_PCT]
                 top5 = candidates[:5]
                 body = "".join(c["html"] for c in top5) or '<p class="modal-empty">No options beat what’s equipped.</p>'
                 options_columns.append(f"""
