@@ -2,6 +2,25 @@
 # primary_stat: ATK | HP | DEF | EM
 # base_atk/base_hp/base_def: character's base stat at level 90 (weapon not included)
 # If unknown, set to 999 and correct later.
+#
+# evaluation_pipeline: explicit composable damage-calculation steps.
+#   Each step mutates a shared context sequentially; see pipeline.py for the
+#   registered evaluators (standard_damage, personal_damage, reaction_damage,
+#   spread_reaction, saturate, maximize_scaled_value, apply_modifiers,
+#   em_max, hp_max).
+#
+#   - standard_damage: primary_total * talent_multiplier
+#   - personal_damage: crit rate/damage + dmg_bonus multipliers
+#   - reaction_damage: vaporize/melt (amplifying), transformative, or lunar_crystallize (Nod-Krai Lunar Reaction)
+#   - apply_modifiers: kit modifier blocks (mutates stats before later steps)
+#   - em_max / hp_max: raw EM / primary_total as the score
+#   - maximize_scaled_value: weighted sum of raw stats (buff-strength chars)
+#   - saturate: cap a raw stat (e.g. Nilou HP cap)
+#
+# `primary_stat` is still required: config.py derives `scaling` from it when
+# no explicit weighted `scaling` list is given, and stats_calculator uses it
+# as the fallback for primary_total. `modifiers` remains the source data for
+# the apply_modifiers step.
 
 Skirk:
   usage: Active
@@ -12,6 +31,10 @@ Skirk:
   useful_stats: [CD, CR, "ATK%"]
   main_stats: {Sands: ["ATK%"], Goblet: ["CryoDMG%"], Circlet: [CD, CR]}
   primary_stat: ATK
+  scaling: [{stat: attack, weight: 1.0}]
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Escoffier:
   usage: Active
@@ -22,7 +45,9 @@ Escoffier:
   useful_stats: [ER, CD, CR, "ATK%"]
   main_stats: {Sands: ["ATK%"], Goblet: ["CryoDMG%"], Circlet: [CD, CR]}
   primary_stat: ATK
-  "damage_model": none
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Mavuika:
   usage: Active
@@ -33,7 +58,10 @@ Mavuika:
   useful_stats: [CD, CR, EM, "ATK%"]
   main_stats: {Sands: [EM], Goblet: [PyroDMG%], Circlet: [CD, CR]}
   primary_stat: ATK
-  "damage_model": melt
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
+    - {type: reaction_damage, config: {reaction: melt}}
 
 Mualani:
   usage: Active
@@ -44,7 +72,10 @@ Mualani:
   useful_stats: [CD, CR, "HP%", EM, ER]
   main_stats: {Sands: ["HP%", EM], Goblet: ["HydroDMG%", "HP%"], Circlet: [CD, CR, "HP%"]}
   primary_stat: HP
-  "damage_model": vaporize
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
+    - {type: reaction_damage, config: {reaction: vaporize}}
 
 Zibai:
   usage: Active
@@ -55,7 +86,10 @@ Zibai:
   useful_stats: [CD, CR, "DEF%", EM, ER]
   main_stats: {Sands: ["DEF%"], Goblet: ["DEF%"], Circlet: [CD, CR]}
   primary_stat: DEF
-  "damage_model": none
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
+    - {type: reaction_damage, config: {reaction: lunar_crystallize, multiplier: 0.96}}
 
 Citlali:
   usage: Active
@@ -65,8 +99,9 @@ Citlali:
   domain: "Natlan 1"
   useful_stats: [ER, EM]
   main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM]}
-  primary_stat: ATK   # burst's EM effect is isolated in modifiers below, not primary scaling
-  damage_model: em_max
+  primary_stat: ATK   # not actually used in scoring; kept for documentation
+  evaluation_pipeline:
+    - {type: em_max}
   modifiers:
     - source_stat: elemental_mastery
       target: flat_damage_add
@@ -82,7 +117,9 @@ Furina:
   useful_stats: [ER, CD, CR, "HP%"]
   main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: [CD, CR]}
   primary_stat: HP
-  damage_model: none
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Mona:
   usage: Active
@@ -90,10 +127,12 @@ Mona:
   role: Support
   set: "NO"
   domain: "Clear Pool"
-  useful_stats: [ER, CR, CD]
+  useful_stats: [ER, CR, CD, "ATK%"]
   main_stats: {Sands: [ER], Goblet: [HydroDMG%], Circlet: [CD, CR]}
   primary_stat: ATK
-  damage_model: none
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Sucrose:
   usage: Active
@@ -104,7 +143,8 @@ Sucrose:
   useful_stats: [ER, EM]
   main_stats: {Sands: [EM], Goblet: [EM], Circlet: [EM]}
   primary_stat: ATK
-  damage_model: em_max
+  evaluation_pipeline:
+    - {type: em_max}
 
 Keqing:
   usage: "IT Only"
@@ -115,7 +155,9 @@ Keqing:
   useful_stats: [CD, CR, "ATK%", EM]
   main_stats: {Sands: ["ATK%"], Goblet: ["ElectroDMG%"], Circlet: [CD, CR]}
   primary_stat: ATK
-  damage_model: none
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Lauma:
   usage: "IT Only"
@@ -124,9 +166,12 @@ Lauma:
   set: SMS
   domain: "Nod Krai 1"
   useful_stats: [ER, EM, CR, CD]
-  main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM]}
+  main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM, CR, CD]}
   primary_stat: EM
-  damage_model: none
+  evaluation_pipeline:
+    - {type: apply_modifiers}
+    - {type: standard_damage}
+    - {type: personal_damage}
   modifiers:
     - source_stat: elemental_mastery
       target: dmg_bonus
@@ -142,7 +187,10 @@ Nahida:
   useful_stats: [ER, EM, CD, CR, "ATK%"]
   main_stats: {Sands: [EM], Goblet: [EM, "DendroDMG%"], Circlet: [EM, CR, CD]}
   primary_stat: ATK
-  damage_model: none
+  evaluation_pipeline:
+    - {type: apply_modifiers}
+    - {type: standard_damage}
+    - {type: personal_damage}
   modifiers:
     - source_stat: elemental_mastery
       target: flat_damage_add
@@ -165,9 +213,12 @@ Columbina:
   set: Aubade
   domain: "Nod Krai 2"
   useful_stats: [ER, EM, CD, CR, "HP%"]
-  main_stats: {Sands: [ER, "HP%"], Goblet: ["HP%"], Circlet: [CR, CD, "HP%"]}
+  main_stats: {Sands: [ER, "HP%"], Goblet: ["HP%", "HydroDMG%"], Circlet: [CR, CD, "HP%"]}
   primary_stat: HP
-  damage_model: none
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
+    - {type: reaction_damage, config: {reaction: lunar_crystallize}}
 
 Nilou:
   usage: "IT Only"
@@ -178,7 +229,10 @@ Nilou:
   useful_stats: ["HP%", HP, EM]
   main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: ["HP%"]}
   primary_stat: HP
-  damage_model: hp_max
+  scaling: [{stat: hp, weight: 0.09}]
+  evaluation_pipeline:
+    - {type: saturate, config: {stat: hp, cap: 74444}}
+    - {type: maximize_scaled_value}
 
 SangonomiyaKokomi:
   usage: "IT Only"
@@ -189,7 +243,8 @@ SangonomiyaKokomi:
   useful_stats: ["HP%", ER, "ATK%", HP]
   main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: ["Heal%"]}
   primary_stat: HP
-  damage_model: hp_max
+  evaluation_pipeline:
+    - {type: hp_max}
 
 KukiShinobu:
   usage: "IT Only"
@@ -200,6 +255,11 @@ KukiShinobu:
   useful_stats: [EM, "HP%", ER]
   main_stats: {Sands: [EM], Goblet: [EM], Circlet: [EM]}
   primary_stat: EM
+  scaling:
+    - {stat: elemental_mastery, weight: 1.0}
+    - {stat: hp, weight: 0.002}
+  evaluation_pipeline:
+    - {type: maximize_scaled_value}
 
 Candace:
   usage: "IT Only"
@@ -207,10 +267,11 @@ Candace:
   role: Support
   set: Emblem
   domain: "Sumeru 1"
-  useful_stats: [ER, CR, "HP%", HP]
-  main_stats: {Sands: ["HP%", EM], Goblet: ["HP%"], Circlet: ["HP%", CD, CR]}
+  useful_stats: [ER, "HP%", HP]
+  main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}
   primary_stat: HP
-  base_hp: 13000  # approximate
+  evaluation_pipeline:
+    - {type: hp_max}
 
 Xilonen:
   usage: Active
@@ -218,10 +279,12 @@ Xilonen:
   role: Support
   set: Petra
   domain: Guyun
-  useful_stats: [ER, "DEF%", DEF, CR]
-  main_stats: {Sands: ["DEF%", ER], Goblet: ["DEF%"], Circlet: [CR]}
+  useful_stats: [ER, "DEF%", DEF, CR, CD]
+  main_stats: {Sands: ["DEF%", ER], Goblet: ["DEF%"], Circlet: [CR, CD]}
   primary_stat: DEF
-  base_def: 999   # unknown
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Linnea:
   usage: Active
@@ -232,7 +295,10 @@ Linnea:
   useful_stats: [ER, "DEF%", CR, CD, EM]
   main_stats: {Sands: ["DEF%"], Goblet: ["DEF%"], Circlet: [CR, CD, "DEF%"]}
   primary_stat: DEF
-  base_def: 999   # unknown
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
+    - {type: reaction_damage, config: {reaction: lunar_crystallize}}
 
 Illuga:
   usage: Active
@@ -240,9 +306,11 @@ Illuga:
   role: Support
   set: SMS
   domain: "Nod Krai 1"
-  useful_stats: [ER, EM, CR]
-  main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM, CR]}
+  useful_stats: [ER, EM]
+  main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM]}
   primary_stat: EM
+  evaluation_pipeline:
+    - {type: em_max}
 
 Kachina:
   usage: "IT Only"
@@ -253,7 +321,9 @@ Kachina:
   useful_stats: [ER, CD, CR, "DEF%"]
   main_stats: {Sands: ["DEF%", ER], Goblet: ["GeoDMG%"], Circlet: [CR, CD]}
   primary_stat: DEF
-  base_def: 999   # unknown
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Rosaria:
   usage: "IT Only"
@@ -262,9 +332,11 @@ Rosaria:
   set: "NO"
   domain: "Clear Pool"
   useful_stats: [ER, CD, CR, "ATK%"]
-  main_stats: {Sands: [EM], Goblet: [CryoDMG%], Circlet: [CR, CD]}
+  main_stats: {Sands: ["ATK%"], Goblet: ["CryoDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 325   # known
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Fischl:
   usage: "IT Only"
@@ -272,10 +344,12 @@ Fischl:
   role: Sub-DPS
   set: "Golden Troupe"
   domain: "Fontaine 1"
-  useful_stats: [ER, CD, CR, "ATK%", EM]
+  useful_stats: [ER, CD, CR, "ATK%"]
   main_stats: {Sands: ["ATK%"], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 325   # known
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Ororon:
   usage: "IT Only"
@@ -283,10 +357,12 @@ Ororon:
   role: Sub-DPS
   set: Scroll
   domain: "Natlan 1"
-  useful_stats: [ER, CD, CR, "ATK%", EM]
+  useful_stats: [ER, CD, CR, "ATK%"]
   main_stats: {Sands: ["ATK%", ER], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 999   # unknown
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Xingqiu:
   usage: "IT Only"
@@ -297,7 +373,9 @@ Xingqiu:
   useful_stats: [ER, CD, CR, "ATK%"]
   main_stats: {Sands: ["ATK%", ER], Goblet: ["HydroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 325   # known
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Bennett:
   usage: Active
@@ -305,10 +383,12 @@ Bennett:
   role: Support
   set: "NO"
   domain: "Clear Pool"
-  useful_stats: [ER, CD, CR, "HP%"]
+  useful_stats: [ER, "HP%"]
   main_stats: {Sands: [ER], Goblet: ["HP%"], Circlet: ["Heal%"]}
   primary_stat: ATK
-  base_atk: 318   # known
+  scaling: [{stat: base_atk, weight: 1.39}]
+  evaluation_pipeline:
+    - {type: maximize_scaled_value}
 
 Xiangling:
   usage: "IT Only"
@@ -316,10 +396,12 @@ Xiangling:
   role: Sub-DPS
   set: Emblem
   domain: "Inazuma 1"
-  useful_stats: [ER, CD, CR, "ATK%", EM]
-  main_stats: {Sands: [ER], Goblet: ["PyroDMG%", EM], Circlet: [CR, CD, EM]}
+  useful_stats: [ER, CD, CR, "ATK%"]
+  main_stats: {Sands: ["ATK%", ER], Goblet: ["PyroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 325   # known
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Jean:
   usage: "IT Only"
@@ -327,10 +409,12 @@ Jean:
   role: Support
   set: VV
   domain: Remembrance
-  useful_stats: [ER, CD, CR, "ATK%", EM]
-  main_stats: {Sands: [ER, "ATK%"], Goblet: ["ATK%", "AnemoDMG%"], Circlet: ["Heal%", CR]}
+  useful_stats: [ER, CD, CR, "ATK%"]
+  main_stats: {Sands: ["ATK%", ER], Goblet: ["ATK%", "AnemoDMG%"], Circlet: ["Heal%", CR]}
   primary_stat: ATK
-  base_atk: 340   # known
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Diluc:
   usage: "IT Only"
@@ -338,10 +422,12 @@ Diluc:
   role: DPS
   set: Gilded
   domain: "Sumeru 1"
-  useful_stats: [CR, CD, "ATK%", EM, ER]
-  main_stats: {Sands: ["ATK%", EM], Goblet: ["PyroDMG%"], Circlet: [CR, CD]}
+  useful_stats: [CR, CD, "ATK%", ER]
+  main_stats: {Sands: ["ATK%"], Goblet: ["PyroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 375   # known
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Gorou:
   usage: "IT Only"
@@ -349,10 +435,14 @@ Gorou:
   role: Support
   set: "NO"
   domain: "Clear Pool"
-  useful_stats: [ER, "DEF%", CR]
-  main_stats: {Sands: [ER], Goblet: [ANY], Circlet: [CR]}
+  useful_stats: [ER, "DEF%"]
+  main_stats: {Sands: ["DEF%", ER], Goblet: ["DEF%"], Circlet: ["DEF%", CR]}
   primary_stat: DEF
-  base_def: 650   # approximate
+  scaling:
+    - {stat: def, weight: 1.0}
+    - {stat: energy_recharge, weight: 0.5}
+  evaluation_pipeline:
+    - {type: maximize_scaled_value}
 
 Ningguang:
   usage: "IT Only"
@@ -363,7 +453,9 @@ Ningguang:
   useful_stats: [CR, CD, "ATK%", ER]
   main_stats: {Sands: ["ATK%"], Goblet: ["GeoDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 325   # known
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 LanYan:
   usage: "IT Only"
@@ -371,10 +463,12 @@ LanYan:
   role: Support
   set: VV
   domain: Remembrance
-  useful_stats: [ER, "ATK%", EM, CR]
-  main_stats: {Sands: ["ATK%", ER], Goblet: ["ATK%", "AnemoDMG%"], Circlet: ["ATK%", CR, CD]}
+  useful_stats: [ER, "ATK%", CR, CD]
+  main_stats: {Sands: ["ATK%", ER], Goblet: ["ATK%", "AnemoDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 999   # unknown
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Faruzan:
   usage: "IT Only"
@@ -382,10 +476,13 @@ Faruzan:
   role: Support
   set: "NO"
   domain: "Clear Pool"
-  useful_stats: [ER, CR, CD, "ATK%"]
+  useful_stats: [ER, CR]
   main_stats: {Sands: [ER], Goblet: [ANY], Circlet: [CR]}
   primary_stat: ATK
-  base_atk: 325   # known
+  scaling:
+    - {stat: energy_recharge, weight: 1.0}
+  evaluation_pipeline:
+    - {type: maximize_scaled_value}
 
 Layla:
   usage: "IT Only"
@@ -393,10 +490,12 @@ Layla:
   role: Support
   set: TotM
   domain: Windblume
-  useful_stats: [CR, "HP%", HP]
+  useful_stats: [CR, "HP%", HP, ER]
   main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%", CR]}
   primary_stat: HP
-  base_hp: 13000  # approximate
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Diona:
   usage: "IT Only"
@@ -404,10 +503,11 @@ Diona:
   role: Support
   set: "NO"
   domain: "Clear Pool"
-  useful_stats: [ER, "HP%", CR, HP]
-  main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}
+  useful_stats: [ER, "HP%", HP]
+  main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%", "Heal%"]}
   primary_stat: HP
-  base_hp: 13000  # approximate
+  evaluation_pipeline:
+    - {type: hp_max}
 
 Kaeya:
   usage: "IT Only"
@@ -418,7 +518,9 @@ Kaeya:
   useful_stats: [ER, CD, "ATK%", CR]
   main_stats: {Sands: ["ATK%"], Goblet: ["CryoDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
-  base_atk: 325   # known
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: personal_damage}
 
 Kirara:
   usage: "IT Only"
@@ -426,10 +528,11 @@ Kirara:
   role: Support
   set: Instructor
   domain: "Nod Krai 2"
-  useful_stats: [ER, "HP%", CR, HP]
-  main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: ["HP%", CR]}
+  useful_stats: [ER, "HP%", HP]
+  main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: ["HP%"]}
   primary_stat: HP
-  base_hp: 13000  # approximate
+  evaluation_pipeline:
+    - {type: hp_max}
 
 Aino:
   usage: "IT Only"
@@ -438,9 +541,12 @@ Aino:
   set: SMS
   domain: "Nod Krai 1"
   useful_stats: [ER, EM, CR]
-  main_stats: {Sands: [ER, EM], Goblet: [ER, "HydroDMG%"], Circlet: [CR, EM]}
-  primary_stat: HP  # guessed
-  base_hp: 999   # unknown
+  main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM, CR]}
+  primary_stat: EM
+  scaling:
+    - {stat: elemental_mastery, weight: 1.0}
+  evaluation_pipeline:
+    - {type: maximize_scaled_value}
 
 Barbara:
   usage: "IT Only"
@@ -448,10 +554,11 @@ Barbara:
   role: Support
   set: "Ocean-Hued Clam"
   domain: "Inazuma 2"
-  useful_stats: ["HP%", HP]
-  main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: [Heal%]}
+  useful_stats: ["HP%", HP, ER]
+  main_stats: {Sands: ["HP%"], Goblet: ["HP%"], Circlet: ["Heal%", "HP%"]}
   primary_stat: HP
-  base_hp: 11000  # approximate
+  evaluation_pipeline:
+    - {type: hp_max}
 
 Chevreuse:
   usage: "IT Only"
@@ -459,10 +566,11 @@ Chevreuse:
   role: Support
   set: "NO"
   domain: "Clear Pool"
-  useful_stats: [ER, "HP%", CR, HP, EM]
+  useful_stats: [ER, "HP%", HP]
   main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}
   primary_stat: HP
-  base_hp: 13000  # approximate
+  evaluation_pipeline:
+    - {type: hp_max}
 
 Thoma:
   usage: "IT Only"
@@ -470,7 +578,8 @@ Thoma:
   role: Support
   set: Gilded
   domain: "Sumeru 1"
-  useful_stats: [ER, EM, "HP%", HP, CR]
-  main_stats: {Sands: [ER, "HP%"], Goblet: ["HP%"], Circlet: ["HP%", CR]}
+  useful_stats: [ER, "HP%", HP]
+  main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}
   primary_stat: HP
-  base_hp: 13000  # approximate
+  evaluation_pipeline:
+    - {type: hp_max}

@@ -23,80 +23,80 @@ Zibai:
   ER: 1
 Citlali:
   minimums:
-    energy_recharge: 1.55
+    energy_recharge: 1.7
     elemental_mastery: 700
 Furina:
   minimums:
     energy_recharge: 2
     hp: 40000
 Mona:
-  ER: 2.50
+  ER: 2.0
 Sucrose:
-  ER: 1.80
+  ER: 1
 Keqing:
-  ER: 1.40
+  ER: 1.00
 Lauma:
-  ER: 1.90
+  ER: 2
 Nahida:
   ER: 1.40
 Columbina:
-  ER: 1.90
+  ER: 1.80
 Nilou:
   ER: 1.00
 SangonomiyaKokomi:
-  ER: 1.70
+  ER: 1.40
 KukiShinobu:
   ER: 1.00
 Candace:
-  ER: 2.20
+  ER: 2.0
 Xilonen:
-  ER: 2.00
+  ER: 1.55
 Linnea:
-  ER: 1.60
+  ER: 1
 Illuga:
   ER: 1.80
 Kachina:
-  ER: 1.60
+  ER: 1.8
 Rosaria:
   ER: 1.60
 Fischl:
-  ER: 1.40
+  ER: 1.20
 Ororon:
-  ER: 1.60
+  ER: 1.40
 Xingqiu:
-  ER: 2.20
+  ER: 2.0
 Bennett:
-  ER: 2.40
+  ER: 1.8
 Xiangling:
-  ER: 2.20
+  ER: 2.0
 Jean:
-  ER: 1.80
-Diluc:
-  ER: 1.40
-Gorou:
-  ER: 2.20
-Ningguang:
-  ER: 1.40
-LanYan:
-  ER: 1.80
-Faruzan:
-  ER: 2.60
-Layla:
   ER: 1.60
+Diluc:
+  ER: 1.00
+Gorou:
+  ER: 1.80
+Ningguang:
+  ER: 1.00
+LanYan:
+  ER: 1.60
+Faruzan:
+  ER: 2.00
+Layla:
+  ER: 1.50
 Diona:
   ER: 1.80
 Kaeya:
-  ER: 1.40
+  ER: 1.60
 Kirara:
   ER: 1.60
 Aino:
-  ER: 1.80
+  ER: 1.60
 Barbara:
-  ER: 1.40
+  ER: 1.60
 Chevreuse:
-  ER: 2.00
+  ER: 1.80
 Thoma:
-  ER: 2.20
+  ER: 1.60
 
 # Phase 2 — team overrides. A team only needs to list the stats it
 # actually changes; everything else falls back to the character's default

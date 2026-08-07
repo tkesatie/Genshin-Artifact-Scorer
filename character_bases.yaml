@@ -6,7 +6,7 @@ Skirk:
 
 Mavuika:
   base_atk: 868.37
-  base_crit_rate: 0.326    
+  base_crit_rate: 0.726    
   base_crit_damage: 0.884    
 
 Citlali:
@@ -77,10 +77,135 @@ Nilou:
 SangonomiyaKokomi:
   base_hp: 13471
   base_hp_percent: 0.413
-  base_crit_rate: -0.95
+  base_crit_rate: -1.0
   base_dmg_bonus: 0.288
 
 KukiShinobu:
   base_hp: 13471
   base_hp_percent: 0.413
   base_er: 1.36
+
+Candace:
+  base_hp: 10875
+  base_hp_percent: 0.24
+  base_er: 1.506
+
+Xilonen:
+  base_def: 871.09
+  base_def_percent: 0.36
+  base_er: 1.459
+  base_dmg_bonus: 0.15
+
+Linnea:
+  base_def: 843.14
+  base_def_percent: 0.30
+  base_em: 200
+  base_crit_rate: 0.554
+
+Illuga:
+  base_def: 757.20
+  base_em: 358.99
+  base_er: 1.20
+
+Kachina:
+  base_def: 702.26
+  base_er: 1.226
+  base_dmg_bonus: 0.18
+
+Rosaria:
+  base_atk: 235.95
+  base_atk_percent: 0.18
+
+Fischl:
+  base_atk: 681.70
+  base_atk_percent: 0.24
+  base_er: 1.613
+
+Ororon:
+  base_atk: 670.83
+  base_atk_percent: 0.18
+  base_er: 1.613
+
+Xingqiu:
+  base_atk: 697.41
+  base_atk_percent: 0.24
+  base_em: 165.38
+  base_er: 1.20
+  base_dmg_bonus: 0.20
+
+Bennett:
+  base_atk: 852.25
+  base_atk_percent: 0.20
+  base_er: 1.267
+
+Xiangling:
+  base_atk: 719.15
+  base_em: 96
+  base_er: 1.659
+
+Jean:
+  base_atk: 206.24
+  base_dmg_bonus: 0.15
+
+Diluc:
+  base_atk: 765.80
+  base_atk_percent: 0.413
+  base_crit_rate: 0.146
+
+Gorou:
+  base_def: 500.87
+  base_em: 165.38
+  base_dmg_bonus: 0.12
+
+Ningguang:
+  base_atk: 424.63
+  base_atk_percent: 0.365
+  base_dmg_bonus: 0.44
+
+LanYan:
+  base_atk: 216.85
+  base_atk_percent: 0.12
+  base_dmg_bonus: 0.15
+
+Faruzan:
+  base_atk: 175.01
+  base_atk_percent: 0.12
+
+Layla:
+  base_hp: 8568.70
+  base_hp_percent: 0.32
+
+Diona:
+  base_hp: 7392.60
+  base_er: 1.316
+  base_dmg_bonus: 0.12
+
+Kaeya:
+  base_atk: 214.68
+  base_atk_percent: 0.09
+  base_er: 1.333
+
+Kirara:
+  base_hp: 9408.8
+  base_hp_percent: 0.12
+  base_em: 80
+
+Aino: 
+  base_hp: 8652.70
+  base_em: 48
+  base_er: 1.813
+
+Barbara:
+  base_hp: 7560.6
+  base_hp_percent: 0.12
+  base_er: 1.15
+
+Chevreuse:
+  base_hp: 9240.7
+  base_hp_percent: 0.12
+  base_er: 1.335
+
+Thoma:
+  base_hp: 7980.6
+  base_em: 80
+  base_er: 1.199

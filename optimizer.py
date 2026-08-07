@@ -17,7 +17,7 @@ from typing import Dict, List, Any, Tuple
 
 from artifact_utils import MAX_LEVEL
 from stats_calculator import calculate_build_stats, compute_artifact_delta, combine_artifact_deltas
-from damage_calculator import calculate_damage_score
+from pipeline import run_pipeline
 
 
 def _random_roll_value(substat_key: str, rarity: int, roll_values: Dict) -> float:
@@ -41,7 +41,10 @@ def _project_artifact(artifact: Dict[str, Any], roll_values: Dict) -> Dict[str, 
     max_level = MAX_LEVEL.get(rarity, 20)
     current_level = artifact.get("level", 0)
     remaining_levels = max_level - current_level
-    remaining_events = remaining_levels // 4
+    # Upgrades happen at +4/+8/+12/+16/+20, so a level-1 5-star has 5
+    # remaining events (19 levels -> ceil(19/4) = 5), not 4. Round up to
+    # match bench.py's (max_level - level + 3) // 4 formula.
+    remaining_events = (remaining_levels + 3) // 4
 
     new_art = dict(artifact)  # shallow copy - cheap, no recursive walk
 
@@ -80,7 +83,7 @@ def _project_artifact(artifact: Dict[str, Any], roll_values: Dict) -> Dict[str, 
 
 
 def _compute_damage_for_build(artifacts: Dict[str, Dict], char_config: Dict,
-                              roll_values: Dict, damage_model: str,
+                              roll_values: Dict,
                               stat_floors: dict = None,
                               team_context: dict = None) -> float:
     context = {
@@ -88,7 +91,6 @@ def _compute_damage_for_build(artifacts: Dict[str, Dict], char_config: Dict,
         "artifacts": artifacts,
         "team_context": team_context or {},
         "roll_values": roll_values,
-        "damage_model": damage_model,
     }
     stats = calculate_build_stats(context)
 
@@ -101,12 +103,18 @@ def _compute_damage_for_build(artifacts: Dict[str, Dict], char_config: Dict,
                 return -1.0
                 # Option B: use partial penalty for ER only (see below)
 
-    # ---- Damage calculation (unchanged) ----
-    raw_damage = calculate_damage_score(stats, damage_model, char_config.get("modifiers"))
+    # ---- Damage calculation via pipeline ----
+    pipeline_steps = char_config.get("evaluation_pipeline", [])
+    assert pipeline_steps, f"{char_config.get('name', '?')}: evaluation_pipeline is empty - every character must declare one post-migration"
+    metadata = {
+        "modifiers": char_config.get("modifiers", []),
+        "character_config": char_config,
+    }
+    raw_damage = run_pipeline(pipeline_steps, stats, metadata)
     return raw_damage
 
 
-def _compute_damage_for_stats(stats: Dict, char_config: Dict, damage_model: str,
+def _compute_damage_for_stats(stats: Dict, char_config: Dict,
                               stat_floors: dict = None) -> float:
     """
     Same stat-floor + damage-score logic as _compute_damage_for_build, but
@@ -124,7 +132,18 @@ def _compute_damage_for_stats(stats: Dict, char_config: Dict, damage_model: str,
             if current < floor_value:
                 return -1.0
 
-    return calculate_damage_score(stats, damage_model, char_config.get("modifiers"))
+    # Get the pipeline from the character config
+    pipeline_steps = char_config.get("evaluation_pipeline", [])
+    assert pipeline_steps, f"{char_config.get('name', '?')}: evaluation_pipeline is empty - every character must declare one post-migration"
+
+    # Build metadata for the pipeline steps
+    metadata = {
+        "modifiers": char_config.get("modifiers", []),
+        "character_config": char_config,
+    }
+
+    # Run the pipeline and return the final score
+    return run_pipeline(pipeline_steps, stats, metadata)
 
 def compute_marginal_swap_probabilities(
     char_config: Dict,
@@ -135,7 +154,6 @@ def compute_marginal_swap_probabilities(
     target_set_keys: set,
     num_sims: int = 1000,
     stat_floors: dict = None,
-    damage_model: str = "none",
     team_context: dict = None
 ) -> Dict[str, Dict[Any, float]]:
     """
@@ -203,7 +221,7 @@ def compute_marginal_swap_probabilities(
                     continue
 
                 dmg = _compute_damage_for_build(
-                    build_artifacts, char_config, roll_values, damage_model, stat_floors, team_context
+                    build_artifacts, char_config, roll_values, stat_floors, team_context
                 )
                 if dmg < 0:
                     continue
@@ -230,7 +248,6 @@ def compute_optimal_probabilities(
     target_set_keys: set,                  # set of setKeys for the target set
     num_sims: int = 1000,
     stat_floors: dict = None,
-    damage_model: str = "none",
     team_context: dict = None
 ) -> Dict[str, Any]:
     """
@@ -278,7 +295,6 @@ def compute_optimal_probabilities(
     # Initialize win counters per artifact_id
     win_counts = {art_id: 0 for slot in slot_candidates for art_id, _, _ in slot_candidates[slot]}
     no_valid_sims = 0
-    primary_stat = char_config.get("primary_stat", "ATK")
 
     # Run simulations
     for _ in range(num_sims):
@@ -296,7 +312,7 @@ def compute_optimal_probabilities(
             projected_list = []
             for art_id, art, is_in in cand_list:
                 proj = _project_artifact(art, roll_values)
-                delta = compute_artifact_delta(proj, primary_stat)
+                delta = compute_artifact_delta(proj)
                 projected_list.append((art_id, proj, is_in, delta))
             projected_lists[slot] = projected_list
 
@@ -326,7 +342,7 @@ def compute_optimal_probabilities(
             nonlocal best_damage, best_combo
             deltas = [combo_tuple[i][3] for i in range(n_slots)]
             stats = combine_artifact_deltas(deltas, char_config, team_context)
-            dmg = _compute_damage_for_stats(stats, char_config, damage_model, stat_floors)
+            dmg = _compute_damage_for_stats(stats, char_config, stat_floors)
             if dmg < 0:
                 return
             if dmg > best_damage:

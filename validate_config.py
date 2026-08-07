@@ -219,24 +219,6 @@ def check_slot_names(roster):
 # NEW CHECKS FOR DAMAGE CALCULATOR FIELDS
 # ============================================================================
 
-def check_damage_model(roster):
-    """Check that `damage_model`, if set, is one of the allowed values."""
-    issues = []
-    allowed = {"em_max","vaporize", "melt","overloaded", "electro_charged", "superconduct", "swirl", "shatter", "none"}
-    for name, cfg in roster.items():
-        if not isinstance(cfg, dict):
-            continue
-        dm = cfg.get("damage_model")
-        if dm is None:
-            continue  # default "none" is fine, no warning needed
-        if not isinstance(dm, str) or dm.lower() not in allowed:
-            issues.append(ValidationIssue(
-                "WARNING", name,
-                f'damage_model "{dm}" is not one of {allowed} - default "none" will be used.'
-            ))
-    return issues
-
-
 def check_primary_stat(roster):
     """Check that `primary_stat`, if set, is one of the allowed values,
     and that the corresponding base stat is present and positive."""
@@ -334,6 +316,56 @@ def check_team_context(rules):
     return issues
 
 
+def check_evaluation_pipeline(roster):
+    """Check that `evaluation_pipeline` steps reference registered evaluator
+    types. Catches typoed step names before the optimizer/dashboard hits a
+    runtime ValueError mid-run."""
+    issues = []
+    try:
+        from pipeline import EvaluatorRegistry
+    except ImportError:
+        return [ValidationIssue(
+            "WARNING", None,
+            "Could not import pipeline.EvaluatorRegistry (pipeline.py missing?) - skipping pipeline check."
+        )]
+
+    for name, cfg in roster.items():
+        if not isinstance(cfg, dict):
+            continue
+        steps = cfg.get("evaluation_pipeline")
+        if steps is None:
+            continue
+        if not isinstance(steps, list) or not steps:
+            issues.append(ValidationIssue(
+                "ERROR", name,
+                "`evaluation_pipeline` must be a non-empty list of step dicts "
+                '(e.g. [{type: standard_damage}, {type: personal_damage}]).'
+            ))
+            continue
+        for i, step in enumerate(steps):
+            if not isinstance(step, dict):
+                issues.append(ValidationIssue(
+                    "ERROR", name,
+                    f"evaluation_pipeline[{i}] is not a mapping (got {type(step).__name__}) "
+                    "- each step must be a dict with a `type` key."
+                ))
+                continue
+            step_type = step.get("type")
+            if not isinstance(step_type, str) or not step_type:
+                issues.append(ValidationIssue(
+                    "ERROR", name,
+                    f"evaluation_pipeline[{i}] is missing a string `type` key."
+                ))
+                continue
+            if step_type not in EvaluatorRegistry:
+                issues.append(ValidationIssue(
+                    "ERROR", name,
+                    f"evaluation_pipeline[{i}] references unknown step type "
+                    f'"{step_type}". Available: {", ".join(sorted(EvaluatorRegistry))}.'
+                ))
+    return issues
+
+
 # ============================================================================
 # MAIN VALIDATION ENTRY POINT
 # ============================================================================
@@ -346,10 +378,10 @@ def validate_config(roster, rules):
     issues += check_set_aliases(roster)
     issues += check_slot_names(roster)
     # New checks
-    issues += check_damage_model(roster)
     issues += check_primary_stat(roster)
     issues += check_er_minimum(roster, rules)
     issues += check_team_context(rules)
+    issues += check_evaluation_pipeline(roster)
     return issues
 
 

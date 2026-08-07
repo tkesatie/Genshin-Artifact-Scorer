@@ -82,6 +82,6 @@ snapshot:
 # Global optimizer settings for probability of being optimal
 optimizer:
   num_sims: 1000
-  in_set_pool_size: 5
-  off_set_pool_size: 5
+  in_set_pool_size: 10
+  off_set_pool_size: 10
   apply_ceiling_filter: true

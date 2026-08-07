@@ -51,8 +51,11 @@ CHAR_CONFIG = {
     "base_dmg_bonus": 0.0,
     "base_em": 0.0,
     "base_er": 1.0,
-    "damage_model": "none",
     "modifiers": [],
+    "evaluation_pipeline": [
+        {"type": "standard_damage"},
+        {"type": "personal_damage"},
+    ],
 }
 
 ROLL_VALUES = {
@@ -115,7 +118,6 @@ def test_no_stat_floors_all_valid():
         target_set_keys=TARGET_SET,
         num_sims=50,
         stat_floors=None,
-        damage_model="none",
         team_context={},
     )
 
@@ -145,7 +147,6 @@ def test_impossible_er_floor_all_infeasible():
         target_set_keys=TARGET_SET,
         num_sims=50,
         stat_floors={"energy_recharge": 2.0},  # base is 1.0, no ER substats
-        damage_model="none",
         team_context={},
     )
 
@@ -182,7 +183,6 @@ def test_mixed_feasibility():
         target_set_keys=TARGET_SET,
         num_sims=200,
         stat_floors={"energy_recharge": 1.1},  # only met if the last roll lands on ER
-        damage_model="none",
         team_context={},
     )
 

@@ -32,10 +32,10 @@ HERE = Path(__file__).parent
 
 
 def load_configs():
-    roster = yaml.safe_load((HERE / "roster.yaml").read_text(encoding="utf-8"))
-    rules = yaml.safe_load((HERE / "rules.yaml").read_text(encoding="utf-8"))
-    roll_values = yaml.safe_load((HERE / "roll_values.yaml").read_text(encoding="utf-8"))
-    bases = yaml.safe_load((HERE / "character_bases.yaml").read_text(encoding="utf-8"))
+    roster = yaml.safe_load((HERE / "roster.yaml").read_text(encoding="utf-8")) or {}
+    rules = yaml.safe_load((HERE / "rules.yaml").read_text(encoding="utf-8")) or {}
+    roll_values = yaml.safe_load((HERE / "roll_values.yaml").read_text(encoding="utf-8")) or {}
+    bases = yaml.safe_load((HERE / "character_bases.yaml").read_text(encoding="utf-8")) or {}
 
     for name, base_cfg in bases.items():
         if name in roster:
@@ -47,8 +47,16 @@ def load_configs():
     # This is purely for convenience; the validation module will still warn about invalid values.
     for name, cfg in roster.items():
         if isinstance(cfg, dict):
-            # Default damage_model to "none" if missing
-            cfg.setdefault("damage_model", "none")
+            # --- Scaling injection ---
+            # If 'scaling' is missing, build it from 'primary_stat' (weight 1.0).
+            # 'primary_stat' remains the source of truth for a character's main
+            # scaling stat when an explicit weighted 'scaling' list isn't given.
+            if "scaling" not in cfg:
+                primary = cfg.get("primary_stat", "ATK").lower()
+                # Map 'em' properly; EM uses the base_em value and flat additions
+                cfg["scaling"] = [{"stat": primary, "weight": 1.0}]
+
+            # --- Legacy default ---
             # Default primary_stat to "ATK" if missing
             cfg.setdefault("primary_stat", "ATK")
 

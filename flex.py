@@ -57,6 +57,7 @@ def find_flex_candidates(good_json, roster, char_results, roll_values, min_ev_ga
                     "character": char_name, "slot": slot, "set": art.get("setKey"),
                     "expected_rolls": round(expected, 2), "equipped_rolls": equipped_rolls,
                     "level": art.get("level", 0), "rarity": art.get("rarity", 5),
+                    "artifact_id": art.get("id"),
                 }
 
         if best and (best["expected_rolls"] - equipped_rolls) >= min_ev_gain:

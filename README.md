@@ -17,6 +17,7 @@ Genshin Artifact Scorer analyzes an Irminsul/GOOD artifact export against the lo
 - Tracks per-character stat targets (ER, CR, CD, EM, ATK%, HP%, DEF%) against current equipped totals, with optional per-team overrides, so you can see which stats are already over-invested and which are still worth chasing.
 - Computes a Relative Damage Index (RDI) per character/team from hand-typed team assumptions — a same-character comparison tool, not a real damage number.
 - Runs a Monte Carlo build optimizer per character that projects candidate artifacts to +20, simulates random upgrade rolls, and reports each piece's probability of being part of the optimal 5-piece build ("Build Optimality").
+- Evaluates builds through a composable pipeline engine (`pipeline.py`) — the optimizer and dashboard both route damage scoring through `run_pipeline`. Every roster character declares an explicit `evaluation_pipeline` of composable steps (e.g. `standard_damage`, `personal_damage`, `reaction_damage`, `apply_modifiers`, `em_max`, `hp_max`, `saturate`, `maximize_scaled_value`).
 - Renders the final report to a sortable standalone HTML dashboard.
 
 ## Requirements
@@ -44,15 +45,14 @@ These files must be in the project root:
 - `candidate_generation.py`: candidate artifact selection helpers (projected inherent value, top-K per slot).
 - `character_scoring.py`: character and domain scoring.
 - `config.py`: YAML configuration loader.
-- `damage_calculator.py`: damage-model formulas (amplifying/transformative EM bonuses, kit-specific modifiers).
+- `damage_calculator.py`: re-exports the shared EM/modifier helpers from `pipeline.py` for backward compatibility.
 - `flex.py`: off-set flex-slot suggestions for 4pc-locked characters.
 - `inventory.py`: classification of unequipped artifacts for inventory cleanup.
 - `models.py`: TypedDict definitions shared by the damage/optimizer pipeline.
 - `optimizer.py`: Monte Carlo build optimizer (per-piece "Build Optimality" probabilities).
+- `pipeline.py`: composable evaluation-pipeline engine (Strangler Fig migration) — registers pipeline step evaluators and runs them sequentially.
 - `recommendations.py`: recommendation ranking.
 - `render_html.py`: HTML report writer.
-- `set_bonus.py`: set-effect damage modifiers (used by the damage pipeline).
-- `simulate.py`: single-slot swap Monte Carlo simulation (win rate / average gain).
 - `snapshot.py`: run-to-run progress snapshot save/diff.
 - `stat_targets.py`: per-character stat-target loading, current-total computation, and target classification.
 - `stats_calculator.py`: aggregates a character's base + artifact stats into a `CharacterStats` block.
@@ -68,7 +68,8 @@ These files must be in the project root:
 
 Other files present:
 
-- `tests/test_damage_formulas.py`: pytest suite covering the damage-formula pipeline (`stats_calculator` + `damage_calculator`).
+- `tests/test_damage_formulas.py`: pytest suite covering the damage-formula pipeline (`stats_calculator` + `pipeline.run_pipeline`).
+- `tests/test_optimizer_infeasible.py`: pytest suite covering the optimizer's infeasible-rate tracking.
 
 ## Usage
 
@@ -111,9 +112,10 @@ Defines each character included in scoring. The current code expects fields such
 - `domain`: farming domain shown in the dashboard and domain priority table.
 - `useful_stats`: display labels such as `CR`, `CD`, `ATK%`, `ER`, or `EM`.
 - `main_stats`: allowed main-stat labels per slot, matched against `artifact_utils.STAT_LABEL` values (e.g. `PyroDMG%`, not `Pyro%`). Use the literal string `ANY` for a slot to accept any main stat (e.g. Gorou/Faruzan's Goblet, where the set doesn't require a specific one).
-- `damage_model`: optional; defaults to `none`. One of `none`, `vaporize`, `melt`, `overloaded`, `electro_charged`, `superconduct`, `swirl`, `shatter`, or `em_max`. Drives which formula `damage_calculator.py` uses.
-- `primary_stat`: optional; defaults to `ATK`. One of `ATK`, `HP`, `DEF`, or `EM`. Determines which stat `stats_calculator.py` treats as the character's primary scaling stat.
-- `modifiers`: optional list of kit-specific stat modifiers (e.g. Citlali's EM→flat damage, Nahida's EM→DMG%/CR). Each has `source_stat`, `target`, `coefficient`, and optional `threshold`/`cap`. Applied by `damage_calculator.py`.
+- `primary_stat`: required. One of `ATK`, `HP`, `DEF`, or `EM`. `config.py` derives the `scaling` list from it when no explicit weighted `scaling` is given, and `stats_calculator.py` uses it as the fallback for `primary_total`.
+- `scaling`: optional list of `{stat, weight}` entries defining how the character's primary total is computed (e.g. `[{stat: HP, weight: 1.0}]` for an HP scaler, or multiple entries for hybrid scalers). If omitted, `config.py` builds it from `primary_stat`.
+- `evaluation_pipeline`: **required** list of pipeline step dicts, each with a `type` key and optional `config` (e.g. `[{type: standard_damage, config: {talent_multiplier: 1.0}}, {type: personal_damage}]`). This is the single source of truth for how the character's damage is scored — the optimizer and dashboard both route through it. See [pipeline.py](#pipelinepy) below.
+- `modifiers`: optional list of kit-specific stat modifiers (e.g. Citlali's EM→flat damage, Nahida's EM→DMG%/CR). Each has `source_stat`, `target`, `coefficient`, and optional `threshold`/`cap`. Consumed by the `apply_modifiers` pipeline step.
 
 Update this file as your roster, builds, or farming targets change.
 
@@ -139,6 +141,7 @@ Per-character base stats that `config.py` merges into the roster (roster entries
 - `base_er`: base Energy Recharge (defaults 1.0).
 - `base_dmg_bonus`: base DMG bonus.
 - `reaction_dmg_bonus`: extra reaction damage bonus (e.g. Mualani's Vaporize).
+- `lunar_base_bonus`: Lunar Reaction Base DMG Bonus (Nod-Krai Lunar Reaction system, e.g. Lunar-Crystallize). Consumed by the `reaction_damage` pipeline step when `reaction: lunar_crystallize`.
 
 These feed `stats_calculator.py` and the optimizer's damage model.
 
@@ -275,7 +278,7 @@ Loads YAML configuration from the project root.
 
 Function:
 
-- `load_configs()`: returns `(roster, rules, roll_values)`. Loads `roster.yaml`, `rules.yaml`, `roll_values.yaml`, and `character_bases.yaml` (merging base stats into the roster), then injects defaults for optional fields (`damage_model` → `"none"`, `primary_stat` → `"ATK"`).
+- `load_configs()`: returns `(roster, rules, roll_values)`. Loads `roster.yaml`, `rules.yaml`, `roll_values.yaml`, and `character_bases.yaml` (merging base stats into the roster), then injects defaults for optional fields (`primary_stat` → `"ATK"`) and builds a backward-compatible `scaling` list from `primary_stat` when a character doesn't declare an explicit weighted `scaling`.
 
 ### `stat_targets.py`
 
@@ -307,13 +310,17 @@ RDI is **not** a real damage number — it's a same-character comparison tool. C
 
 Aggregates a character's base stats (from `character_bases.yaml` via the roster) plus equipped artifact main stats and substats into a `CharacterStats` block (`primary_total`, `crit_rate`, `crit_damage`, `dmg_bonus`, `elemental_mastery`, `energy_recharge`, `reaction_dmg_bonus`, `team_em`).
 
-Function:
+As part of the Strangler Fig migration, `compute_artifact_delta` now accumulates all three primary-stat families (ATK/HP/DEF) simultaneously instead of a single `primary_stat`, and `combine_artifact_deltas` computes `primary_total` from the character's `scaling` list (falling back to `primary_stat`). It also exposes `raw_atk`/`raw_hp`/`raw_def`/`raw_em` values for pipeline steps that need the unweighted stats (e.g. saturation caps).
 
-- `calculate_build_stats(context)`: takes a `BuildContext` (character config, artifacts by slot, team context, roll values, damage model) and returns the computed `CharacterStats`.
+Functions:
+
+- `compute_artifact_delta(artifact, primary_stat=None)`: computes one artifact's contribution to the additive stat pool. The `primary_stat` argument is accepted for backward compatibility but no longer used — all stat families are accumulated.
+- `combine_artifact_deltas(deltas, character_config, team_context=None)`: sums per-artifact deltas into a `CharacterStats` block, computing `primary_total` from the `scaling` list and adding `raw_*` values.
+- `calculate_build_stats(context)`: takes a `BuildContext` (character config, artifacts by slot, team context, roll values) and returns the computed `CharacterStats`.
 
 ### `damage_calculator.py`
 
-Damage-model formulas used by the optimizer and simulation.
+Retains the shared EM/modifier helper functions for backward compatibility. The actual damage scoring now lives in `pipeline.py`'s registered evaluators; this module simply re-exports the helpers so existing imports keep working.
 
 Functions:
 
@@ -321,7 +328,6 @@ Functions:
 - `get_em_bonus_transformative(em)`: transformative-reaction EM bonus.
 - `get_transformative_base_damage(level)`: base damage for transformative reactions (level-90 approximation).
 - `get_modifier_bonus(mod, stats)`: evaluates one kit-specific modifier (e.g. Citlali's EM→flat damage, Nahida's EM→DMG%/CR) against the current stat block.
-- `calculate_damage_score(stats, damage_model, modifiers=None)`: computes a damage score for the given model (`none`, `vaporize`, `melt`, transformative reactions, or `em_max`), applying kit modifiers first.
 
 ### `optimizer.py`
 
@@ -329,24 +335,35 @@ Monte Carlo build optimizer. For each character, it builds per-slot candidate po
 
 Functions:
 
-- `compute_optimal_probabilities(char_config, in_set_pools, off_set_pools, current_artifacts, roll_values, target_set_keys, num_sims=1000, stat_floors=None, damage_model="none", team_context=None)`: returns `{artifact_id: probability}`.
+- `compute_optimal_probabilities(char_config, in_set_pools, off_set_pools, current_artifacts, roll_values, target_set_keys, num_sims=1000, stat_floors=None, team_context=None)`: returns `{artifact_id: probability}`.
 - `compute_marginal_swap_probabilities(...)`: single-slot swap probabilities (holds the other four slots fixed at equipped) — the GO-style metric, for comparison against the joint optimizer.
 - `_project_artifact(artifact, roll_values)`: projects an artifact to +20 by randomly distributing remaining upgrades.
 
 Stat floors (from `stat_targets.yaml`'s `minimums`, e.g. ER/EM floors) are enforced as hard constraints — a build that misses a floor is rejected.
 
-### `simulate.py`
+Build evaluation goes through `pipeline.run_pipeline` using the character's `evaluation_pipeline` config, so custom pipeline steps apply to optimized builds too.
 
-Single-slot swap Monte Carlo simulation.
+### `pipeline.py`
 
-Functions:
+Composable evaluation-pipeline engine — the heart of the Strangler Fig migration. The optimizer no longer calls `damage_calculator` directly; instead it constructs a pipeline of registered evaluator steps and runs them sequentially, carrying an `EvaluationContext` (`stats`, `current_score`, `metadata`) between steps.
 
-- `project_artifact_random(artifact, roll_values)`: projects an artifact to max level with random upgrade distribution.
-- `evaluate_artifact_swap(char_config, current_artifacts, candidate_artifact, slot, roll_values, current_stats, current_damage, num_sims=1000, damage_model="none", team_context=None)`: returns `{win_rate, avg_gain_pct}` for swapping one slot.
+Key pieces:
 
-### `set_bonus.py`
+- `EvaluationContext`: state container passed between steps (`stats` — a `CharacterStats` dict now including `raw_*` keys, `current_score`, `metadata` carrying `modifiers` and `character_config`).
+- `register_evaluator(name)`: decorator that registers a pipeline step evaluator by name.
+- `run_pipeline(pipeline_steps, stats, metadata=None)`: executes each step in order and returns the final `current_score`. Unknown step types raise a `ValueError`.
 
-Set-effect damage modifiers for the damage pipeline. `apply_set_effects(artifacts, stats)` counts set pieces and returns `DamageModifiers` (burst/normal/plunge/skill multipliers) for known sets (Emblem of Severed Fate, Crimson Witch of Flames, Gladiator's Finale).
+Built-in registered steps:
+
+- `standard_damage`: base damage from `primary_total * talent_multiplier` (config default `1.0`).
+- `personal_damage`: applies crit and DMG% multipliers to the current score.
+- `reaction_damage`: applies amplifying (vaporize/melt), transformative, or lunar reaction damage. Config `reaction` selects the formula (e.g. `melt`, `vaporize`, `overloaded`, `lunar_crystallize`). For lunar reactions, an optional `multiplier` config (default `1.6` direct, `0.96` indirect) selects the reaction multiplier, and the lunar EM bonus uses the unique curve `6*EM/(EM+2000)`.
+- `apply_modifiers`: applies kit-specific `modifiers` to `ctx.stats` (dmg_bonus, crit_damage, crit_rate, flat_damage_add) so later steps see them.
+- `spread_reaction`: adds flat damage from EM (config `coefficient`, e.g. `1.0` for Spread, `0.8` for Aggravate).
+- `saturate`: caps a raw stat (config `stat` + `cap`), mutating `ctx.stats` so later steps see the clamped value.
+- `maximize_scaled_value`: computes the weighted sum from the character's `scaling` list using the `raw_*` stats (e.g. for Nilou-style HP buffers or Bennett-style base-ATK buffers).
+- `em_max`: returns Elemental Mastery as the score (e.g. Sucrose, Citlali).
+- `hp_max`: returns `primary_total` as the score (e.g. Sangonomiya Kokomi).
 
 ### `candidate_generation.py`
 
@@ -360,7 +377,7 @@ Functions:
 
 ### `models.py`
 
-TypedDict definitions shared by the damage/optimizer pipeline: `Artifact`, `CharacterStats`, `DamageModifiers`, and `BuildContext`.
+TypedDict definitions shared by the damage/optimizer pipeline: `Artifact`, `CharacterStats`, `DamageModifiers`, and `BuildContext`. Also defines `CharacterConfig` (the enhanced character-config dict) documenting the Strangler Fig fields (`scaling`, `evaluation_pipeline`).
 
 ### `render_html.py`
 

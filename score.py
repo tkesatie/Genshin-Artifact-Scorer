@@ -249,6 +249,22 @@ def main():
 
     stat_targets = load_stat_targets()
     # ---- Extract ER targets for optimizer ----
+    # Map absolute stat names (e.g. "hp" from stat_targets.yaml minimums)
+    # to the keys that actually exist in the CharacterStats dict produced by
+    # stats_calculator.combine_artifact_deltas. Without this, a floor like
+    # `hp: 40000` would be checked against stats.get("hp", 0) which is always
+    # 0, silently rejecting every build (infeasible_rate = 1.0).
+    _FLOOR_KEY_MAP = {
+        "hp": "raw_hp",
+        "atk": "raw_atk",
+        "def": "raw_def",
+        "em": "raw_em",
+        "elemental_mastery": "raw_em",
+        "energy_recharge": "energy_recharge",
+        "crit_rate": "crit_rate",
+        "crit_damage": "crit_damage",
+        "dmg_bonus": "dmg_bonus",
+    }
     stat_floors_by_char = {}
     for char, targets in stat_targets.items():
         # Get the character's config block
@@ -257,8 +273,12 @@ def main():
         else:
             char_targets = targets
 
-        floors = dict(char_targets.get("minimums", {}) or {})
-        
+        floors = {}
+        for k, v in (char_targets.get("minimums", {}) or {}).items():
+            mapped = _FLOOR_KEY_MAP.get(k)
+            if mapped is not None:
+                floors[mapped] = v
+
         # Optional: keep ER in the main block for compatibility, merge it
         er_val = char_targets.get("ER")
         if er_val is not None and er_val > 0:
@@ -438,7 +458,6 @@ def main():
                     pool[slot].append(current)
 
         stat_floors = stat_floors_by_char.get(char_name)   # None means no constraint
-        damage_model = cfg.get("damage_model", "none")
 
         # Team context for build optimality: Active characters use the first
         # team in teams.yaml order that lists them; IT Only characters get no
@@ -458,7 +477,6 @@ def main():
             target_set_keys=target_keys,
             num_sims=num_sims,
             stat_floors=stat_floors,
-            damage_model=damage_model,
             team_context=team_context
         )
         probs = probs_result["probabilities"]

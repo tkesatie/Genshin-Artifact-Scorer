@@ -39,7 +39,7 @@ from thresholds import compute_thresholds
 # New imports for stat/damage calculations
 from models import BuildContext
 from stats_calculator import calculate_build_stats
-from damage_calculator import calculate_damage_score
+from pipeline import run_pipeline
 
 
 def compute_set_status(cfg, artifacts_by_slot):
@@ -117,17 +117,24 @@ def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench
     set_status = compute_set_status(cfg, artifacts_by_slot)
 
     # --- NEW: Compute current stats and damage ---
-    damage_model = cfg.get("damage_model", "none")
     context = BuildContext(
         character_config=cfg,
         artifacts=artifacts_by_slot,   # dict slot->Artifact
         team_context=team_context,
-        roll_values=roll_values,
-        damage_model=damage_model
+        roll_values=roll_values
     )
     current_stats = calculate_build_stats(context)
-    modifiers = cfg.get("modifiers", [])
-    current_damage = calculate_damage_score(current_stats, damage_model, modifiers)
+
+    # Damage via the evaluation pipeline so the dashboard matches what the
+    # optimizer sees. Every roster character now declares an explicit
+    # evaluation_pipeline (Strangler Fig migration complete).
+    pipeline_steps = cfg.get("evaluation_pipeline", [])
+    assert pipeline_steps, f"{char_name}: evaluation_pipeline is empty - every character must declare one post-migration"
+    pipeline_metadata = {
+        "modifiers": cfg.get("modifiers", []),
+        "character_config": cfg,
+    }
+    current_damage = run_pipeline(pipeline_steps, current_stats, pipeline_metadata)
     # ----------------------------------------------
 
     slots_result = {}

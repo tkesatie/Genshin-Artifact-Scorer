@@ -1,6 +1,6 @@
 """
 Tests for the damage formula pipeline: stats_calculator.calculate_build_stats
-and damage_calculator.calculate_damage_score.
+and the evaluation pipeline (pipeline.run_pipeline).
 
 Verifies that the damage formulas receive the correct stats for:
 Skirk, Escoffier, Mavuika, Mualani, Zibai, Citlali, Furina, Mona, Sucrose,
@@ -19,10 +19,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import load_configs
 from stats_calculator import calculate_build_stats
-from damage_calculator import (
-    calculate_damage_score,
+from pipeline import (
+    run_pipeline,
     get_em_bonus_amplifying,
     get_em_bonus_transformative,
+    get_em_bonus_lunar,
     get_modifier_bonus,
     get_transformative_base_damage,
 )
@@ -58,8 +59,22 @@ def build_context(char_config, artifacts=None, team_context=None, roll_values=No
         "artifacts": artifacts or {},
         "team_context": team_context or {},
         "roll_values": roll_values or {},
-        "damage_model": char_config.get("damage_model", "none"),
     }
+
+
+def run_char_pipeline(cfg, stats):
+    """Run the character's evaluation_pipeline against a stats block.
+
+    Mirrors character_scoring.score_character: builds the metadata dict the
+    pipeline steps expect (modifiers, character_config) and runs the
+    configured pipeline.
+    """
+    pipeline_steps = cfg.get("evaluation_pipeline", [])
+    metadata = {
+        "modifiers": cfg.get("modifiers", []),
+        "character_config": cfg,
+    }
+    return run_pipeline(pipeline_steps, stats, metadata)
 
 
 def make_artifact(slot, main_key, main_val, substats=None, rarity=5):
@@ -148,23 +163,28 @@ def test_base_stats_no_artifacts(char_name, roster, roll_values):
 
 @pytest.mark.parametrize("char_name", TEST_CHARACTERS)
 def test_damage_score_no_artifacts(char_name, roster, roll_values):
-    """With no artifacts, calculate_damage_score should produce the correct
+    """With no artifacts, the evaluation pipeline should produce the correct
     value for the character's damage model."""
     cfg = roster[char_name]
     stats = calculate_build_stats(build_context(cfg, roll_values=roll_values))
-    damage_model = cfg.get("damage_model", "none")
     modifiers = cfg.get("modifiers")
 
-    damage = calculate_damage_score(stats, damage_model, modifiers)
+    # Snapshot the pre-pipeline stats: apply_modifiers mutates ctx.stats in
+    # place (so later steps see the modifiers), which would otherwise corrupt
+    # the expected-value computation below.
+    orig_stats = dict(stats)
 
-    # Recompute expected damage manually
-    cr = min(stats["crit_rate"], 1.0)
-    cd = stats["crit_damage"]
-    dmg = stats["dmg_bonus"]
-    em = stats["elemental_mastery"] + stats.get("team_em", 0.0)
-    base = stats["primary_total"]
+    damage = run_char_pipeline(cfg, stats)
 
-    # Apply modifiers (same logic as calculate_damage_score)
+    # Recompute expected damage manually from the ORIGINAL (unmutated) stats,
+    # following the same step semantics as the character's evaluation_pipeline.
+    cr = min(orig_stats["crit_rate"], 1.0)
+    cd = orig_stats["crit_damage"]
+    dmg = orig_stats["dmg_bonus"]
+    em = orig_stats["elemental_mastery"] + orig_stats.get("team_em", 0.0)
+    base = orig_stats["primary_total"]
+
+    # Apply modifiers (same logic as the pipeline's apply_modifiers step)
     for mod in (modifiers or []):
         bonus = get_modifier_bonus(mod, stats)
         target = mod.get("target")
@@ -177,23 +197,39 @@ def test_damage_score_no_artifacts(char_name, roster, roll_values):
         elif target == "flat_damage_add":
             base += bonus
 
-    if damage_model in ("vaporize", "melt"):
-        em_bonus = get_em_bonus_amplifying(em)
-        reaction_dmg_bonus = stats.get("reaction_dmg_bonus", 0.0)
-        expected = base * (1 + cr * cd) * (1 + dmg) * (1 + em_bonus + reaction_dmg_bonus)
-    elif damage_model in ("overloaded", "electro_charged", "superconduct", "swirl", "shatter"):
-        level = stats.get("character_level", 90)
-        base_transformative = get_transformative_base_damage(level)
-        em_bonus = get_em_bonus_transformative(em)
-        expected = base_transformative * (1 + em_bonus)
-    elif damage_model == "em_max":
-        # Expected: em_max returns em, but flat_damage_add modifiers should
-        # still be applied to base. NOTE: if the test fails here, the em_max
-        # branch in damage_calculator.py is ignoring the flat_damage_add
-        # modifier (it returns em directly without using base).
+    # Determine expected value from the pipeline step types
+    step_types = [s.get("type") for s in cfg.get("evaluation_pipeline", [])]
+    if "em_max" in step_types:
+        # em_max returns EM directly (flat_damage_add modifiers are NOT applied)
         expected = em
+    elif "hp_max" in step_types:
+        # hp_max returns primary_total
+        expected = base
     else:
+        # standard_damage + personal_damage (+ optional reaction_damage)
         expected = base * (1 + cr * cd) * (1 + dmg)
+        if "reaction_damage" in step_types:
+            reaction_cfg = next(
+                (s.get("config", {}) for s in cfg.get("evaluation_pipeline", [])
+                 if s.get("type") == "reaction_damage"),
+                {}
+            )
+            reaction = reaction_cfg.get("reaction", "none")
+            if reaction in ("vaporize", "melt"):
+                em_bonus = get_em_bonus_amplifying(em)
+                reaction_dmg_bonus = orig_stats.get("reaction_dmg_bonus", 0.0)
+                expected = expected * (1 + em_bonus + reaction_dmg_bonus)
+            elif reaction in ("overloaded", "electro_charged", "superconduct", "swirl", "shatter"):
+                level = orig_stats.get("character_level", 90)
+                base_transformative = get_transformative_base_damage(level)
+                em_bonus = get_em_bonus_transformative(em)
+                expected = base_transformative * (1 + em_bonus)
+            elif reaction == "lunar_crystallize":
+                em_bonus = get_em_bonus_lunar(em)
+                reaction_dmg_bonus = orig_stats.get("reaction_dmg_bonus", 0.0)
+                lunar_base_bonus = orig_stats.get("lunar_base_bonus", 0.0)
+                multiplier = reaction_cfg.get("multiplier", 1.6)
+                expected = expected * (1 + lunar_base_bonus) * multiplier * (1 + em_bonus + reaction_dmg_bonus)
 
     assert damage == pytest.approx(expected, rel=1e-6), (
         f"{char_name}: damage expected {expected}, got {damage}"
@@ -393,15 +429,23 @@ def test_em_bonus_transformative():
     assert get_em_bonus_transformative(200) == pytest.approx((16 * 200) / (200 + 2000), rel=1e-6)
 
 
+def test_em_bonus_lunar():
+    """Verify the lunar reaction EM bonus formula (6*EM/(EM+2000))."""
+    assert get_em_bonus_lunar(0) == 0.0
+    assert get_em_bonus_lunar(100) == pytest.approx((6 * 100) / (100 + 2000), rel=1e-6)
+    assert get_em_bonus_lunar(200) == pytest.approx((6 * 200) / (200 + 2000), rel=1e-6)
+
+
 # =============================================================================
 # F. Damage model specific checks
 # =============================================================================
 
 def test_mavuika_melt_damage(roster, roll_values):
-    """Mavuika uses melt damage model - verify EM bonus is applied."""
+    """Mavuika uses melt damage model - verify EM bonus is applied via the
+    reaction_damage pipeline step."""
     cfg = roster["Mavuika"]
     stats = calculate_build_stats(build_context(cfg, roll_values=roll_values))
-    damage = calculate_damage_score(stats, "melt")
+    damage = run_char_pipeline(cfg, stats)
 
     base = stats["primary_total"]
     cr = min(stats["crit_rate"], 1.0)
@@ -415,10 +459,11 @@ def test_mavuika_melt_damage(roster, roll_values):
 
 
 def test_mualani_vaporize_damage(roster, roll_values):
-    """Mualani uses vaporize damage model - verify EM bonus + reaction_dmg_bonus."""
+    """Mualani uses vaporize damage model - verify EM bonus + reaction_dmg_bonus
+    via the reaction_damage pipeline step."""
     cfg = roster["Mualani"]
     stats = calculate_build_stats(build_context(cfg, roll_values=roll_values))
-    damage = calculate_damage_score(stats, "vaporize")
+    damage = run_char_pipeline(cfg, stats)
 
     base = stats["primary_total"]
     cr = min(stats["crit_rate"], 1.0)
@@ -432,29 +477,50 @@ def test_mualani_vaporize_damage(roster, roll_values):
     assert damage == pytest.approx(expected, rel=1e-6)
 
 
+def test_zibai_lunar_crystallize_damage(roster, roll_values):
+    """Zibai uses lunar_crystallize damage model - verify the lunar EM bonus
+    (6*EM/(EM+2000)) and the indirect reaction multiplier (0.96) are applied
+    via the reaction_damage pipeline step."""
+    cfg = roster["Zibai"]
+    stats = calculate_build_stats(build_context(cfg, roll_values=roll_values))
+    damage = run_char_pipeline(cfg, stats)
+
+    base = stats["primary_total"]
+    cr = min(stats["crit_rate"], 1.0)
+    cd = stats["crit_damage"]
+    dmg = stats["dmg_bonus"]
+    em = stats["elemental_mastery"]
+    em_bonus = get_em_bonus_lunar(em)
+    reaction_dmg_bonus = stats["reaction_dmg_bonus"]
+    lunar_base_bonus = stats.get("lunar_base_bonus", 0.0)
+    multiplier = 0.96  # indirect lunar crystallize
+
+    expected = base * (1 + cr * cd) * (1 + dmg) * (1 + lunar_base_bonus) * multiplier * (1 + em_bonus + reaction_dmg_bonus)
+    assert damage == pytest.approx(expected, rel=1e-6)
+
+
 def test_citlali_em_max_damage(roster, roll_values):
-    """Citlali uses em_max damage model - verify flat_damage_add modifier is
-    applied. NOTE: if this fails, the em_max branch in damage_calculator.py
-    is ignoring the flat_damage_add modifier."""
+    """Citlali uses em_max damage model - verify the em_max pipeline step
+    returns EM directly. NOTE: if this fails, the em_max step is ignoring
+    the flat_damage_add modifier."""
     cfg = roster["Citlali"]
     stats = calculate_build_stats(build_context(cfg, roll_values=roll_values))
-    damage = calculate_damage_score(stats, "em_max", cfg.get("modifiers"))
+    damage = run_char_pipeline(cfg, stats)
 
     # Expected: em_max returns em, but flat_damage_add modifier should still
-    # be applied to base. The em_max branch currently returns em directly,
+    # be applied to base. The em_max step currently returns em directly,
     # ignoring base - so this test documents the expected behavior.
     em = stats["elemental_mastery"]
-    base = stats["primary_total"]
-    flat_bonus = get_modifier_bonus(cfg["modifiers"][0], stats)
     expected = em  # em_max returns em; flat_damage_add is NOT applied in em_max branch
 
     assert damage == pytest.approx(expected, rel=1e-6)
 
 
 def test_sucrose_em_max_damage(roster, roll_values):
-    """Sucrose uses em_max damage model - returns EM directly."""
+    """Sucrose uses em_max damage model - returns EM directly via the em_max
+    pipeline step."""
     cfg = roster["Sucrose"]
     stats = calculate_build_stats(build_context(cfg, roll_values=roll_values))
-    damage = calculate_damage_score(stats, "em_max")
+    damage = run_char_pipeline(cfg, stats)
 
     assert damage == pytest.approx(stats["elemental_mastery"], rel=1e-6)

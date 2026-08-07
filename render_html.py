@@ -129,6 +129,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
     prob_lookup = prob_lookup or {}
     optimizer_candidates_by_char = optimizer_candidates_by_char or {}
     infeasible_rate_by_char = infeasible_rate_by_char or {}
+    from artifact_utils import STAT_LABEL
     SLOT_ORDER = ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
 
     slots_with_real_option = {(b["character"], b["slot"]) for b in recommendations}
@@ -279,7 +280,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
     for f in flex_results:
         gain = round(f["expected_rolls"] - f["equipped_rolls"], 2)
         opt_prob = prob_lookup.get((f["character"], f["slot"], f.get("artifact_id")), 0.0)
-        opt_prob_display = f"{opt_prob}%" if opt_prob > 0 else "—"
+        opt_prob_display = f"{opt_prob * 100:.1f}%" if opt_prob > 0 else "—"
         flex_rows.append(f"""
         <tr>
           <td>{f['character']}</td>
@@ -299,7 +300,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
     )
     for i in inventory_sorted:
         art = i["artifact"]
-        main_label = art.get("mainStatKey", "?")
+        main_label = STAT_LABEL.get(art.get("mainStatKey"), art.get("mainStatKey", "?"))
         fits = i.get("fits", [])
 
         if fits:
@@ -501,7 +502,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
             for f in [fx for fx in flex_results if fx["character"] == name]:
                 gain = round(f["expected_rolls"] - f["equipped_rolls"], 2)
                 prob = prob_lookup.get((name, f['slot'], f.get('artifact_id')), 0.0) if prob_lookup else 0.0
-                prob_line = f"Build Optimality: {prob}%" if prob > 0 else ""
+                prob_line = f"Build Optimality: {prob * 100:.1f}%" if prob > 0 else ""
                 options_by_slot.setdefault(f["slot"], []).append({
                     "verdict": "Flex Candidate",
                     "gain": gain,
@@ -519,7 +520,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
             for c in [co for co in ceiling_only_results if co["character"] == name]:
                 gain = c["max_rolls"] - c["equipped_rolls"]
                 prob = prob_lookup.get((name, c['slot'], c.get('artifact_id')), 0.0) if prob_lookup else 0.0
-                prob_line = f"Build Optimality: {prob}%" if prob > 0 else ""
+                prob_line = f"Build Optimality: {prob * 100:.1f}%" if prob > 0 else ""
                 options_by_slot.setdefault(c["slot"], []).append({
                     "verdict": "High Risk",
                     "gain": gain,
