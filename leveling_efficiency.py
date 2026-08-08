@@ -75,6 +75,42 @@ def tier_upgrade_ok(equipped_tier: Optional[str], reachable_tier: Optional[str])
     return reachable_tier in ("Good", "Excellent")
 
 
+def any_tier_upgrade_available(
+    optimizer_candidates_by_char: Dict[str, Dict[str, List[Dict[str, Any]]]],
+    bench_results: List[Dict[str, Any]],
+    skip_chars: set,
+    char_slot_tier_lookup: Dict[Any, str],
+) -> bool:
+    """
+    Existence check across the WHOLE roster (both planners, every
+    character), independent of budget/Mora - used to decide whether
+    sidegrades are eligible for selection at all this run. If even one
+    tier-upgrading candidate exists anywhere, no sidegrade should be a
+    selectable candidate for anyone; sidegrades only become eligible once
+    nothing better exists roster-wide.
+    """
+    skip_chars = skip_chars or set()
+
+    for char_name, slots in optimizer_candidates_by_char.items():
+        if char_name in skip_chars:
+            continue
+        for candidates in slots.values():
+            if any(c.get("tier_upgrade_ok") for c in candidates):
+                return True
+
+    for b in bench_results:
+        if b.get("character") in skip_chars:
+            continue
+        if b.get("verdict") == "Dead end":
+            continue
+        equipped_tier = char_slot_tier_lookup.get((b.get("character"), b.get("slot")))
+        reachable = reachable_tier_for(b.get("max_rolls"), b.get("good"), b.get("excellent"))
+        if tier_upgrade_ok(equipped_tier, reachable):
+            return True
+
+    return False
+
+
 # ---- Binomial tail (exact, fast for n <= 4) ----
 
 def _binom_tail(n: int, p: float, k: int) -> float:
@@ -221,6 +257,8 @@ def build_leveling_plan(
     roll_values: Dict[str, Any] = None,  # kept for API compatibility, not used
     skip_chars: set = None,              # characters excluded by the coverage gate
     char_slot_tier_lookup: Dict[Any, str] = None,  # (character, slot) -> equipped tier status
+    max_pieces: int = None,              # hard cap on number of pieces selected (None = no cap)
+    exclude_non_upgraders: bool = False, # hard-exclude sidegrades (only relevant if a real upgrade exists elsewhere)
 ) -> Dict[str, Any]:
     """
     Generate a leveling plan from bench results.
@@ -319,6 +357,13 @@ def build_leveling_plan(
             else tier_upgrade_ok(equipped_tier, reachable_tier)
         )
 
+        # Hard exclude: a real tier-upgrading candidate exists somewhere on
+        # the roster this run, so this sidegrade never becomes a selectable
+        # candidate at all - not deprioritized, not considered regardless of
+        # leftover budget. Only skipped when the gate is off.
+        if exclude_non_upgraders and not candidate_tier_upgrade_ok:
+            continue
+
         candidates.append({
             "character": b.get("character"),
             "slot": b.get("slot"),
@@ -333,6 +378,10 @@ def build_leveling_plan(
             "efficiency_exp": efficiency_exp,
             "reachable_tier": reachable_tier,
             "tier_upgrade_ok": candidate_tier_upgrade_ok,
+            # Legacy candidates are each their own atomic decision (no
+            # contested-slot grouping like the optimizer path), so the
+            # group-level flag is just the candidate's own value.
+            "group_tier_upgrade_ok": candidate_tier_upgrade_ok,
             # Unified-schema fields so this can sit next to optimizer-driven
             # actions in the combined plan (see build_combined_leveling_plan).
             # These characters had no optimizer data to give a real build
@@ -379,6 +428,9 @@ def build_leveling_plan(
     selected_lifetime_finish_sum_exp = 0
 
     for c in candidates:
+        if max_pieces is not None and len(selected) >= max_pieces:
+            break
+
         char = c["character"]
         per_char_count[char] = per_char_count.get(char, 0)
         if per_char_count[char] >= max_per_character:
@@ -456,11 +508,20 @@ def _select_contenders(
 ) -> List[Dict[str, Any]]:
     if not candidates:
         return []
-    # Only the absolute probability floor matters now.
-    # The contest/resolve logic handles the margin when deciding Commit vs Scout.
+    # rules.yaml is explicit: a candidate below min_relevant_probability is
+    # "dead weight, not worth planning for" - ignored entirely, no
+    # exceptions. Previously, if NOTHING cleared that floor, the top
+    # candidate got force-included anyway regardless of how low its real
+    # probability was - directly contradicting that rule. That was rare on
+    # its own (a slot's full bench pool usually has SOMETHING above 8%),
+    # but combined with the tier-upgrade hard-exclude in
+    # build_leveling_plan_from_optimizer (which can strip out the strongest
+    # candidates for a slot before this function ever sees them, without
+    # redistributing their probability mass to what's left), it became
+    # common: a slot's entire surviving candidate list would fall below the
+    # floor and still get funded. If nothing clears the bar, the slot
+    # simply gets no action this run - not a forced worst-case pick.
     relevant = [c for c in candidates if c.get("probability", 0.0) >= min_relevant_prob]
-    if not relevant:
-        relevant = candidates[:1]
     return relevant[:max_contenders]
 
 
@@ -471,15 +532,24 @@ def _slot_is_resolved(
 ) -> bool:
     """
     A slot is RESOLVED (safe to commit the top candidate to max level) when
-    either only one candidate is in contention, or the top candidate's
-    probability both clears an absolute confidence bar and leads the
-    runner-up by enough margin. Otherwise it's CONTESTED: multiple pieces
-    are still statistically live for the slot and none of them should get a
-    big investment yet.
+    the top candidate's probability clears an absolute confidence bar - and,
+    if there's a runner-up, leads it by enough margin too. Otherwise it's
+    CONTESTED: nothing here is confident enough to commit yet.
+
+    A single surviving contender is NOT automatically resolved. "Only one
+    candidate left" can mean two very different things: genuinely the only
+    real option on the bench (confidently committable), or just the only
+    one left after some other filter (e.g. the roster-wide tier-upgrade
+    hard-exclude) stripped out a stronger candidate that couldn't clear a
+    different bar. Those aren't the same thing, so being alone no longer
+    substitutes for being good - it still has to clear resolved_prob_threshold
+    on its own probability.
     """
-    if len(contenders) <= 1:
-        return True
+    if not contenders:
+        return False
     top_prob = contenders[0].get("probability", 0.0)
+    if len(contenders) == 1:
+        return top_prob >= resolved_prob_threshold
     second_prob = contenders[1].get("probability", 0.0)
     return top_prob >= resolved_prob_threshold and (top_prob - second_prob) >= contested_margin
 
@@ -581,6 +651,8 @@ def build_leveling_plan_from_optimizer(
     budget_config: Dict[str, Any],
     leveling_config: Dict[str, Any],
     skip_chars: set = None,              # characters excluded by the coverage gate
+    max_pieces: int = None,              # hard cap on number of pieces selected (None = no cap)
+    exclude_non_upgraders: bool = False, # hard-exclude sidegrades (only relevant if a real upgrade exists elsewhere)
 ) -> Dict[str, Any]:
     """
     Build a leveling plan from the global optimizer's build-optimality
@@ -612,6 +684,17 @@ def build_leveling_plan_from_optimizer(
         if skip_chars and char_name in skip_chars:
             continue
         for slot, candidates in slots.items():
+            if exclude_non_upgraders:
+                # A real tier-upgrading candidate exists somewhere on the
+                # roster this run, so sidegrades never even reach contender
+                # selection for this slot - not deprioritized, hard dropped.
+                # (This can include dropping the currently-equipped piece
+                # from contention if leveling it further can't raise its
+                # own tier - correct, since there's nothing to gain there
+                # while a real upgrade sits unfunded elsewhere.)
+                candidates = [c for c in candidates if c.get("tier_upgrade_ok")]
+                if not candidates:
+                    continue
             raw_actions.extend(plan_slot_actions(char_name, slot, candidates, leveling_config))
 
     if not raw_actions:
@@ -693,14 +776,13 @@ def build_leveling_plan_from_optimizer(
             "naive_finish_exp": naive_finish_exp,
         })
 
-    # Character urgency leads the sort - a low-cost Scout group for an
-    # urgent character can and should outrank a Commit for a character who's
-    # already Finished/Luxury. Tier-upgrading groups (can raise the slot's
-    # tier over what's equipped) come next, before priority (which folds in
-    # probability, urgency, and cost) breaks any remaining ties. Non-
-    # upgrading groups aren't blocked - they're only funded once every
-    # upgrading group has already had first claim on the budget.
-    group_list.sort(key=lambda g: (-g["character_score"], -g["tier_upgrade_ok"], -g["best_priority"]))
+    # Tier-upgrading groups (can raise the slot's tier over what's equipped)
+    # get first claim on the budget globally, across the whole roster -
+    # ahead of character urgency. Only once every tier-upgrading group has
+    # been considered does character urgency start deciding among the
+    # non-upgraders. Priority (which folds in probability, urgency, and
+    # cost) breaks any remaining ties within each tier.
+    group_list.sort(key=lambda g: (-g["tier_upgrade_ok"], -g["character_score"], -g["best_priority"]))
 
     selected = []
     remaining_immediate_mora = max_reveal_fraction * remaining_lifetime_mora
@@ -725,6 +807,12 @@ def build_leveling_plan_from_optimizer(
         char_slots = per_char_slots.setdefault(char, set())
         if g["slot"] not in char_slots and len(char_slots) >= max_per_character:
             continue
+        # Piece cap: a group is one atomic decision (e.g. every live
+        # contender in a contested slot gets scouted together), so a group
+        # that would push the total over the cap is skipped whole rather
+        # than partially split.
+        if max_pieces is not None and len(selected) + len(g["actions"]) > max_pieces:
+            continue
         if g["immediate_mora"] > remaining_immediate_mora:
             continue
         if g["immediate_exp"] > remaining_immediate_exp:
@@ -735,6 +823,14 @@ def build_leveling_plan_from_optimizer(
         if total_committed_exp + g["immediate_exp"] + g["reserved_finish_exp"] > remaining_lifetime_exp:
             continue
 
+        # Tag each action with the GROUP's tier-upgrade status (not its own
+        # individual one) so the combined plan's final sort keeps this
+        # atomic scouting/commit decision contiguous instead of splitting a
+        # contested slot's contenders apart by their individual reachability.
+        # The action's own "tier_upgrade_ok" is left untouched for display
+        # (e.g. per-row "does this specific candidate upgrade?" labeling).
+        for a in g["actions"]:
+            a["group_tier_upgrade_ok"] = g["tier_upgrade_ok"]
         selected.extend(g["actions"])
         remaining_immediate_mora -= g["immediate_mora"]
         remaining_immediate_exp -= g["immediate_exp"]
@@ -743,6 +839,16 @@ def build_leveling_plan_from_optimizer(
         committed_finish_mora += g["reserved_finish_mora"]
         committed_finish_exp += g["reserved_finish_exp"]
         char_slots.add(g["slot"])
+
+    # Absolute final guarantee, independent of every upstream code path:
+    # nothing below min_relevant_probability leaves this function. Every
+    # other gate (contender selection, tier-upgrade hard-exclude, group
+    # atomicity) should already prevent this, but this check doesn't trust
+    # that chain to stay correct forever - a below-floor "optimal 0% of the
+    # time" candidate is never fundable, full stop, no matter how it ended
+    # up in `selected`.
+    min_relevant_prob = leveling_config.get("min_relevant_probability", 0.08)
+    selected = [a for a in selected if a.get("probability", 0.0) >= min_relevant_prob]
 
     total_immediate_mora = sum(a["immediate_cost"]["mora"] for a in selected)
     total_immediate_exp = sum(a["immediate_cost"]["exp"] for a in selected)
@@ -841,19 +947,35 @@ def build_combined_leveling_plan(
     eligible on-set pieces) are likewise skipped.
     """
     min_distinct_slots = leveling_config.get("min_distinct_on_set_slots", 4)
+    char_slot_tier_lookup = char_slot_tier_lookup or {}
 
-    # On-set slot coverage per character: bench results are already restricted
-    # to that character's target set by find_bench_potential, and non-"Dead
-    # end" verdicts mean the piece can reach at least Good. Distinct slots so
-    # 3 feathers + 1 goblet only counts as 2 slots, not 4 pieces.
+    # On-set slot coverage per character: a slot counts as "covered" only if
+    # something REAL clears the Good bar there - not merely a piece whose
+    # ceiling (every remaining roll landing useful) could theoretically get
+    # there. Farming enough for a set means having pieces actually likely to
+    # be good, not pieces that might get lucky. Two ways a slot counts:
+    #   1. A bench candidate's expected_rolls (not max_rolls/ceiling) already
+    #      meets or beats that slot's `good` threshold.
+    #   2. The piece currently EQUIPPED in that slot already has a Good or
+    #      Excellent status (character_scoring already found real rolls
+    #      there - already-leveled pieces should count towards coverage,
+    #      not just bench candidates still on the shelf).
+    # Distinct slots, not raw piece count, so 3 feathers + 1 goblet only
+    # counts as 2 slots, not 4 pieces.
     covered_slots_by_char = {}
     for b in bench_results:
-        if b.get("verdict") == "Dead end":
+        expected_rolls = b.get("expected_rolls")
+        good = b.get("good")
+        if expected_rolls is None or good is None or expected_rolls < good:
             continue
         char = b.get("character")
         if char is None:
             continue
         covered_slots_by_char.setdefault(char, set()).add(b.get("slot"))
+
+    for (char, slot), status in char_slot_tier_lookup.items():
+        if status in ("Good", "Excellent"):
+            covered_slots_by_char.setdefault(char, set()).add(slot)
 
     # Characters with no optimizer data OR no bench candidates never appear in
     # either map; they produce no actions anyway. What we need to actively
@@ -872,32 +994,67 @@ def build_combined_leveling_plan(
     }
     skipped_count = len(skip_chars)
 
+    # Global hard cap on the total number of pieces (artifacts) leveled in
+    # one run, across both planners combined. The optimizer path is the
+    # primary/preferred planner (see module docstring), so it gets first
+    # claim on the cap; the legacy fallback only fills whatever's left.
+    max_pieces = leveling_config.get("max_pieces_per_run", 10)
+
+    # Hard sidegrade exclusion: computed once, ONCE, across the whole
+    # roster (both planners, every eligible character) before either
+    # planner runs any budget selection. If a real tier-upgrading candidate
+    # exists ANYWHERE, no sidegrade is a selectable candidate for ANYONE
+    # this run - this is a pure existence check, independent of Mora/EXP
+    # budget, per rules.yaml's leveling.require_tier_upgrade. Sidegrades
+    # only become eligible again once nothing better exists roster-wide.
+    require_tier_upgrade = leveling_config.get("require_tier_upgrade", True)
+    exclude_non_upgraders = require_tier_upgrade and any_tier_upgrade_available(
+        optimizer_candidates_by_char, bench_results, skip_chars, char_slot_tier_lookup or {},
+    )
+
     optimizer_plan = build_leveling_plan_from_optimizer(
         optimizer_candidates_by_char, char_score_lookup, budget_config, leveling_config,
         skip_chars=skip_chars,
+        max_pieces=max_pieces,
+        exclude_non_upgraders=exclude_non_upgraders,
     )
+
+    remaining_pieces = None
+    if max_pieces is not None:
+        remaining_pieces = max(0, max_pieces - len(optimizer_plan["actions"]))
 
     legacy_bench_results = [
         b for b in bench_results
         if b.get("character") not in optimizer_chars
         and b.get("character") not in skip_chars
     ]
-    if legacy_bench_results:
+    if legacy_bench_results and (remaining_pieces is None or remaining_pieces > 0):
         legacy_plan = build_leveling_plan(legacy_bench_results, budget_config, leveling_config,
                                           skip_chars=skip_chars,
-                                          char_slot_tier_lookup=char_slot_tier_lookup)
+                                          char_slot_tier_lookup=char_slot_tier_lookup,
+                                          max_pieces=remaining_pieces,
+                                          exclude_non_upgraders=exclude_non_upgraders)
         for a in legacy_plan["actions"]:
             a["character_score"] = char_score_lookup.get(a["character"], 0)
     else:
         legacy_plan = {"actions": [], "summary": {}}
 
     combined_actions = optimizer_plan["actions"] + legacy_plan["actions"]
-    # Character urgency leads, then tier-upgrading actions (can raise their
-    # slot's tier over what's equipped) before non-upgraders, which are only
-    # funded once every upgrading action across the whole roster already has
-    # a claim on the budget.
+    # Global priority: every tier-upgrading GROUP (a contested slot's whole
+    # set of scouted contenders, or a single commit/legacy action) across
+    # the whole roster outranks every non-upgrading group, regardless of
+    # character urgency. Sorting on group_tier_upgrade_ok - not each row's
+    # own individual tier_upgrade_ok - keeps a contested slot's contenders
+    # contiguous in the displayed list, matching how they were actually
+    # funded as one atomic decision, instead of splitting the group apart
+    # because one contender happens to reach a lower tier than another.
+    # Character urgency and character name only break ties within a tier.
     combined_actions.sort(
-        key=lambda a: (-a.get("character_score", 0), -a.get("tier_upgrade_ok", True), a.get("character", ""))
+        key=lambda a: (
+            -a.get("group_tier_upgrade_ok", a.get("tier_upgrade_ok", True)),
+            -a.get("character_score", 0),
+            a.get("character", ""),
+        )
     )
 
     opt_summary = optimizer_plan["summary"]
@@ -940,6 +1097,9 @@ def build_combined_leveling_plan(
             f"raise their slot's tier over what's currently equipped.)"
         )
 
+    if max_pieces is not None and len(combined_actions) >= max_pieces:
+        rec_text += f" Capped at {max_pieces} piece(s) for this run."
+
     summary = {
         "total_immediate_mora": total_immediate_mora,
         "total_immediate_exp": total_immediate_exp,
@@ -953,6 +1113,8 @@ def build_combined_leveling_plan(
         "commit_count": opt_summary.get("commit_count", 0),
         "legacy_count": len(legacy_plan["actions"]),
         "deferred_tier_count": deferred_tier_count,
+        "piece_count": len(combined_actions),
+        "max_pieces_per_run": max_pieces,
     }
 
     return {

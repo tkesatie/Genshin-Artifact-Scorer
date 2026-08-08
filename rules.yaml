@@ -109,7 +109,7 @@ leveling:
   # --- Optimizer-driven planner (primary path - see leveling_efficiency.py) ---
   # A candidate below this probability of being the final optimal piece for
   # its slot is ignored entirely (dead weight, not worth planning for).
-  min_relevant_probability: 0.08
+  min_relevant_probability: 0.25
   # Cap on how many candidates in one slot get planned for at once, even if
   # more clear this bar. Keeps a heavily-contested slot (5+ similar rolls)
   # from generating a scouting action for every single one of them.
@@ -118,7 +118,7 @@ leveling:
   # its top candidate's probability clears this bar *and* leads the runner-up
   # by at least contested_margin. Otherwise it's CONTESTED and every viable
   # contender only gets a scout_step_levels nudge.
-  resolved_probability: 0.60
+  resolved_probability: 0.75
   contested_margin: 0.15
   # Level increment for a "Scout" action on a contested slot - one checkpoint
   # (reveals the next roll/hidden substat) rather than committing further.
@@ -134,3 +134,10 @@ leveling:
 
   # --- Shared budget-selection knobs (both planners) ---
   max_reveal_fraction: 0.40
+  # Hard cap on the total number of pieces (artifacts) leveled in one run,
+  # across both planners combined. The optimizer-driven planner (primary
+  # path) gets first claim on this budget; the legacy fallback planner only
+  # fills whatever's left. Doesn't affect selection priority (tier-upgrade
+  # rule + character urgency still decide WHICH pieces make the cut) - it
+  # only limits HOW MANY get selected at once.
+  max_pieces_per_run: 10
