@@ -285,3 +285,70 @@ def parse_good_export(good_json, roster):
             continue
         by_char[loc][slot] = art
     return by_char
+
+# ===================================================================
+# Leveling cost helpers (Batch 1)
+# ===================================================================
+
+# Incremental costs per +4 bracket for 5-star artifacts.
+# Format: (target_level, mora_increment, exp_increment)
+# These are the known in-game values for a 5-star artifact.
+FIVE_STAR_BRACKET_COSTS = [
+    (4, 16300, 16300),
+    (8, 28425, 28425),
+    (12, 42425, 42425),
+    (16, 66375, 66375),
+    (20, 116950, 116950),
+]
+
+# 4-star costs are approximately 80% of 5-star costs.
+# This is a close estimate based on known data.
+FOUR_STAR_SCALE = 0.8
+
+
+def get_leveling_cost(rarity: int, current_level: int, target_level: int) -> dict:
+    """
+    Compute the Mora and Artifact EXP required to level an artifact from
+    current_level to target_level.
+
+    Args:
+        rarity (int): Artifact rarity (typically 4 or 5).
+        current_level (int): Current level (must be a multiple of 4, e.g., 0, 4, 8...).
+        target_level (int): Desired level (must be a multiple of 4, <=20 for 5-star).
+
+    Returns:
+        dict: {"mora": int, "exp": int} – the cumulative cost from current to target.
+
+    Raises:
+        ValueError: If rarity is not 4 or 5, or if levels are not multiples of 4,
+                    or if current_level > target_level.
+    """
+    if rarity not in (4, 5):
+        raise ValueError(f"Unsupported rarity: {rarity}. Only 4 and 5 are supported.")
+    if current_level % 4 != 0:
+        raise ValueError(f"current_level {current_level} is not a multiple of 4.")
+    if target_level % 4 != 0:
+        raise ValueError(f"target_level {target_level} is not a multiple of 4.")
+    if current_level > target_level:
+        raise ValueError(f"current_level ({current_level}) > target_level ({target_level}).")
+    if target_level > 20:
+        raise ValueError(f"target_level {target_level} exceeds max level 20.")
+
+    # Use 5-star bracket list for both; scale for 4-star.
+    bracket_costs = FIVE_STAR_BRACKET_COSTS
+    scale = 1.0 if rarity == 5 else FOUR_STAR_SCALE
+
+    total_mora = 0
+    total_exp = 0
+
+    # Iterate through brackets from the one that contains current_level
+    # up to the one that ends at target_level.
+    for target, mora, exp in bracket_costs:
+        if target <= current_level:
+            continue
+        if target > target_level:
+            break
+        total_mora += int(round(mora * scale))
+        total_exp += int(round(exp * scale))
+
+    return {"mora": total_mora, "exp": total_exp}

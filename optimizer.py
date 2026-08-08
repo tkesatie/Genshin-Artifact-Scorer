@@ -27,35 +27,60 @@ def _random_roll_value(substat_key: str, rarity: int, roll_values: Dict) -> floa
     return random.choice(choices)
 
 
-def _project_artifact(artifact: Dict[str, Any], roll_values: Dict) -> Dict[str, Any]:
-    """
-    Project the given artifact to +20 by randomly distributing remaining upgrades.
-    Returns a new artifact dict with updated level, substats, and cleared unactivated.
+def _random_roll_value(substat_key: str, rarity: int, roll_values: Dict) -> float:
+    """Pick a random roll value for a given substat key and rarity."""
+    table = roll_values["five_star"] if rarity >= 5 else roll_values["four_star"]
+    choices = table.get(substat_key, [0.0])
+    return random.choice(choices)
 
-    Only substats/level/unactivatedSubstats actually change here, so we shallow-copy
-    the artifact dict and make fresh copies of just the substat dicts we mutate,
-    instead of deepcopy()'ing the whole artifact (id, setKey, slotKey, mainStatKey,
-    etc. are all immutable and safe to share by reference).
+
+def _project_artifact_to_level(
+    artifact: Dict[str, Any],
+    roll_values: Dict,
+    target_level: int = None
+) -> Dict[str, Any]:
+    """
+    Project the given artifact to a specified level (must be a multiple of 4)
+    by randomly distributing upgrades. If target_level is None, project to max level.
+
+    Returns a new artifact dict with updated level, substats, and cleared unactivated.
     """
     rarity = artifact.get("rarity", 5)
     max_level = MAX_LEVEL.get(rarity, 20)
     current_level = artifact.get("level", 0)
-    remaining_levels = max_level - current_level
-    # Upgrades happen at +4/+8/+12/+16/+20, so a level-1 5-star has 5
-    # remaining events (19 levels -> ceil(19/4) = 5), not 4. Round up to
-    # match bench.py's (max_level - level + 3) // 4 formula.
-    remaining_events = (remaining_levels + 3) // 4
 
-    new_art = dict(artifact)  # shallow copy - cheap, no recursive walk
+    # If no target specified, go to max
+    if target_level is None:
+        target_level = max_level
 
+    # Validation
+    if target_level < current_level:
+        raise ValueError(
+            f"target_level ({target_level}) < current_level ({current_level})"
+        )
+    if target_level % 4 != 0:
+        raise ValueError(
+            f"target_level ({target_level}) must be a multiple of 4"
+        )
+    if target_level > max_level:
+        raise ValueError(
+            f"target_level ({target_level}) exceeds max level ({max_level})"
+        )
+
+    remaining_levels = target_level - current_level
+    remaining_events = (remaining_levels + 3) // 4 if remaining_levels > 0 else 0
+
+    # Shallow copy – safe because we'll replace substats and unactivated
+    new_art = dict(artifact)
+
+    # Already at or above target: just copy substats defensively and return
     if remaining_events <= 0:
-        # Already maxed: substats don't change, but copy the list defensively
-        # in case a caller mutates it later.
         new_art["unactivatedSubstats"] = []
         new_art["substats"] = list(artifact.get("substats", []))
+        new_art["level"] = target_level
         return new_art
 
-    # Fresh dict per substat since we mutate "value" below.
+    # Fresh dicts for substats we will mutate
     active_subs = [dict(s) for s in artifact.get("substats", [])]
     hidden_subs = artifact.get("unactivatedSubstats", [])
 
@@ -78,8 +103,30 @@ def _project_artifact(artifact: Dict[str, Any], roll_values: Dict) -> Dict[str, 
         chosen["value"] = chosen.get("value", 0.0) + roll_val
 
     new_art["substats"] = active_subs
-    new_art["level"] = max_level
+    new_art["level"] = target_level
     return new_art
+
+
+# ---- Legacy wrapper and public API ----
+
+def _project_artifact(artifact: Dict[str, Any], roll_values: Dict) -> Dict[str, Any]:
+    """
+    Legacy wrapper – projects to max level.
+    Kept for backward compatibility with existing optimizer code.
+    """
+    return _project_artifact_to_level(artifact, roll_values, target_level=None)
+
+
+def project_artifact_to_level(
+    artifact: Dict[str, Any],
+    roll_values: Dict,
+    target_level: int
+) -> Dict[str, Any]:
+    """
+    Public API: project an artifact to a specific target level (multiple of 4).
+    Used by the leveling efficiency planner.
+    """
+    return _project_artifact_to_level(artifact, roll_values, target_level)
 
 
 def _compute_damage_for_build(artifacts: Dict[str, Dict], char_config: Dict,

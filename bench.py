@@ -108,13 +108,44 @@ def matched_characters_for_set(set_key, roster):
 
 
 def max_possible_useful_rolls(artifact, useful_stats, roll_values):
-    """Optimistic ceiling: current useful rolls plus guaranteed hidden-line
-    reveal (if useful) plus all remaining upgrades landing on useful stats."""
+    """Legacy wrapper – projects to max level (default behavior)."""
+    return max_possible_useful_rolls_at_level(
+        artifact,
+        useful_stats,
+        roll_values,
+        target_level=None
+    )
+
+def max_possible_useful_rolls_at_level(
+    artifact,
+    useful_stats,
+    roll_values,
+    target_level: int = None
+):
+    """
+    Optimistic ceiling: current useful rolls plus guaranteed hidden-line
+    reveal (if useful) plus all remaining upgrades landing on useful stats,
+    projected only to target_level (not necessarily +20).
+
+    If target_level is None, projects to the artifact's max level (20 for 5-star).
+    """
     rarity = artifact.get("rarity", 5)
-    level = artifact.get("level", 0)
+    current_level = artifact.get("level", 0)
     max_level = MAX_LEVEL.get(rarity, 20)
 
-    remaining_events = max(0, (max_level - level + 3) // 4)
+    # If no target specified, use max level
+    if target_level is None:
+        target_level = max_level
+
+    # Clamp target to valid range
+    if target_level < current_level:
+        target_level = current_level
+    if target_level > max_level:
+        target_level = max_level
+
+    # Remaining events to reach target_level
+    remaining_levels = target_level - current_level
+    remaining_events = max(0, (remaining_levels + 3) // 4) if remaining_levels > 0 else 0
 
     current_rolls = roll_count_for_artifact(
         artifact,
@@ -123,23 +154,19 @@ def max_possible_useful_rolls(artifact, useful_stats, roll_values):
     )
 
     hidden_subs = artifact.get("unactivatedSubstats", [])
-
     guaranteed_gain = 0
 
     # 3-line artifact: first upgrade reveals the known 4th line
     if hidden_subs and remaining_events > 0:
         hidden_label = STAT_LABEL.get(hidden_subs[0].get("key"))
-
         if hidden_label in useful_stats:
             guaranteed_gain += 1
-
         remaining_events -= 1
 
     # Remaining upgrades can theoretically all hit useful stats
     max_additional = guaranteed_gain + remaining_events
 
     return current_rolls, current_rolls + max_additional
-
 
 def expected_useful_rolls(artifact, useful_stats, roll_values):
     """
@@ -271,6 +298,7 @@ def find_bench_potential(good_json, roster, rules, roll_values):
                 "equipped_by": equipped_by,  # track who holds it
                 "original_artifact": art,          # <-- NEW: store original artifact for simulation
                 "artifact_id": art.get('id'),      # <-- NEW: unique ID
+                "useful_stats": useful_stats
             })
 
     results.sort(key=lambda r: (-r["max_rolls"], -r["current_rolls"]))

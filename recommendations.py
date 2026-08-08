@@ -170,3 +170,89 @@ def build_ceiling_only_candidates(bench_results, char_results, top_n_per_slot=5)
         final.extend(group[:top_n_per_slot])
 
     return final
+
+# ---- Leveling Recommendations (Batch 6, optimizer-driven as of Batch 9) ----
+
+from leveling_efficiency import build_combined_leveling_plan
+
+
+def generate_leveling_recommendations(
+    bench_results: list,
+    rules: dict,
+    roll_values: dict,
+    optimizer_candidates_by_char: dict = None,
+    char_score_lookup: dict = None,
+    char_slot_tier_lookup: dict = None,
+) -> dict:
+    """
+    Generate a leveling plan.
+
+    Primary signal is each candidate's build-optimality probability from the
+    global optimizer (optimizer_candidates_by_char, keyed by character then
+    slot - see score.py) rather than roll-count thresholds: contested slots
+    (multiple pieces with comparable, unresolved probability) get cheap
+    scouting steps, resolved slots get their winning piece committed to max
+    level. Characters the optimizer has no data for fall back to the legacy
+    threshold-based planner so nothing goes unrecommended.
+
+    char_score_lookup (character name -> character_scoring.score_character's
+    `score`) prioritizes which character's actions claim the budget first.
+
+    char_slot_tier_lookup ((character name, slot) -> the slot's equipped
+    status from character_scoring, e.g. "Needs Work"/"Good"/"Excellent"/
+    "Missing") drives the tier-upgrade priority rule: an action only counts
+    as high priority if its candidate can raise the slot's tier above what's
+    currently equipped there (Needs Work -> Good/Excellent, Good ->
+    Excellent; Excellent is already top tier so nothing beats it). Non-
+    upgrading actions aren't blocked, they just sink to the bottom of the
+    priority order. See leveling_efficiency.tier_upgrade_ok for the exact
+    rule and rules.yaml's leveling.require_tier_upgrade to toggle it off.
+
+    Args:
+        bench_results: Output from bench.find_bench_potential. Used only for
+            the legacy fallback path now.
+        rules: The full rules.yaml dict (must contain 'budget' and 'leveling' sections).
+        roll_values: From roll_values.yaml (kept for API compatibility).
+        optimizer_candidates_by_char: score.py's optimizer_candidates_by_char.
+            Pass {} or None to use the legacy planner for every character.
+        char_score_lookup: {character_name: score}, typically built from
+            char_results after score_character has run for the roster.
+        char_slot_tier_lookup: {(character_name, slot): equipped tier status},
+            typically built from char_results after score_character has run.
+
+    Returns:
+        dict: actions + summary, with additional formatting hints for display.
+    """
+    budget_config = rules.get("budget", {})
+    leveling_config = rules.get("leveling", {})
+    optimizer_candidates_by_char = optimizer_candidates_by_char or {}
+    char_score_lookup = char_score_lookup or {}
+    char_slot_tier_lookup = char_slot_tier_lookup or {}
+
+    plan = build_combined_leveling_plan(
+        bench_results=bench_results,
+        optimizer_candidates_by_char=optimizer_candidates_by_char,
+        char_score_lookup=char_score_lookup,
+        budget_config=budget_config,
+        leveling_config=leveling_config,
+        char_slot_tier_lookup=char_slot_tier_lookup,
+    )
+
+    # Add a display-friendly version of the actions
+    for action in plan["actions"]:
+        action["immediate_cost_str"] = (
+            f"{action['immediate_cost']['mora']:,} Mora, "
+            f"{action['immediate_cost']['exp']:,} EXP"
+        )
+        action["finish_cost_str"] = (
+            f"{action['finish_cost']['mora']:,} Mora, "
+            f"{action['finish_cost']['exp']:,} EXP"
+        )
+        if action.get("action_type") == "Legacy":
+            action["probability_str"] = "—"
+            action["efficiency_str"] = f"{action.get('efficiency_mora', 0):.2e} Δp/Mora"
+        else:
+            action["probability_str"] = f"{action.get('probability', 0.0) * 100:.0f}%"
+            action["efficiency_str"] = f"{action.get('priority', 0):.2e} priority/Mora"
+
+    return plan

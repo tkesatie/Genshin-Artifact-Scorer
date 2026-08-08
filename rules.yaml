@@ -85,3 +85,52 @@ optimizer:
   in_set_pool_size: 5
   off_set_pool_size: 5
   apply_ceiling_filter: true
+
+budget:
+  max_mora: 4000000
+  max_artifact_exp: 5500000
+  already_spent_mora: 0
+  already_spent_exp: 0
+
+leveling:
+  # --- General gate (both planners) ---
+  # A character needs at least this many distinct on-set slots with a bench
+  # piece that can reach Good/Excellent before any of their leveling actions
+  # are planned at all. Counting distinct slots (not total pieces) so 3
+  # feathers + 1 goblet doesn't clear the bar - you need real coverage.
+  min_distinct_on_set_slots: 4
+  # A piece must raise its slot's tier to be worth leveling (Needs Work ->
+  # Good/Excellent, or Good -> Excellent). Pieces that can't tier-up are not
+  # blocked, but sink to the bottom of the leveling priority - only funded
+  # when nothing better remains. Equipped Excellent is already top tier, so
+  # any action for that slot is automatically bottom-priority.
+  require_tier_upgrade: true
+
+  # --- Optimizer-driven planner (primary path - see leveling_efficiency.py) ---
+  # A candidate below this probability of being the final optimal piece for
+  # its slot is ignored entirely (dead weight, not worth planning for).
+  min_relevant_probability: 0.08
+  # Cap on how many candidates in one slot get planned for at once, even if
+  # more clear this bar. Keeps a heavily-contested slot (5+ similar rolls)
+  # from generating a scouting action for every single one of them.
+  max_contenders_per_slot: 3
+  # A slot counts as RESOLVED (safe to commit the leader to max level) once
+  # its top candidate's probability clears this bar *and* leads the runner-up
+  # by at least contested_margin. Otherwise it's CONTESTED and every viable
+  # contender only gets a scout_step_levels nudge.
+  resolved_probability: 0.60
+  contested_margin: 0.15
+  # Level increment for a "Scout" action on a contested slot - one checkpoint
+  # (reveals the next roll/hidden substat) rather than committing further.
+  scout_step_levels: 12
+  max_scout_level: 16
+
+  # --- Legacy closed-form planner (fallback for characters the optimizer
+  # has no data for - split sets, no equipped pieces, etc.) ---
+  soft_stop_floor: 0.15
+  cliff_ratio: 0.25
+  max_per_character: 2
+  simulation_count: 500
+
+  # --- Shared budget-selection knobs (both planners) ---
+  max_reveal_fraction: 0.40

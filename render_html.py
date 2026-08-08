@@ -62,6 +62,7 @@ STAT_TARGET_COLOR = {
     "Under Target": "#e05a4e", "Near Target": "#e0a94e", "Exceeds Target": "#4ec97a",
 }
 
+
 def substat_display_for(artifact, useful_stats):
     """Render an artifact's active + hidden substats, bolding whatever
     counts as useful for the given stat list."""
@@ -118,8 +119,9 @@ def render_html(char_results, domain_results, recommendations, out_path,
                  ceiling_only_results=None, stat_target_results=None, team_damage_results=None,
                  multi_piece_results=None, prob_lookup=None,
                  equipped_artifacts_by_char=None, roster=None,
-                 optimizer_candidates_by_char=None,   # <-- NEW
-                 infeasible_rate_by_char=None):       # <-- NEW
+                 optimizer_candidates_by_char=None,
+                 infeasible_rate_by_char=None,
+                 leveling_plan=None):       # <-- NEW
     flex_results = flex_results or []
     inventory_results = inventory_results or []
     ceiling_only_results = ceiling_only_results or []
@@ -129,6 +131,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
     prob_lookup = prob_lookup or {}
     optimizer_candidates_by_char = optimizer_candidates_by_char or {}
     infeasible_rate_by_char = infeasible_rate_by_char or {}
+    leveling_plan = leveling_plan or {"actions": [], "summary": {}}   # <-- NEW
     from artifact_utils import STAT_LABEL
     SLOT_ORDER = ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
 
@@ -632,7 +635,93 @@ def render_html(char_results, domain_results, recommendations, out_path,
 
     character_modal_json = json.dumps(character_modal_html).replace("</", "<\\/")
 
-    # ------------------------ HTML template (unchanged) ------------------------
+    # ------------------------ Build Leveling Plan Section ------------------------
+    actions = leveling_plan.get("actions", [])
+    summary = leveling_plan.get("summary", {})
+
+    ACTION_TYPE_COLOR = {
+        "Commit": "#4ea068",     # resolved winner, safe to commit to max
+        "Scout": "#e0a94e",      # contested slot, cheap info-gathering step
+        "Legacy": "#888",        # no optimizer data, threshold-based fallback
+    }
+
+    leveling_rows = []
+    for act in actions:
+        action_type = act.get('action_type', 'Legacy')
+        type_color = ACTION_TYPE_COLOR.get(action_type, "#888")
+        prob_str = act.get('probability_str', '—')
+        score_str = round(act.get('character_score', 0), 1)
+        # Show the piece itself (set, main stat, substats) so the row is identifiable.
+        art = act.get('artifact')
+        if art:
+            useful_stats = [str(s) for s in (roster or {}).get(act.get('character', ''), {}).get('useful_stats', [])]
+            substats_html = substat_display_for(art, useful_stats)
+            art_cell = f"{art.get('setKey', '?')} · Main: {art.get('mainStatKey', '?')}<br>{substats_html}"
+        else:
+            art_cell = "—"
+        leveling_rows.append(f"""
+        <tr>
+          <td>{act.get('character', '?')}</td>
+          <td>{act.get('slot', '?')}</td>
+          <td>{art_cell}</td>
+          <td><span style="color:{type_color};font-weight:600;">{action_type}</span></td>
+          <td>{score_str}</td>
+          <td>{prob_str}</td>
+          <td>{act.get('current_level', 0)} → {act.get('target_level', 0)}</td>
+          <td>{act['immediate_cost']['mora']:,} Mora</td>
+          <td>{act['finish_cost']['mora']:,} Mora</td>
+        </tr>
+        """)
+
+    leveling_table_body = ''.join(leveling_rows) if leveling_rows else '<tr><td colspan="9" style="color:#999;">No artifacts worth leveling under current budget and constraints.</td></tr>'
+
+    summary_text = summary.get('recommendation_text', '')
+    warning = summary.get('lifetime_warning', '')
+    total_immediate_mora = summary.get('total_immediate_mora', 0)
+    total_immediate_exp = summary.get('total_immediate_exp', 0)
+    reserved = summary.get('total_finish_cost_if_all_completed', {}) or {}
+    reserved_mora = reserved.get('mora', 0)
+    reserved_exp = reserved.get('exp', 0)
+    remaining_mora = summary.get('remaining_lifetime_mora', 0) or 0
+
+    warning_html = f'<p style="color:#e0a94e;margin-top:4px;">⚠️ {warning}</p>' if warning else ''
+
+    leveling_section = f"""
+<h2>Leveling Recommendations</h2>
+<div style="background:#1e2a3a; padding:12px 16px; border-radius:6px; margin-bottom:12px;">
+  <p style="margin:0; font-size:14px;"><strong>{summary_text}</strong></p>
+  <p style="margin:4px 0 0 0; font-size:13px; color:#aaa;">
+    Immediate spend: {total_immediate_mora:,} Mora + {total_immediate_exp:,} EXP &nbsp;·&nbsp;
+    Reserved to finish (guaranteed affordable): {reserved_mora:,} Mora + {reserved_exp:,} EXP
+    of {remaining_mora:,} Mora remaining lifetime budget
+  </p>
+  {warning_html}
+  <p style="margin:4px 0 0 0; font-size:12px; color:#888;">
+    <span style="color:{ACTION_TYPE_COLOR['Commit']};">● Commit</span> = slot resolved, winning piece sent to max level &nbsp;·&nbsp;
+    <span style="color:{ACTION_TYPE_COLOR['Scout']};">● Scout</span> = slot contested, small step to sharpen next run's odds &nbsp;·&nbsp;
+    <span style="color:{ACTION_TYPE_COLOR['Legacy']};">● Legacy</span> = no optimizer data, threshold-based fallback
+  </p>
+</div>
+{_filter_input_html("levelingTable", "Filter by character or slot...")}
+<table id="levelingTable">
+<thead>
+  <tr>
+    <th>Character</th>
+    <th>Slot</th>
+    <th>Artifact</th>
+    <th>Action</th>
+    <th>Char. Score</th>
+    <th>Optimality</th>
+    <th>Levels</th>
+    <th>Immediate Cost</th>
+    <th>Finish Cost</th>
+  </tr>
+</thead>
+<tbody>{leveling_table_body}</tbody>
+</table>
+"""
+
+    # ------------------------ HTML template ------------------------
     if progress_changes is None:
         progress_html = (
             '<p style="color:#999;font-size:13px;">Snapshot not due yet — '
@@ -733,6 +822,8 @@ piece's optimistic ceiling beats what's equipped, but none clear the threshold o
 <th>Excellent</th><th>Good / Exc Upgrades</th><th>Slots</th><th>Domain</th><th>Score</th></tr></thead>
 <tbody>{''.join(rows)}</tbody>
 </table>
+
+{leveling_section}
 
 <h2>Stat Targets (Phase 1-2)</h2>
 <p style="color:#999;font-size:13px;max-width:750px;">Opt-in, manually-configured targets from stat_targets.yaml -

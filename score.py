@@ -36,7 +36,7 @@ from character_scoring import score_character, score_domains
 from config import load_configs
 from flex import find_flex_candidates
 from inventory import classify_inventory_artifact
-from recommendations import build_ceiling_only_candidates, build_recommendations
+from recommendations import build_recommendations, build_ceiling_only_candidates, generate_leveling_recommendations
 from render_html import render_html
 from snapshot import maybe_update_snapshot
 from stat_targets import load_stat_targets, score_all_stat_targets
@@ -46,6 +46,7 @@ from validate_config import has_errors, validate_config
 
 # NEW imports
 from optimizer import compute_optimal_probabilities
+from leveling_efficiency import reachable_tier_for, tier_upgrade_ok
 
 
 def apply_imaginarium_theater_filter(roster, rules):
@@ -470,6 +471,18 @@ def main():
     recommendations = build_recommendations(bench_results, char_results)
     ceiling_only_results = build_ceiling_only_candidates(bench_results, char_results)
 
+    # (character, slot) -> equipped tier status ("Needs Work"/"Good"/
+    # "Excellent"/"Missing"), used by the leveling planner's tier-upgrade
+    # priority rule (see leveling_efficiency.tier_upgrade_ok). Built here,
+    # right after score_character has run for the whole roster, so both the
+    # optimizer candidate annotation below and generate_leveling_recommendations
+    # can use the same lookup.
+    char_slot_tier_lookup = {
+        (r["name"], slot): r["slots"][slot]["status"]
+        for r in char_results
+        for slot in r["slots"]
+    }
+
     # =========================================================================
     # NEW: Global optimizer for each character
     # =========================================================================
@@ -584,11 +597,21 @@ def main():
                 if art_id is not None and art_id in probs:
                     optimal_probabilities[(char_name, slot, art_id)] = probs[art_id]
 
+    # Tier-upgrade rule toggle (rules.yaml leveling.require_tier_upgrade).
+    # Computed strictly here (each optimizer candidate's own max reachable
+    # useful rolls vs the good/excellent thresholds for its actual main
+    # stat), per the decision to evaluate this exactly on the optimizer path
+    # rather than assume every planned candidate already clears it.
+    require_tier_upgrade = rules.get("leveling", {}).get("require_tier_upgrade", True)
+
     optimizer_candidates_by_char = {}
     for char_name, pools in candidate_pools_by_char.items():
+        cfg = roster.get(char_name, {})
+        useful_stats = [str(s) for s in cfg.get("useful_stats", [])]
         slot_candidates = {}
         for slot in required_slots:
             candidates = []
+            equipped_tier = char_slot_tier_lookup.get((char_name, slot))
             # Combine in-set and off-set
             for art in pools["in_set"][slot] + pools["off_set"][slot]:
                 art_id = art.get('id')
@@ -600,10 +623,25 @@ def main():
                 is_equipped = (
                     art.get('id') == pools["current"].get(slot, {}).get('id')
                 )
+
+                if require_tier_upgrade:
+                    eff_pool = effective_useful_pool(art.get("mainStatKey"), useful_stats)
+                    good, excellent = compute_thresholds(
+                        rules, cfg.get("usage"), cfg.get("role"), slot, eff_pool, char_name
+                    )
+                    _, max_rolls = max_possible_useful_rolls(art, useful_stats, roll_values)
+                    reachable_tier = reachable_tier_for(max_rolls, good, excellent)
+                    candidate_tier_upgrade_ok = tier_upgrade_ok(equipped_tier, reachable_tier)
+                else:
+                    reachable_tier = None
+                    candidate_tier_upgrade_ok = True
+
                 candidates.append({
                     "artifact": art,
                     "probability": prob,
                     "is_equipped": is_equipped,
+                    "reachable_tier": reachable_tier,
+                    "tier_upgrade_ok": candidate_tier_upgrade_ok,
                 })
             # Sort by probability descending, equipped piece will fall where it belongs
             candidates.sort(key=lambda x: x["probability"], reverse=True)
@@ -633,6 +671,17 @@ def main():
             rec["optimal_probability"] = 0.0
 
     print("Optimizer complete.")
+
+    # Leveling plan runs after char_results (character urgency scores) and
+    # the optimizer (build-optimality probabilities per candidate) both
+    # exist, since it's driven by both now instead of raw roll thresholds.
+    char_score_lookup = {r["name"]: r["score"] for r in char_results}
+    leveling_plan = generate_leveling_recommendations(
+        bench_results, rules, roll_values,
+        optimizer_candidates_by_char=optimizer_candidates_by_char,
+        char_score_lookup=char_score_lookup,
+        char_slot_tier_lookup=char_slot_tier_lookup,
+    )
 
     # =========================================================================
 
@@ -682,6 +731,7 @@ def main():
         roster=roster,
         optimizer_candidates_by_char=optimizer_candidates_by_char,   # <-- NEW
         infeasible_rate_by_char=infeasible_rate_by_char,
+        leveling_plan=leveling_plan,
     )
 
 
