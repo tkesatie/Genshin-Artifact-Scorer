@@ -194,9 +194,33 @@ def safe_target_level(
     current_rolls: int,
     soft_floor: float = 0.15
 ) -> int:
-    """
-    Returns the highest safe level to jump to without re-checking.
-    Uses hard ceiling and a deterministic worst-case estimate.
+    """Level to jump to in one action, bounded below by the point at which
+    the piece stops being a low-probability gamble.
+
+    Two constraints, both re-derived from the candidate's true probabilities
+    (see posterior_reach_probability):
+
+    - HARD ceiling (dead-end gate): if even the absolute best case - every
+      remaining event landing useful - cannot reach `threshold` by max level,
+      the piece is a Dead end; return the current level (don't bother). The
+      previous per-bracket "ceiling at level X" scan was wrong: the ceiling
+      only grows with level, so it always tripped at the very first +4
+      bracket and blocked leveling entirely even for pieces that would clear
+      the bar higher up.
+
+    - SOFT floor: the exact probability of reaching `threshold` by the
+      returned level must be at least `soft_floor`. Since that probability
+      is monotone in level (more events = more chances), the returned level
+      is the first bracket where the piece becomes "reasonably likely" to
+      clear the bar - jump there and re-evaluate, rather than committing
+      blindly past the uncertainty boundary. If not even max clears the
+      floor, the piece is too thin to justify any investment: return the
+      current level.
+
+    This replaces the old deterministic worst-case ("all future rolls miss")
+    soft scan, whose result did not depend on level at all - so the soft
+    floor collapsed into a binary "reachable at all" check instead of a
+    gradual floor.
     """
     rarity = artifact.get("rarity", 5)
     max_level = MAX_LEVEL.get(rarity, 20)
@@ -205,47 +229,20 @@ def safe_target_level(
     if current_level >= max_level:
         return max_level
 
-    hidden_subs = artifact.get("unactivatedSubstats", [])
-    hidden_is_useful = (
-        STAT_LABEL.get(hidden_subs[0].get("key")) in useful_stats
-        if hidden_subs else False
-    )
-
-    hard_critical = max_level
-    soft_critical = max_level
-
-    # ---- Hard critical ----
-    # For each level, compute ceiling = current_rolls + (hidden_gain if revealed) + remaining_events
-    for lvl in range(current_level + 4, max_level + 1, 4):
-        remaining_levels = lvl - current_level
-        events = (remaining_levels + 3) // 4
-
-        # Hidden gain if events > 0
-        hidden_gain = 1 if (hidden_is_useful and events > 0) else 0
-        # Remaining random events after revealing hidden
-        random_events = events - (1 if hidden_is_useful and events > 0 else 0)
-        ceiling = current_rolls + hidden_gain + random_events
-
-        if ceiling < threshold:
-            hard_critical = lvl
-            break
-
-    # ---- Soft critical (worst-case deterministic) ----
-    # Worst-case: random upgrades all miss; only hidden gain (if any) counts.
-    for lvl in range(current_level + 4, max_level + 1, 4):
-        remaining_levels = lvl - current_level
-        events = (remaining_levels + 3) // 4
-        worst_gain = 1 if (hidden_is_useful and events > 0) else 0
-        worst_total = current_rolls + worst_gain
-
-        if worst_total < threshold:
-            soft_critical = lvl
-            break
-
-    earliest_critical = min(hard_critical, soft_critical)
-    if earliest_critical <= current_level:
+    # ---- Hard ceiling: dead-end gate ----
+    events_to_max = (max_level - current_level + 3) // 4
+    if current_rolls + events_to_max < threshold:
         return current_level
-    return max(current_level, earliest_critical - 4)
+
+    # ---- Soft floor: first level where reaching threshold is likely ----
+    target = current_level
+    for lvl in range(current_level + 4, max_level + 1, 4):
+        if posterior_reach_probability(
+            artifact, useful_stats, threshold, current_rolls, target_level=lvl
+        ) >= soft_floor:
+            target = lvl
+            break
+    return target
 
 
 # ---- Build the plan (single pass over 2000 candidates) ----
@@ -259,12 +256,15 @@ def build_leveling_plan(
     char_slot_tier_lookup: Dict[Any, str] = None,  # (character, slot) -> equipped tier status
     max_pieces: int = None,              # hard cap on number of pieces selected (None = no cap)
     exclude_non_upgraders: bool = False, # hard-exclude sidegrades (only relevant if a real upgrade exists elsewhere)
+    char_usage_lookup: Dict[str, str] = None,  # character name -> "Active"/"IT Only"
+    it_only_max_level: Optional[int] = None,   # cap for IT Only characters (see rules.yaml)
 ) -> Dict[str, Any]:
     """
     Generate a leveling plan from bench results.
     Optimized for 2000+ candidates – O(N) with no heavy re-computation.
     """
     char_slot_tier_lookup = char_slot_tier_lookup or {}
+    char_usage_lookup = char_usage_lookup or {}
     require_tier_upgrade = leveling_config.get("require_tier_upgrade", True)
 
     # ---- Extract config ----
@@ -320,12 +320,24 @@ def build_leveling_plan(
             soft_floor
         )
 
+        # IT Only characters are capped below the artifact's true max (see
+        # rules.yaml leveling.it_only_max_level) - analysis still runs as
+        # though the piece could go to 20, only the recommended target and
+        # budget reservation are capped.
+        if char_usage_lookup.get(b.get("character")) == "IT Only" and it_only_max_level:
+            target = min(target, it_only_max_level)
+
         if target <= current_level:
             continue
 
         # Costs
         immediate_cost = get_leveling_cost(rarity, current_level, target)
-        finish_cost = get_leveling_cost(rarity, current_level, max_level)
+        finish_target = (
+            it_only_max_level
+            if char_usage_lookup.get(b.get("character")) == "IT Only"
+            else max_level
+        )
+        finish_cost = get_leveling_cost(rarity, current_level, finish_target)
 
         # p_current: we already know if current_rolls >= threshold
         p_current = 1.0 if current_rolls >= good_threshold else 0.0
@@ -525,33 +537,191 @@ def _select_contenders(
     return relevant[:max_contenders]
 
 
-def _slot_is_resolved(
-    contenders: List[Dict[str, Any]],
-    resolved_prob_threshold: float,
-    contested_margin: float,
-) -> bool:
-    """
-    A slot is RESOLVED (safe to commit the top candidate to max level) when
-    the top candidate's probability clears an absolute confidence bar - and,
-    if there's a runner-up, leads it by enough margin too. Otherwise it's
-    CONTESTED: nothing here is confident enough to commit yet.
+def _finish_mora_cost(rarity: int, current_level: int, max_level: int) -> float:
+    cost = get_leveling_cost(rarity, current_level, max_level)
+    return max(cost.get("mora", 1), 1)
 
-    A single surviving contender is NOT automatically resolved. "Only one
-    candidate left" can mean two very different things: genuinely the only
-    real option on the bench (confidently committable), or just the only
-    one left after some other filter (e.g. the roster-wide tier-upgrade
-    hard-exclude) stripped out a stronger candidate that couldn't clear a
-    different bar. Those aren't the same thing, so being alone no longer
-    substitutes for being good - it still has to clear resolved_prob_threshold
-    on its own probability.
+
+def _cheapest_scout_step(artifact: Dict[str, Any], scout_options: List[int], max_scout_level: int):
+    """
+    Cheapest meaningful scout checkpoint beyond this artifact's current
+    level: (target_level, mora_cost). Returns None if nothing meaningful is
+    left to learn (already at max_scout_level, or at the artifact's own max
+    level) - the terminal case where explore is no longer an option.
+    """
+    rarity = artifact.get("rarity", 5)
+    max_level = MAX_LEVEL.get(rarity, 20)
+    current_level = artifact.get("level", 0)
+    hidden_subs = artifact.get("unactivatedSubstats", [])
+    first_meaningful = current_level + (8 if hidden_subs else 4)  # +4 reveals hidden, +8 is first roll after that
+
+    best = None
+    for step in scout_options:
+        target = min(current_level + step, max_scout_level, max_level)
+        if target <= current_level or target < first_meaningful:
+            continue
+        mora = _finish_mora_cost(rarity, current_level, target)
+        if best is None or mora < best[1]:
+            best = (target, mora)
+    return best
+
+
+def _remaining_hidden_rolls(artifact: Dict[str, Any], max_level: int) -> int:
+    """Rough count of substat-roll reveals left between current level and
+    max level - one roll every 4 levels, capped at the 4-roll ceiling."""
+    current_level = artifact.get("level", 0)
+    levels_left = max(max_level - current_level, 0)
+    return min(levels_left // 4, 4)
+
+
+def _average_priced_roll_value(char_roll_values: Optional[Dict[str, float]]) -> float:
+    """
+    Average damage value across every substat priced for this character by
+    value_per_roll.py - a cheap stand-in for "the typical value of one more
+    hidden roll" (see that module's docstring for the full known-limitations
+    list: this doesn't yet know which specific stats a given candidate's
+    hidden rolls will land on, just the character-wide average).
+    """
+    if not char_roll_values:
+        return 0.0
+    values = list(char_roll_values.values())
+    return sum(values) / len(values) if values else 0.0
+
+
+def _decide_slot_action(
+    contenders: List[Dict[str, Any]],
+    leveling_config: Dict[str, Any],
+    char_roll_values: Optional[Dict[str, float]] = None,
+) -> Dict[str, Any]:
+    """
+    Explore-vs-exploit, priced in Mora - replaces the old
+    resolved_probability/contested_margin threshold check entirely.
+
+    The question is never "is the leader confident enough" in the
+    abstract - it's "is it cheaper to keep learning, or to just place the
+    bet now." Two numbers, both in Mora:
+      - expected_waste = leader's remaining finish cost x P(leader is
+        actually wrong). This is the real cost of committing blind right
+        now: the Mora you'd have spent on a piece that isn't the one you
+        end up wanting.
+      - scout_cost = Mora cost of the leader's cheapest next scout
+        checkpoint - the price of finding out more before betting the
+        full amount.
+
+    If expected_waste > scout_cost, scouting is the cheaper move: CONTESTED.
+    Otherwise, either nothing is left to learn (scout_cost is None - the
+    terminal case) or the remaining uncertainty is already cheap enough to
+    just eat: RESOLVED, commit the leader.
+
+    In the terminal case (nothing left to scout), also surface a roll-value-
+    informed estimate of what finishing the leader is actually expected to
+    buy in damage terms (P(leader) x remaining hidden rolls x this
+    character's average priced roll value) - not yet used to block a
+    Commit outright (no calibrated damage-per-Mora bar exists yet to compare
+    it against), but attached to the action so it's visible and can inform
+    that gate once one exists. This is intentionally a first version, not a
+    finished one - see value_per_roll.py's own documented limitations.
+    """
+    leader = contenders[0]
+    artifact = leader.get("artifact") or {}
+    rarity = artifact.get("rarity", 5)
+    max_level = MAX_LEVEL.get(rarity, 20)
+    current_level = artifact.get("level", 0)
+    leader_p = leader.get("probability", 0.0)
+
+    remaining_finish_mora = _finish_mora_cost(rarity, current_level, max_level)
+    expected_waste = remaining_finish_mora * (1.0 - leader_p)
+
+    scout_options = leveling_config.get("scout_step_options", [4, 8, 12, 16])
+    max_scout_level = leveling_config.get("max_scout_level", 16)
+    scout_step = _cheapest_scout_step(artifact, scout_options, max_scout_level)
+
+    if scout_step is not None and expected_waste > scout_step[1]:
+        resolved = False
+    else:
+        resolved = True
+
+    avg_roll_value = _average_priced_roll_value(char_roll_values)
+    remaining_rolls = _remaining_hidden_rolls(artifact, max_level)
+    expected_damage_gain = leader_p * remaining_rolls * avg_roll_value
+
+    return {
+        "resolved": resolved,
+        "expected_waste": expected_waste,
+        "scout_cost": scout_step[1] if scout_step else None,
+        "expected_damage_gain": expected_damage_gain,
+    }
+
+
+def explain_slot_decision(
+    contenders: List[Dict[str, Any]],
+    leveling_config: Dict[str, Any],
+    char_roll_values: Optional[Dict[str, float]] = None,
+) -> str:
+    """
+    Human-readable audit trail for a Scout/Commit decision - NOT used by the
+    planner itself, a verification tool only. Calls _decide_slot_action with
+    the exact same arguments the planner would, so this is guaranteed to
+    show the real reasoning behind a real row, not an approximation of it.
+
+    Usage against a real run: grab the same `contenders` list plan_slot_actions
+    would have built for a given (character, slot) - i.e. the sorted,
+    floor-filtered candidate list from optimizer_candidates_by_char[char][slot]
+    - and pass it here along with the same leveling_config/roll_value_by_char
+    a real run used. Print the result.
+
+    Example:
+        candidates = optimizer_candidates_by_char["Mona"]["Feather"]
+        contenders = _select_contenders(candidates, 0.25, 0.0, 3)
+        print(explain_slot_decision(contenders, rules["leveling"],
+                                     roll_value_by_char.get("Mona")))
     """
     if not contenders:
-        return False
-    top_prob = contenders[0].get("probability", 0.0)
-    if len(contenders) == 1:
-        return top_prob >= resolved_prob_threshold
-    second_prob = contenders[1].get("probability", 0.0)
-    return top_prob >= resolved_prob_threshold and (top_prob - second_prob) >= contested_margin
+        return "No contenders cleared min_relevant_probability - no action for this slot."
+
+    decision = _decide_slot_action(contenders, leveling_config, char_roll_values)
+    leader = contenders[0]
+    artifact = leader.get("artifact") or {}
+    p = leader.get("probability", 0.0)
+    rarity = artifact.get("rarity", 5)
+    max_level = MAX_LEVEL.get(rarity, 20)
+    current_level = artifact.get("level", 0)
+
+    lines = [
+        f"Leader: probability={p * 100:.1f}%, level={current_level}, rarity={rarity}*",
+    ]
+    if len(contenders) > 1:
+        runner_up_p = contenders[1].get("probability", 0.0)
+        lines.append(f"Runner-up probability: {runner_up_p * 100:.1f}% ({len(contenders)} live contenders total)")
+
+    remaining_finish = _finish_mora_cost(rarity, current_level, max_level)
+    lines.append(f"Remaining finish cost (level {current_level} -> {max_level}): {remaining_finish:,.0f} Mora")
+    lines.append(
+        f"Expected waste = finish_cost x (1 - p) = {remaining_finish:,.0f} x "
+        f"{1 - p:.3f} = {decision['expected_waste']:,.0f} Mora"
+    )
+
+    if decision["scout_cost"] is not None:
+        lines.append(f"Cheapest next scout step costs: {decision['scout_cost']:,.0f} Mora")
+        if decision["expected_waste"] > decision["scout_cost"]:
+            lines.append(
+                f"{decision['expected_waste']:,.0f} > {decision['scout_cost']:,.0f} "
+                f"-> still cheaper to learn more than to gamble -> SCOUT"
+            )
+        else:
+            lines.append(
+                f"{decision['expected_waste']:,.0f} <= {decision['scout_cost']:,.0f} "
+                f"-> the gamble is already cheaper than finding out more -> COMMIT"
+            )
+    else:
+        lines.append("No scout step remains (terminal state) -> nothing cheaper left to try -> COMMIT")
+        lines.append(
+            f"Estimated remaining damage from finishing: p x remaining hidden rolls x avg priced "
+            f"roll value = {decision['expected_damage_gain']:,.0f} (informational only - not yet gating)"
+        )
+
+    lines.append(f"VERDICT: {'Commit' if decision['resolved'] else 'Scout'}")
+    return "\n".join(lines)
 
 
 def plan_slot_actions(
@@ -559,19 +729,20 @@ def plan_slot_actions(
     slot: str,
     candidates: List[Dict[str, Any]],
     leveling_config: Dict[str, Any],
+    char_roll_values: Optional[Dict[str, float]] = None,
+    effective_max_level: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
     min_relevant_prob = leveling_config.get("min_relevant_probability", 0.08)
     max_contenders = leveling_config.get("max_contenders_per_slot", 3)
-    resolved_prob_threshold = leveling_config.get("resolved_probability", 0.60)
-    contested_margin = leveling_config.get("contested_margin", 0.15)
     max_scout_level = leveling_config.get("max_scout_level", 16)
     # Options to evaluate for a scout step (in levels)
     scout_options = leveling_config.get("scout_step_options", [4, 8, 12, 16])
 
-    contenders = _select_contenders(candidates, min_relevant_prob, contested_margin, max_contenders)
+    contenders = _select_contenders(candidates, min_relevant_prob, 0.0, max_contenders)
     if not contenders:
         return []
-    resolved = _slot_is_resolved(contenders, resolved_prob_threshold, contested_margin)
+    decision = _decide_slot_action(contenders, leveling_config, char_roll_values)
+    resolved = decision["resolved"]
 
     actions = []
     for i, cand in enumerate(contenders):
@@ -589,7 +760,11 @@ def plan_slot_actions(
             if i != 0:
                 continue
             action_type = "Commit"
-            target_level = max_level
+            # IT Only characters are capped below the artifact's true max
+            # (see rules.yaml leveling.it_only_max_level) - analysis runs as
+            # though the piece could go to 20, but the plan never recommends
+            # past the cap.
+            target_level = min(max_level, effective_max_level) if effective_max_level else max_level
         else:
             action_type = "Scout"
             # Determine the first level that actually gives new information
@@ -640,6 +815,12 @@ def plan_slot_actions(
             # regressed/blocked.
             "tier_upgrade_ok": cand.get("tier_upgrade_ok", True),
             "reachable_tier": cand.get("reachable_tier"),
+            # Explore-vs-exploit diagnostics (see _decide_slot_action) -
+            # shared across every action for this slot this call, since the
+            # decision is made once for the leader, not per-contender.
+            "expected_waste_mora": decision["expected_waste"],
+            "scout_cost_mora": decision["scout_cost"],
+            "expected_damage_gain": decision["expected_damage_gain"],
         })
 
     return actions
@@ -653,6 +834,9 @@ def build_leveling_plan_from_optimizer(
     skip_chars: set = None,              # characters excluded by the coverage gate
     max_pieces: int = None,              # hard cap on number of pieces selected (None = no cap)
     exclude_non_upgraders: bool = False, # hard-exclude sidegrades (only relevant if a real upgrade exists elsewhere)
+    roll_value_by_char: Dict[str, Dict[str, float]] = None,  # see value_per_roll.py
+    char_usage_lookup: Dict[str, str] = None,  # character name -> "Active"/"IT Only"
+    it_only_max_level: Optional[int] = None,   # cap for IT Only characters (see rules.yaml)
 ) -> Dict[str, Any]:
     """
     Build a leveling plan from the global optimizer's build-optimality
@@ -678,11 +862,21 @@ def build_leveling_plan_from_optimizer(
 
     max_reveal_fraction = leveling_config.get("max_reveal_fraction", 0.40)
     max_per_character = leveling_config.get("max_per_character", 2)
+    char_usage_lookup = char_usage_lookup or {}
 
     raw_actions = []
     for char_name, slots in optimizer_candidates_by_char.items():
         if skip_chars and char_name in skip_chars:
             continue
+        # IT Only characters are capped below the artifact's true max (see
+        # rules.yaml leveling.it_only_max_level) - analysis still runs as
+        # though the piece could go to 20, only the recommended target and
+        # budget reservation are capped.
+        effective_max_level = (
+            it_only_max_level
+            if char_usage_lookup.get(char_name) == "IT Only"
+            else None
+        )
         for slot, candidates in slots.items():
             if exclude_non_upgraders:
                 # A real tier-upgrading candidate exists somewhere on the
@@ -695,7 +889,11 @@ def build_leveling_plan_from_optimizer(
                 candidates = [c for c in candidates if c.get("tier_upgrade_ok")]
                 if not candidates:
                     continue
-            raw_actions.extend(plan_slot_actions(char_name, slot, candidates, leveling_config))
+            raw_actions.extend(plan_slot_actions(
+                char_name, slot, candidates, leveling_config,
+                char_roll_values=(roll_value_by_char or {}).get(char_name),
+                effective_max_level=effective_max_level,
+            ))
 
     if not raw_actions:
         return {
@@ -714,7 +912,15 @@ def build_leveling_plan_from_optimizer(
 
     for a in raw_actions:
         immediate_cost = get_leveling_cost(a["rarity"], a["current_level"], a["target_level"])
-        finish_cost = get_leveling_cost(a["rarity"], a["current_level"], MAX_LEVEL.get(a["rarity"], 20))
+        # IT Only characters' finish cost is capped at their effective max
+        # level (16) so the budget reservation reflects the real max spend,
+        # not an over-reservation to 20.
+        finish_target = (
+            it_only_max_level
+            if char_usage_lookup.get(a["character"]) == "IT Only"
+            else MAX_LEVEL.get(a["rarity"], 20)
+        )
+        finish_cost = get_leveling_cost(a["rarity"], a["current_level"], finish_target)
         a["immediate_cost"] = immediate_cost
         a["finish_cost"] = finish_cost
 
@@ -724,8 +930,9 @@ def build_leveling_plan_from_optimizer(
         # multiplier, and weight every action - Scout included - by its own
         # win probability. A 55%-probability contender is a more efficient
         # use of budget than a 10% one even though both are "in contention";
-        # the contested_margin filter upstream already keeps hopeless
-        # candidates out entirely, this just orders what's left honestly.
+        # the min_relevant_probability filter upstream already keeps
+        # hopeless candidates out entirely, this just orders what's left
+        # honestly.
         urgency = max(score, 1) / 1000.0
         value = max(a["probability"], 0.01) * urgency
         mora_cost = max(immediate_cost.get("mora", 1), 1)
@@ -928,6 +1135,8 @@ def build_combined_leveling_plan(
     budget_config: Dict[str, Any],
     leveling_config: Dict[str, Any],
     char_slot_tier_lookup: Dict[Any, str] = None,
+    roll_value_by_char: Dict[str, Dict[str, float]] = None,  # see value_per_roll.py
+    char_usage_lookup: Dict[str, str] = None,  # character name -> "Active"/"IT Only"
 ) -> Dict[str, Any]:
     """
     Primary entry point. Runs the optimizer-driven planner for every
@@ -948,6 +1157,26 @@ def build_combined_leveling_plan(
     """
     min_distinct_slots = leveling_config.get("min_distinct_on_set_slots", 4)
     char_slot_tier_lookup = char_slot_tier_lookup or {}
+    char_usage_lookup = char_usage_lookup or {}
+    # IT Only characters are only ever leveled to this level (the last +4
+    # bracket on a 5-star is the most expensive) - analysis still runs as
+    # though the piece could go to 20, only the recommended target and
+    # budget reservation are capped. See rules.yaml leveling.it_only_max_level.
+    it_only_max_level = leveling_config.get("it_only_max_level")
+    # When true, only Active characters get leveling recommendations - IT
+    # Only characters are excluded from the leveling plan entirely. See
+    # rules.yaml leveling.active_chars_only.
+    active_chars_only = leveling_config.get("active_chars_only", False)
+
+    if active_chars_only:
+        optimizer_candidates_by_char = {
+            char: slots for char, slots in optimizer_candidates_by_char.items()
+            if char_usage_lookup.get(char) != "IT Only"
+        }
+        bench_results = [
+            b for b in bench_results
+            if char_usage_lookup.get(b.get("character")) != "IT Only"
+        ]
 
     # On-set slot coverage per character: a slot counts as "covered" only if
     # something REAL clears the Good bar there - not merely a piece whose
@@ -1017,6 +1246,9 @@ def build_combined_leveling_plan(
         skip_chars=skip_chars,
         max_pieces=max_pieces,
         exclude_non_upgraders=exclude_non_upgraders,
+        roll_value_by_char=roll_value_by_char,
+        char_usage_lookup=char_usage_lookup,
+        it_only_max_level=it_only_max_level,
     )
 
     remaining_pieces = None
@@ -1033,7 +1265,9 @@ def build_combined_leveling_plan(
                                           skip_chars=skip_chars,
                                           char_slot_tier_lookup=char_slot_tier_lookup,
                                           max_pieces=remaining_pieces,
-                                          exclude_non_upgraders=exclude_non_upgraders)
+                                          exclude_non_upgraders=exclude_non_upgraders,
+                                          char_usage_lookup=char_usage_lookup,
+                                          it_only_max_level=it_only_max_level)
         for a in legacy_plan["actions"]:
             a["character_score"] = char_score_lookup.get(a["character"], 0)
     else:

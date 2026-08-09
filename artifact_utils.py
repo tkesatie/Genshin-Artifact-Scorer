@@ -311,24 +311,26 @@ def get_leveling_cost(rarity: int, current_level: int, target_level: int) -> dic
     Compute the Mora and Artifact EXP required to level an artifact from
     current_level to target_level.
 
+    Levels that are not a multiple of 4 are rounded down to the nearest
+    multiple of 4 (e.g., 6 becomes 4), matching the in-game +4 enhancement
+    brackets.
+
     Args:
         rarity (int): Artifact rarity (typically 4 or 5).
-        current_level (int): Current level (must be a multiple of 4, e.g., 0, 4, 8...).
-        target_level (int): Desired level (must be a multiple of 4, <=20 for 5-star).
+        current_level (int): Current level (rounded down to the nearest multiple of 4).
+        target_level (int): Desired level (rounded down to the nearest multiple of 4, <=20 for 5-star).
 
     Returns:
         dict: {"mora": int, "exp": int} – the cumulative cost from current to target.
 
     Raises:
-        ValueError: If rarity is not 4 or 5, or if levels are not multiples of 4,
-                    or if current_level > target_level.
+        ValueError: If rarity is not 4 or 5, or if current_level > target_level.
     """
     if rarity not in (4, 5):
         raise ValueError(f"Unsupported rarity: {rarity}. Only 4 and 5 are supported.")
-    if current_level % 4 != 0:
-        raise ValueError(f"current_level {current_level} is not a multiple of 4.")
-    if target_level % 4 != 0:
-        raise ValueError(f"target_level {target_level} is not a multiple of 4.")
+    # Round down to the nearest multiple of 4 (the real in-game checkpoints).
+    current_level = (current_level // 4) * 4
+    target_level = (target_level // 4) * 4
     if current_level > target_level:
         raise ValueError(f"current_level ({current_level}) > target_level ({target_level}).")
     if target_level > 20:

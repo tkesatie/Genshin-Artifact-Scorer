@@ -108,18 +108,26 @@ leveling:
 
   # --- Optimizer-driven planner (primary path - see leveling_efficiency.py) ---
   # A candidate below this probability of being the final optimal piece for
-  # its slot is ignored entirely (dead weight, not worth planning for).
+  # its slot is ignored entirely (dead weight, not worth planning for). This
+  # is a pure Mora-efficiency knob, unrelated to the tier-upgrade rule above:
+  # start high while the roster is fresh and real contests are plentiful
+  # (nothing is lost by waiting - a below-floor candidate just sits until a
+  # later, lower-floor run), and only lower it once runs start coming back
+  # thin. Currently tuned to 0.25 for an early-roster run.
   min_relevant_probability: 0.25
   # Cap on how many candidates in one slot get planned for at once, even if
   # more clear this bar. Keeps a heavily-contested slot (5+ similar rolls)
   # from generating a scouting action for every single one of them.
   max_contenders_per_slot: 3
-  # A slot counts as RESOLVED (safe to commit the leader to max level) once
-  # its top candidate's probability clears this bar *and* leads the runner-up
-  # by at least contested_margin. Otherwise it's CONTESTED and every viable
-  # contender only gets a scout_step_levels nudge.
-  resolved_probability: 0.75
-  contested_margin: 0.15
+  # Scout-vs-Commit is no longer a probability/margin threshold - it's an
+  # explore-vs-exploit cost comparison, priced entirely in Mora (see
+  # leveling_efficiency._decide_slot_action):
+  #   expected_waste = leader's remaining finish cost x P(leader is wrong)
+  #   scout_cost     = Mora cost of the leader's cheapest next scout step
+  # Scout while expected_waste > scout_cost (still cheaper to learn more
+  # than to gamble); Commit once that flips, or once nothing is left to
+  # scout at all. No manual confidence bar to tune here anymore - it falls
+  # out of each candidate's own cost and probability every run.
   # Level increment for a "Scout" action on a contested slot - one checkpoint
   # (reveals the next roll/hidden substat) rather than committing further.
   scout_step_levels: 12
@@ -131,6 +139,17 @@ leveling:
   cliff_ratio: 0.25
   max_per_character: 2
   simulation_count: 500
+
+  # --- IT Only character handling ---
+  # IT Only characters are only ever leveled to this level (the last +4
+  # bracket on a 5-star is the most expensive). Analysis still runs as
+  # though the piece could go to 20; only the recommended target level and
+  # the budget reservation are capped here.
+  it_only_max_level: 16
+  # When true, only Active characters get leveling recommendations - IT
+  # Only characters are excluded from the leveling plan entirely. Defaults
+  # to false (both Active and IT Only characters are planned for).
+  active_chars_only: false
 
   # --- Shared budget-selection knobs (both planners) ---
   max_reveal_fraction: 0.40

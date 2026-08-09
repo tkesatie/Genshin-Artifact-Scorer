@@ -383,12 +383,11 @@ Bennett:
   role: Support
   set: "NO"
   domain: "Clear Pool"
-  useful_stats: [ER, "HP%"]
+  useful_stats: [ER, "HP%", HP]
   main_stats: {Sands: [ER], Goblet: ["HP%"], Circlet: ["Heal%"]}
-  primary_stat: ATK
-  scaling: [{stat: base_atk, weight: 1.39}]
+  primary_stat: HP
   evaluation_pipeline:
-    - {type: maximize_scaled_value}
+    - {type: hp_max}
 
 Xiangling:
   usage: "IT Only"

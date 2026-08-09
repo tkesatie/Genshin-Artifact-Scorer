@@ -18,6 +18,7 @@ Genshin Artifact Scorer analyzes an Irminsul/GOOD artifact export against the lo
 - Computes a Relative Damage Index (RDI) per character/team from hand-typed team assumptions — a same-character comparison tool, not a real damage number.
 - Runs a Monte Carlo build optimizer per character that projects candidate artifacts to +20, simulates random upgrade rolls, and reports each piece's probability of being part of the optimal 5-piece build ("Build Optimality").
 - Evaluates builds through a composable pipeline engine (`pipeline.py`) — the optimizer and dashboard both route damage scoring through `run_pipeline`. Every roster character declares an explicit `evaluation_pipeline` of composable steps (e.g. `standard_damage`, `personal_damage`, `reaction_damage`, `apply_modifiers`, `em_max`, `hp_max`, `saturate`, `maximize_scaled_value`).
+- Builds a budget-aware artifact leveling plan (`leveling_efficiency.py`) driven by the optimizer's build-optimality probabilities — contested slots get cheap scouting steps, resolved slots get their winning piece committed to max level, and characters the optimizer skipped fall back to a legacy threshold-based planner.
 - Renders the final report to a sortable standalone HTML dashboard.
 
 ## Requirements
@@ -40,7 +41,7 @@ There is no `requirements.txt` in this repository.
 These files must be in the project root:
 
 - `score.py`: command-line entry point.
-- `artifact_utils.py`: artifact parsing, stat labels, roll counting, and main-stat validation helpers.
+- `artifact_utils.py`: artifact parsing, stat labels, roll counting, main-stat validation helpers, and leveling-cost helpers.
 - `bench.py`: upgrade-potential calculations for under-leveled artifacts.
 - `candidate_generation.py`: candidate artifact selection helpers (projected inherent value, top-K per slot).
 - `character_scoring.py`: character and domain scoring.
@@ -48,10 +49,11 @@ These files must be in the project root:
 - `damage_calculator.py`: re-exports the shared EM/modifier helpers from `pipeline.py` for backward compatibility.
 - `flex.py`: off-set flex-slot suggestions for 4pc-locked characters.
 - `inventory.py`: classification of unequipped artifacts for inventory cleanup.
+- `leveling_efficiency.py`: budget-aware artifact leveling plan builder (optimizer-driven primary path + legacy threshold fallback).
 - `models.py`: TypedDict definitions shared by the damage/optimizer pipeline.
 - `optimizer.py`: Monte Carlo build optimizer (per-piece "Build Optimality" probabilities).
 - `pipeline.py`: composable evaluation-pipeline engine (Strangler Fig migration) — registers pipeline step evaluators and runs them sequentially.
-- `recommendations.py`: recommendation ranking.
+- `recommendations.py`: recommendation ranking and leveling-plan orchestration.
 - `render_html.py`: HTML report writer.
 - `snapshot.py`: run-to-run progress snapshot save/diff.
 - `stat_targets.py`: per-character stat-target loading, current-total computation, and target classification.
@@ -59,8 +61,9 @@ These files must be in the project root:
 - `team_damage.py`: team loading and Relative Damage Index (RDI) computation.
 - `thresholds.py`: threshold calculation helpers.
 - `validate_config.py`: config pre-flight validation, run before scoring.
+- `value_per_roll.py`: per-character per-substat damage value estimation (feeds the leveling planner's explore-vs-exploit math).
 - `roster.yaml`: character usage, role, desired set, farming domain, useful stats, and valid main stats.
-- `rules.yaml`: base thresholds, stat-pool adjustments, slot adjustments, character overrides, domain scoring weights, optimizer settings, and snapshot config.
+- `rules.yaml`: base thresholds, stat-pool adjustments, slot adjustments, character overrides, domain scoring weights, optimizer settings, budget/leveling settings, and snapshot config.
 - `roll_values.yaml`: average substat roll values for 5-star and 4-star artifacts.
 - `character_bases.yaml`: per-character base stats (base ATK/HP/DEF, crit, EM, ER, DMG%, innate % bonuses). Merged into the roster by `config.py`.
 - `stat_targets.yaml`: opt-in per-character stat targets, plus optional per-team overrides.
@@ -69,6 +72,7 @@ These files must be in the project root:
 Other files present:
 
 - `tests/test_damage_formulas.py`: pytest suite covering the damage-formula pipeline (`stats_calculator` + `pipeline.run_pipeline`).
+- `tests/test_leveling_decisions.py`: pytest suite covering the leveling planner's decision logic (`leveling_efficiency`).
 - `tests/test_optimizer_infeasible.py`: pytest suite covering the optimizer's infeasible-rate tracking.
 
 ## Usage
@@ -127,6 +131,7 @@ Update this file as your roster, builds, or farming targets change.
 - `flex.py` already special-cases this: `is_four_piece_locked` checks for `"/"` in the `set` field and skips flex consideration entirely for these characters, so they're at least not given bad off-set suggestions.
 - `character_scoring.compute_set_status` (see Module Reference below) also detects the `"/"` and reports `"Split (unverified)"` rather than a false result, so the dashboard's Set Bonus badge won't lie to you, it just can't check.
 - The optimizer also skips these characters (`"/"` in the set means no target set keys to optimize against).
+- The leveling planner's optimizer-driven path also skips them (no optimizer data), but the legacy threshold-based fallback still covers them, so they aren't silently dropped from the leveling plan.
 
 Until real split-set support is added, a `set` field with `"/"` is honestly reported as unverified everywhere, but gets zero bench-upgrade evaluation. If you want *some* bench coverage in the meantime, the practical workaround is to set `set` to whichever of the two half-sets you're most actively trying to complete or upgrade (e.g. `set: "Ocean-Hued Clam"` instead of a literal split label) - you'll lose bench matching for the other half, but at least get real candidates for the one you listed. Revert it once genuine 2pc/2pc support exists.
 
@@ -162,6 +167,24 @@ Controls scoring thresholds and farming priority:
   - `in_set_pool_size`: max in-set candidates considered per slot (default `5`).
   - `off_set_pool_size`: max off-set candidates considered per slot (default `5`).
   - `apply_ceiling_filter`: if `true`, skip candidates whose ceiling can't beat the currently equipped piece (default `true`).
+- `budget`: lifetime Mora/EXP budget for the leveling plan:
+  - `max_mora`: total lifetime Mora budget for leveling (default `2000000`).
+  - `max_artifact_exp`: total lifetime Artifact EXP budget (default `10000000`).
+  - `already_spent_mora` / `already_spent_exp`: amounts already committed to other pieces, subtracted from the lifetime budget before planning.
+- `leveling`: settings for the artifact leveling plan (see [leveling_efficiency.py](#leveling_efficiencypy) below):
+  - `min_distinct_on_set_slots`: minimum distinct on-set slots with a piece that can reach Good/Excellent before a character is eligible for any leveling action (default `4`).
+  - `require_tier_upgrade`: when `true`, an action only counts as high priority if its candidate can raise the slot's tier above what's currently equipped (Needs Work → Good/Excellent, Good → Excellent). Non-upgrading actions aren't blocked, just sink to the bottom of the priority order (default `true`).
+  - `min_relevant_probability`: a candidate below this build-optimality probability is ignored entirely by the optimizer-driven planner (default `0.08`).
+  - `max_contenders_per_slot`: cap on how many candidates in one slot get planned for at once (default `3`).
+  - `scout_step_levels`: level increment for a "Scout" action on a contested slot (default `4`).
+  - `max_scout_level`: cap on how high a Scout action can level a piece (default `16`).
+  - `soft_stop_floor`: legacy planner's minimum probability for a piece to be worth jumping to a target level (default `0.15`).
+  - `cliff_ratio`: legacy planner's efficiency cliff — candidates below this fraction of the best efficiency are cut (default `0.25`).
+  - `max_per_character`: cap on how many distinct slots one character can claim budget on per run (default `2`).
+  - `it_only_max_level`: cap for IT Only characters — analysis runs as though the piece could go to 20, but the recommended target and budget reservation are capped here (default `16`).
+  - `active_chars_only`: when `true`, only Active characters get leveling recommendations; IT Only characters are excluded entirely (default `false`).
+  - `max_reveal_fraction`: fraction of remaining lifetime budget that can be spent on immediate (reveal/scout) actions (default `0.40`).
+  - `max_pieces_per_run`: hard cap on the total number of pieces leveled in one run, across both planners combined (default `10`).
 
 ### `roll_values.yaml`
 
@@ -185,6 +208,8 @@ Furina:
 
 Current totals are main stat + activated substats, assuming every equipped piece is at max level (20 for 5-star, 16 for 4-star) — treat them as "current at full investment," not exact. Each configured stat is classified `Under Target` / `Near Target` / `Exceeds Target` (within a 3-point tolerance), and stats that are over target are flagged to deprioritize.
 
+The `minimums` block (e.g. `energy_recharge`, `hp`) is also consumed by the optimizer as hard stat floors — a build that misses a floor is rejected during Monte Carlo simulation.
+
 ### `teams.yaml`
 
 Opt-in team definitions used by the Team Damage Context section. Each team lists `members` and hand-typed `assumptions`:
@@ -201,7 +226,7 @@ These are hand-typed constants, not derived from any mechanics formula — sourc
 
 ### `score.py`
 
-Command-line orchestrator. It loads configs, reads the GOOD export, groups equipped artifacts, evaluates bench potential, scores characters/domains, runs stat-target and team-damage analysis, runs the per-character optimizer, builds recommendations, and calls `render_html`.
+Command-line orchestrator. It loads configs, reads the GOOD export, groups equipped artifacts, evaluates bench potential, scores characters/domains, runs stat-target and team-damage analysis, runs the per-character optimizer, builds the leveling plan, builds recommendations, and calls `render_html`.
 
 Functions:
 
@@ -213,6 +238,16 @@ Functions:
 - `build_team_context_lookup(teams)`: builds a `{character: team_context}` lookup from `teams.yaml` (first team listed wins for characters on multiple teams).
 - `convert_to_cg_artifact(good_artifact_dict)`: converts a GOOD artifact dict to a `candidate_generation.Artifact`.
 - `compute_expected_20_roll_value(artifact, roll_values, useful_stats)`: estimates total useful roll value at +20, used to rank optimizer candidates.
+
+`main()` also builds the inputs the leveling planner needs:
+
+- `char_slot_tier_lookup`: `{(character, slot): equipped tier status}` from `char_results` — drives the tier-upgrade priority rule.
+- `char_score_lookup`: `{character: urgency score}` from `score_character` — prioritizes which character's actions claim budget first.
+- `char_usage_lookup`: `{character: "Active"/"IT Only"}` from the roster — drives the IT Only max-level cap and Active-only toggle.
+- `roll_value_by_char`: `{character: {substat_key: damage per roll}}` from `value_per_roll_for_character` — feeds the explore-vs-exploit terminal check.
+- `optimizer_candidates_by_char`: per-slot candidate lists with build-optimality probabilities, annotated with `tier_upgrade_ok`/`reachable_tier` per candidate (computed via `reachable_tier_for`/`tier_upgrade_ok` from `leveling_efficiency.py`).
+
+The leveling plan is built via `recommendations.generate_leveling_recommendations` and passed to `render_html` as `leveling_plan`.
 
 ### `artifact_utils.py`
 
@@ -228,6 +263,7 @@ Important constants and functions:
 - `effective_useful_pool(main_stat_key, useful_stats)`: subtracts the main stat from the useful-stat pool when applicable.
 - `valid_main_stat(artifact, cfg, slot)`: checks a slot's main stat against the character config.
 - `parse_good_export(good_json, roster)`: groups equipped artifacts by character and slot. Unequipped artifacts are not returned here.
+- `get_leveling_cost(rarity, current_level, target_level)`: returns `{"mora": int, "exp": int}` — the cumulative Mora and Artifact EXP cost to level an artifact from `current_level` to `target_level` (both must be multiples of 4). Used by the leveling planner to price every action and budget reservation.
 
 ### `thresholds.py`
 
@@ -264,13 +300,14 @@ Functions:
 
 ### `recommendations.py`
 
-Ranks practical upgrade recommendations from bench results and character scores.
+Ranks practical upgrade recommendations from bench results and character scores, and orchestrates the leveling plan.
 
 Functions:
 
 - `determine_verdict(equipped_rolls, ceiling, good_thresh, exc_thresh)`: classifies impact as `Major Breakthrough`, `Patch / Fix`, `Luxury Upgrade`, `Minor Polish`, or `Dead end`.
 - `build_recommendations(bench_results, char_results, top_n_per_slot=3)`: filters candidates that can beat the equipped artifact, limits recommendations per character/slot, and sorts by impact.
 - `build_ceiling_only_candidates(bench_results, char_results)`: surfaces "High Risk" candidates whose optimistic ceiling beats what's equipped but whose expected value doesn't clear the threshold yet.
+- `generate_leveling_recommendations(bench_results, rules, roll_values, optimizer_candidates_by_char=None, char_score_lookup=None, char_slot_tier_lookup=None, roll_value_by_char=None, char_usage_lookup=None)`: the leveling-plan entry point. Reads `budget` and `leveling` sections from `rules.yaml`, calls `leveling_efficiency.build_combined_leveling_plan`, then decorates each action with display-friendly strings (`immediate_cost_str`, `finish_cost_str`, `probability_str`, `efficiency_str`, and the explore-vs-exploit diagnostics `expected_waste_str`/`scout_cost_str`/`expected_damage_gain_str` for optimizer-driven actions).
 
 ### `config.py`
 
@@ -379,6 +416,67 @@ Functions:
 
 TypedDict definitions shared by the damage/optimizer pipeline: `Artifact`, `CharacterStats`, `DamageModifiers`, and `BuildContext`. Also defines `CharacterConfig` (the enhanced character-config dict) documenting the Strangler Fig fields (`scaling`, `evaluation_pipeline`).
 
+### `leveling_efficiency.py`
+
+Budget-aware artifact leveling plan builder. The primary path (`build_leveling_plan_from_optimizer`) is driven by the global optimizer's "build optimality" probabilities rather than a raw roll-count/threshold heuristic:
+
+- **Contested slot**: two or more candidate pieces have comparable, unresolved probability of ending up the optimal piece for that slot (e.g. three pieces each ~33%). Committing real budget to any one of them risks leveling the wrong piece, so each viable contender only gets a small, cheap "scouting" step — one checkpoint's worth of levels (default +4), which reveals its next roll/hidden substat and sharpens the probability estimate for the *next* run.
+- **Resolved slot**: one candidate's probability clearly separates from the rest. Its own future-roll variance is already priced into that probability by the optimizer's Monte Carlo simulation, so it's safe to commit it the rest of the way to max level in one action.
+
+Character urgency (`character_scoring.score_character`'s `score`) prioritizes WHICH character's actions get budget first when the immediate/lifetime budgets can't cover everything; the contest/resolve logic decides WHAT to level per character and by how much.
+
+A legacy closed-form/threshold path (`build_leveling_plan`) is kept as a fallback for characters the optimizer didn't run for (split sets, characters with no equipped pieces, etc.) so they aren't silently dropped from the plan. `build_combined_leveling_plan` merges both.
+
+Key functions:
+
+- `reachable_tier_for(max_rolls, good, excellent)`: applies the same tier boundaries `character_scoring.score_character` uses for the equipped piece, but to a candidate's own ceiling (max reachable useful rolls) instead of its current roll count. Returns `"Excellent"`, `"Good"`, or `"Needs Work"`.
+- `tier_upgrade_ok(equipped_tier, reachable_tier)`: does a candidate with `reachable_tier` beat the slot's `equipped_tier`? (Needs Work/Missing → any real tier clears it; Good → only Excellent; Excellent → nothing beats it.)
+- `any_tier_upgrade_available(optimizer_candidates_by_char, bench_results, skip_chars, char_slot_tier_lookup)`: existence check across the WHOLE roster (both planners, every character), independent of budget/Mora — used to decide whether sidegrades are eligible for selection at all this run. If even one tier-upgrading candidate exists anywhere, no sidegrade should be a selectable candidate for anyone.
+- `posterior_reach_probability(artifact, useful_stats, threshold, current_rolls, target_level=None)`: exact closed-form probability that the artifact reaches `threshold` useful rolls by `target_level`, using the fact that hidden-line reveal is deterministic and remaining upgrades follow a Binomial distribution.
+- `safe_target_level(artifact, useful_stats, threshold, current_rolls, soft_floor=0.15)`: level to jump to in one action, bounded below by the point at which the piece stops being a low-probability gamble. Two constraints: a hard ceiling (dead-end gate — if even the absolute best case can't reach `threshold` by max level, return the current level) and a soft floor (the exact probability of reaching `threshold` by the returned level must be at least `soft_floor`).
+- `build_leveling_plan(bench_results, budget_config, leveling_config, roll_values=None, skip_chars=None, char_slot_tier_lookup=None, max_pieces=None, exclude_non_upgraders=False, char_usage_lookup=None, it_only_max_level=None)`: the legacy closed-form/threshold planner. Generates candidates in one pass, sorts by tier-upgrade status then efficiency, and greedily selects within the immediate/lifetime budget.
+- `_select_contenders(candidates, min_relevant_prob, contested_margin, max_contenders)`: filters candidates below `min_relevant_probability` (dead weight, not worth planning for) and caps the list at `max_contenders`.
+- `_decide_slot_action(contenders, leveling_config, char_roll_values=None)`: explore-vs-exploit, priced entirely in Mora. `expected_waste` = leader's remaining finish cost × P(leader is wrong); `scout_cost` = Mora cost of the leader's cheapest next scout checkpoint. If `expected_waste > scout_cost`, scouting is the cheaper move (Contested); otherwise Commit. In the terminal case (nothing left to scout), also surfaces a roll-value-informed estimate of what finishing the leader is expected to buy in damage terms (`expected_damage_gain`).
+- `explain_slot_decision(contenders, leveling_config, char_roll_values=None)`: human-readable audit trail for a Scout/Commit decision — a verification tool only, not used by the planner itself. Calls `_decide_slot_action` with the exact same arguments the planner would.
+- `plan_slot_actions(char_name, slot, candidates, leveling_config, char_roll_values=None, effective_max_level=None)`: builds the per-slot action list (Scout or Commit) for one character/slot from its sorted, floor-filtered candidate list.
+- `build_leveling_plan_from_optimizer(optimizer_candidates_by_char, char_score_lookup, budget_config, leveling_config, skip_chars=None, max_pieces=None, exclude_non_upgraders=False, roll_value_by_char=None, char_usage_lookup=None, it_only_max_level=None)`: the primary optimizer-driven planner. Groups actions into atomic per-(character, slot) decisions (a contested slot's contenders are one decision — scout everyone still live for it, or none of them), sorts groups by tier-upgrade status then character urgency then priority, and greedily selects within budget. Lifetime-budget reservation is per-slot (max finish cost in a contested group, not the sum), guaranteeing "if you commit to what's currently being leveled and it pans out, you can still finish it."
+- `build_combined_leveling_plan(bench_results, optimizer_candidates_by_char, char_score_lookup, budget_config, leveling_config, char_slot_tier_lookup=None, roll_value_by_char=None, char_usage_lookup=None)`: primary entry point. Runs the optimizer-driven planner for every character the global optimizer produced candidates for, and falls back to the legacy closed-form planner for the rest. Enforces the general coverage gate (`min_distinct_on_set_slots` distinct on-set slots with a piece that can reach Good/Excellent), the global sidegrade hard-exclude (`any_tier_upgrade_available`), and the global piece cap (`max_pieces_per_run`). Merges both action lists into one budget-selected plan with a unified schema.
+
+The unified action schema (shared by both planners):
+
+- `character`, `slot`, `artifact_id`, `artifact`
+- `action_type`: `"Scout"` (contested slot, cheap info-gathering step), `"Commit"` (resolved slot, winning piece to max level), or `"Legacy"` (no optimizer data, threshold-based fallback)
+- `slot_status`: `"Contested"` or `"Resolved"` (optimizer path only)
+- `probability`: build-optimality probability (optimizer path) or `None` (legacy)
+- `is_equipped`, `current_level`, `target_level`, `rarity`
+- `tier_upgrade_ok`, `reachable_tier`, `group_tier_upgrade_ok`
+- `immediate_cost` / `finish_cost`: `{"mora": int, "exp": int}` from `artifact_utils.get_leveling_cost`
+- `character_score`: the character's urgency score
+- `priority`: `max(probability, 0.01) × urgency / mora_cost` (optimizer path)
+- Explore-vs-exploit diagnostics (optimizer path): `expected_waste_mora`, `scout_cost_mora`, `expected_damage_gain`
+
+The summary dict includes `total_immediate_mora`/`exp`, `calculated_immediate_budget_used_fraction`, `total_finish_cost_if_all_completed` (the guaranteed-affordable reservation), `total_finish_cost_worst_case` (FYI only — what it would cost if every scouted contender were also fully maxed), `remaining_lifetime_mora`/`exp`, `lifetime_warning`, `recommendation_text`, `scout_count`, `commit_count`, `legacy_count`, `deferred_tier_count`, `piece_count`, and `max_pieces_per_run`.
+
+### `value_per_roll.py`
+
+Estimates, per character, how much end-damage one average roll of each substat is actually worth right now — not a flat community "Crit Value" table, but derived from this character's own current build via the same damage pipeline `character_scoring.py` already runs. A CD roll and an ATK% roll are NOT interchangeable (a crit-capped character gets ~nothing from another CR roll no matter what a static table says), so this exists to give the leveling planner's explore-vs-exploit math a real, build-aware number instead of treating every hidden roll as equally valuable.
+
+Method — "perturb and re-run":
+
+1. Compute the character's CURRENT build's damage once (`base_damage`), from their actually-equipped artifacts.
+2. For each substat this character cares about (`cfg["useful_stats"]`), build a tiny synthetic "artifact" containing nothing but one average roll of that substat, run it through `stats_calculator.compute_artifact_delta` (the exact same parsing real artifacts get), add it to the current build's deltas, and re-run the pipeline.
+3. `value_per_roll[stat] = perturbed_damage - base_damage`.
+
+Known approximations (acceptable for a first version, revisitable later):
+
+- Uses the AVERAGE of a stat's 4 roll tiers from `roll_values.yaml`, not the true roll-tier distribution.
+- Prices each stat independently (additive), not accounting for interaction effects between stacked stats.
+- Priced off the character's CURRENTLY EQUIPPED build, not the specific candidate artifact under consideration — so a stat this character is already saturated on will correctly show low value, but a candidate meant to REPLACE a crit-heavy piece would (for now) still be evaluated against the "already capped" baseline.
+
+Function:
+
+- `value_per_roll_for_character(char_name, cfg, artifacts_by_slot, team_context, roll_values, useful_stats=None, rarity=5)`: returns `{substat_key: estimated damage gained from one average roll of that substat}` for this character's current equipped build. Only prices stats in `useful_stats` (defaults to `cfg["useful_stats"]`).
+
 ### `render_html.py`
 
 Writes the sortable HTML dashboard.
@@ -386,12 +484,13 @@ Writes the sortable HTML dashboard.
 Functions:
 
 - `format_substats_html(substats, rarity=5, level=0)`: formats substats and adds a hidden-line marker for low-level 5-star artifacts with three visible substats. This helper is currently not used by `render_html`.
-- `render_html(char_results, domain_results, recommendations, out_path, flex_results=None, inventory_results=None, progress_changes=None, ceiling_only_results=None, stat_target_results=None, team_damage_results=None, multi_piece_results=None, prob_lookup=None, equipped_artifacts_by_char=None, roster=None, optimizer_candidates_by_char=None)`: writes the report and prints `Wrote <out_path>`.
+- `render_html(char_results, domain_results, recommendations, out_path, flex_results=None, inventory_results=None, progress_changes=None, ceiling_only_results=None, stat_target_results=None, team_damage_results=None, multi_piece_results=None, prob_lookup=None, equipped_artifacts_by_char=None, roster=None, optimizer_candidates_by_char=None, infeasible_rate_by_char=None, leveling_plan=None)`: writes the report and prints `Wrote <out_path>`.
 
 The dashboard includes:
 
 - **Progress Since Last Snapshot** — driven by `progress_changes` (see `snapshot.py` below).
 - **Characters** table — per-slot statuses, Set Bonus column (from `set_status`), a ⚠ next to a character's status badge when `set_bonus_mismatch` is true, and a farming-priority score. Every row is clickable and opens a detail modal (pure vanilla JS, no backend calls).
+- **Leveling Recommendations** — driven by `leveling_plan` (see `leveling_efficiency.py` below). Shows each action's character, slot, artifact, action type (Commit/Scout/Legacy), character score, optimality probability, level range, immediate cost, and finish cost, plus a summary box with the recommendation text, immediate spend, guaranteed-affordable reservation, and remaining lifetime budget.
 - **Stat Targets** table — per-character/context stat targets with current/target/delta/status, flagging over-target stats to deprioritize.
 - **Team Damage Context** table — per-character/team RDI with the multiplier breakdown.
 - **Domains** table — sorted by farming priority.
@@ -484,7 +583,7 @@ When enabled:
 
 - Characters with `usage: Active` are always included, regardless of element - they're farmed independent of Theater.
 - Characters with `usage: IT Only` are included only if their `element` matches one of the configured `elements`.
-- Filtered-out characters are excluded from character scoring, upgrade recommendations, flex recommendations, inventory matching, domain priority calculations, and the run-to-run progress snapshot, for that run only. Nothing is deleted from `roster.yaml`; the next run without the filter (or with different elements) sees the full roster again.
+- Filtered-out characters are excluded from character scoring, upgrade recommendations, flex recommendations, inventory matching, domain priority calculations, the leveling plan, and the run-to-run progress snapshot, for that run only. Nothing is deleted from `roster.yaml`; the next run without the filter (or with different elements) sees the full roster again.
 
 Config validation (see above) always runs against the full, unfiltered roster, so an issue in an `IT Only` character's config is still caught even on a run where the Theater filter would have excluded that character from scoring.
 
@@ -514,6 +613,10 @@ Originally proposed as a simple tiebreaker in `build_recommendations` favoring c
 
 `validate_config.py` currently checks `roster.yaml`/`rules.yaml` only. Team memberships that reference characters not in the roster are silently skipped, and unsupported stat targets are surfaced in the dashboard rather than at validation time. A future pass could lint these files too.
 
+### 5. Calibrated damage-per-Mora gate for the leveling planner's terminal Commit — under consideration
+
+`leveling_efficiency._decide_slot_action` already computes `expected_damage_gain` (P(leader) × remaining hidden rolls × average priced roll value) in the terminal case (nothing left to scout), but it's informational only — not yet used to block a Commit outright because no calibrated damage-per-Mora bar exists yet to compare it against. Once `value_per_roll.py`'s estimates are trusted enough (or a per-candidate version exists), this could gate whether finishing a resolved piece is actually worth the Mora.
+
 ## Scoring Notes
 
 - Only equipped artifacts are used for character scores.
@@ -524,3 +627,4 @@ Originally proposed as a simple tiebreaker in `build_recommendations` favoring c
 - Domain scores increase for incomplete characters and for non-Luxury characters below their luxury excellent-piece target.
 - Stat targets, team damage, and the optimizer are all opt-in, independent lenses on the same equipped-artifact data. A character can be "Farming" in roll-count terms and still have a stat already over its target, or read as low RDI while doing their job as a pure support.
 - The optimizer's "Build Optimality" is a probability that a piece is part of the best build found by Monte Carlo simulation for that character's current objective — intended for comparing artifact quality, not predicting in-game damage. Characters with no optimizer data (missing pieces, no bench candidates, or a split-set build) show `—`.
+- The leveling plan is budget-aware: immediate spend (reveal/scout actions) is capped to a fraction of remaining lifetime currency, and each selected group's finish cost is reserved against the lifetime budget so committing to what's currently being leveled and following it through to completion is always affordable. Characters with fewer than `min_distinct_on_set_slots` distinct on-set slots of potential Good/Excellent coverage are skipped entirely, and sidegrades (pieces that can't raise their slot's tier) are only funded once nothing better exists roster-wide.

@@ -47,6 +47,7 @@ from validate_config import has_errors, validate_config
 # NEW imports
 from optimizer import compute_optimal_probabilities
 from leveling_efficiency import reachable_tier_for, tier_upgrade_ok
+from value_per_roll import value_per_roll_for_character
 
 
 def apply_imaginarium_theater_filter(roster, rules):
@@ -462,10 +463,18 @@ def main():
     bench_candidates = bench_candidates_lookup(bench_results)
 
     char_results = []
+    # {character_name: {substat_key: estimated damage from one average roll}}
+    # - see value_per_roll.py. Computed once per character here (reusing the
+    # same artifacts/team_context already fetched for score_character) since
+    # it's a handful of extra pipeline calls per character, not per
+    # candidate - cheap relative to the optimizer's per-slot Monte Carlo
+    # sims. Feeds the leveling planner's explore-vs-exploit terminal check.
+    roll_value_by_char = {}
     for name, cfg in roster.items():
         artifacts = by_char.get(name, {})
         team_context = team_context_lookup.get(name, {})
         char_results.append(score_character(name, cfg, artifacts, rules, roll_values, bench_lookup, bench_candidates, team_context=team_context))
+        roll_value_by_char[name] = value_per_roll_for_character(name, cfg, artifacts, team_context, roll_values)
 
     domain_results = score_domains(char_results, rules)
     recommendations = build_recommendations(bench_results, char_results)
@@ -676,11 +685,17 @@ def main():
     # the optimizer (build-optimality probabilities per candidate) both
     # exist, since it's driven by both now instead of raw roll thresholds.
     char_score_lookup = {r["name"]: r["score"] for r in char_results}
+    # Character usage ("Active"/"IT Only") drives the leveling planner's IT
+    # Only max-level cap and Active-only toggle (rules.yaml leveling.
+    # it_only_max_level / active_chars_only).
+    char_usage_lookup = {name: cfg.get("usage") for name, cfg in roster.items()}
     leveling_plan = generate_leveling_recommendations(
         bench_results, rules, roll_values,
         optimizer_candidates_by_char=optimizer_candidates_by_char,
         char_score_lookup=char_score_lookup,
         char_slot_tier_lookup=char_slot_tier_lookup,
+        roll_value_by_char=roll_value_by_char,
+        char_usage_lookup=char_usage_lookup,
     )
 
     # =========================================================================

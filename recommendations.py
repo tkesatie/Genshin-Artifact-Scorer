@@ -183,6 +183,8 @@ def generate_leveling_recommendations(
     optimizer_candidates_by_char: dict = None,
     char_score_lookup: dict = None,
     char_slot_tier_lookup: dict = None,
+    roll_value_by_char: dict = None,
+    char_usage_lookup: dict = None,
 ) -> dict:
     """
     Generate a leveling plan.
@@ -219,6 +221,16 @@ def generate_leveling_recommendations(
             char_results after score_character has run for the roster.
         char_slot_tier_lookup: {(character_name, slot): equipped tier status},
             typically built from char_results after score_character has run.
+        roll_value_by_char: {character_name: {substat_key: estimated damage
+            from one average roll}}, from value_per_roll.py, typically built
+            alongside char_results. Feeds the optimizer planner's explore-vs-
+            exploit terminal check (leveling_efficiency._decide_slot_action)
+            with a build-aware sense of what a hidden roll is actually
+            worth, instead of treating every substat as equally valuable.
+        char_usage_lookup: {character_name: "Active"/"IT Only"}, typically
+            built from the roster. Drives the IT Only max-level cap
+            (rules.yaml leveling.it_only_max_level) and the Active-only
+            toggle (rules.yaml leveling.active_chars_only).
 
     Returns:
         dict: actions + summary, with additional formatting hints for display.
@@ -228,6 +240,7 @@ def generate_leveling_recommendations(
     optimizer_candidates_by_char = optimizer_candidates_by_char or {}
     char_score_lookup = char_score_lookup or {}
     char_slot_tier_lookup = char_slot_tier_lookup or {}
+    roll_value_by_char = roll_value_by_char or {}
 
     plan = build_combined_leveling_plan(
         bench_results=bench_results,
@@ -236,6 +249,8 @@ def generate_leveling_recommendations(
         budget_config=budget_config,
         leveling_config=leveling_config,
         char_slot_tier_lookup=char_slot_tier_lookup,
+        roll_value_by_char=roll_value_by_char,
+        char_usage_lookup=char_usage_lookup,
     )
 
     # Add a display-friendly version of the actions
@@ -254,5 +269,16 @@ def generate_leveling_recommendations(
         else:
             action["probability_str"] = f"{action.get('probability', 0.0) * 100:.0f}%"
             action["efficiency_str"] = f"{action.get('priority', 0):.2e} priority/Mora"
+            # Explore-vs-exploit diagnostics (see leveling_efficiency.
+            # _decide_slot_action) - not present on Legacy actions, since
+            # the legacy planner doesn't run that decision.
+            if action.get("expected_waste_mora") is not None:
+                action["expected_waste_str"] = f"{action['expected_waste_mora']:,.0f} Mora"
+            if action.get("scout_cost_mora") is not None:
+                action["scout_cost_str"] = f"{action['scout_cost_mora']:,.0f} Mora"
+            else:
+                action["scout_cost_str"] = "—"  # nothing left to scout
+            if action.get("expected_damage_gain") is not None:
+                action["expected_damage_gain_str"] = f"{action['expected_damage_gain']:,.0f} dmg"
 
     return plan
