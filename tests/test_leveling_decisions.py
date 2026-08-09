@@ -40,13 +40,17 @@ def make_artifact(level=0, rarity=5, hidden=True):
     }
 
 
-def make_candidate(probability, level=0, rarity=5, hidden=True, tier_upgrade_ok=True):
+def make_candidate(probability, level=0, rarity=5, hidden=True, tier_upgrade_ok=True, reachable_tier=None):
     return {
         "artifact": make_artifact(level=level, rarity=rarity, hidden=hidden),
         "probability": probability,
         "is_equipped": False,
         "tier_upgrade_ok": tier_upgrade_ok,
-        "reachable_tier": "Excellent" if tier_upgrade_ok else "Good",
+        "reachable_tier": (
+            reachable_tier
+            if reachable_tier is not None
+            else ("Excellent" if tier_upgrade_ok else "Good")
+        ),
     }
 
 
@@ -334,3 +338,54 @@ def test_any_tier_upgrade_available_ignores_skipped_characters():
         "CharA": {"Circlet": [make_candidate(0.5, tier_upgrade_ok=True)]},
     }
     assert le.any_tier_upgrade_available(optimizer_candidates, [], {"CharA"}, {}) is False
+
+
+# ---------------------------------------------------------------------------
+# "can never reach Good" hard gate - the Kuki flower regression
+# ---------------------------------------------------------------------------
+
+def test_plan_slot_actions_never_plans_pieces_that_cant_reach_good():
+    """
+    Regression for the Kuki flower report: a piece whose honest ceiling is
+    'Needs Work' (best case still can't clear the slot's `good` bar) must not
+    be committed just for being the only in-set candidate. Optimizer
+    probability is a measure of "best of what's available", not of absolute
+    quality - a ~100%-probability throwaway gets no Scout and no Commit.
+    """
+    candidates = [make_candidate(0.99, hidden=False, reachable_tier="Needs Work")]
+    actions = le.plan_slot_actions("KukiShinobu", "Flower", candidates, DEFAULT_LEVELING_CONFIG)
+    assert actions == []
+
+
+def test_plan_slot_actions_filters_needs_work_candidates_out_of_contention():
+    # A Needs Work candidate is dropped before any Scout/Commit decision
+    # without dragging down the slot's real contenders.
+    candidates = [
+        make_candidate(0.95, hidden=False, reachable_tier="Excellent"),
+        make_candidate(0.50, hidden=False, reachable_tier="Needs Work"),
+    ]
+    actions = le.plan_slot_actions("TestChar", "Circlet", candidates, DEFAULT_LEVELING_CONFIG)
+    assert len(actions) == 1
+    assert actions[0]["action_type"] == "Commit"
+
+
+def test_plan_slot_actions_allows_candidates_without_reachable_tier():
+    # Callers that don't compute tier reachability (require_tier_upgrade
+    # disabled) must be unaffected - the gate only hard-blocks on an explicit
+    # "Needs Work".
+    cand = make_candidate(0.99, hidden=False)
+    del cand["reachable_tier"]
+    actions = le.plan_slot_actions("TestChar", "Circlet", [cand], DEFAULT_LEVELING_CONFIG)
+    assert len(actions) == 1
+    assert actions[0]["action_type"] == "Commit"
+
+
+def test_plan_slot_actions_still_plans_candidates_that_reach_good_or_excellent():
+    # Good/Excellent ceilings are unaffected by the gate.
+    candidates = [
+        make_candidate(0.90, hidden=False, reachable_tier="Good"),
+        make_candidate(0.30, hidden=False, reachable_tier="Good"),
+    ]
+    actions = le.plan_slot_actions("TestChar", "Circlet", candidates, DEFAULT_LEVELING_CONFIG)
+    assert len(actions) == 1
+    assert actions[0]["action_type"] == "Commit"

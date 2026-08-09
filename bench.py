@@ -127,6 +127,12 @@ def max_possible_useful_rolls_at_level(
     reveal (if useful) plus all remaining upgrades landing on useful stats,
     projected only to target_level (not necessarily +20).
 
+    "All remaining upgrades landing useful" only applies when the piece has
+    a useful stat to roll onto (a useful active substat, or a useful hidden
+    line that gets revealed and joins the pool). If neither exists, even the
+    best case gains zero useful rolls - every event lands on one of the
+    piece's non-useful lines.
+
     If target_level is None, projects to the artifact's max level (20 for 5-star).
     """
     rarity = artifact.get("rarity", 5)
@@ -155,16 +161,31 @@ def max_possible_useful_rolls_at_level(
 
     hidden_subs = artifact.get("unactivatedSubstats", [])
     guaranteed_gain = 0
+    hidden_useful = False
 
     # 3-line artifact: first upgrade reveals the known 4th line
     if hidden_subs and remaining_events > 0:
         hidden_label = STAT_LABEL.get(hidden_subs[0].get("key"))
-        if hidden_label in useful_stats:
+        hidden_useful = hidden_label in useful_stats
+        if hidden_useful:
             guaranteed_gain += 1
         remaining_events -= 1
 
-    # Remaining upgrades can theoretically all hit useful stats
-    max_additional = guaranteed_gain + remaining_events
+    # Remaining upgrades can theoretically all hit useful stats - but only if
+    # the piece has a useful stat to roll onto at all. Upgrade events always
+    # land on one of the piece's own substat lines (a revealed hidden line
+    # joins the pool once unlocked), so a piece with NO useful active substat
+    # and NO useful hidden line can never gain a useful roll no matter how
+    # many events remain - its true ceiling is just its current roll count.
+    # Without this check such a piece was credited with "all remaining events
+    # land useful" and could appear able to reach Good/Excellent tiers it can
+    # never actually touch (e.g. a Kuki flower with only DEF/ATK/CR/CD showed
+    # a ceiling of 5 while holding zero useful substats).
+    has_useful_in_pool = hidden_useful or any(
+        STAT_LABEL.get(s.get("key")) in useful_stats
+        for s in artifact.get("substats", [])
+    )
+    max_additional = (guaranteed_gain + remaining_events) if has_useful_in_pool else 0
 
     return current_rolls, current_rolls + max_additional
 

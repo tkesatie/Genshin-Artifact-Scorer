@@ -128,9 +128,12 @@ leveling:
   # than to gamble); Commit once that flips, or once nothing is left to
   # scout at all. No manual confidence bar to tune here anymore - it falls
   # out of each candidate's own cost and probability every run.
-  # Level increment for a "Scout" action on a contested slot - one checkpoint
-  # (reveals the next roll/hidden substat) rather than committing further.
-  scout_step_levels: 12
+  # Level increment options for a "Scout" action on a contested slot - each
+  # candidate independently picks whichever of these is cheapest while still
+  # reaching a meaningful reveal (see leveling_efficiency.plan_slot_actions),
+  # so different pieces in the same run can land on different steps. Uncomment
+  # to override the code's default of [4, 8, 12, 16].
+  # scout_step_options: [4, 8, 12, 16]
   max_scout_level: 16
 
   # --- Legacy closed-form planner (fallback for characters the optimizer

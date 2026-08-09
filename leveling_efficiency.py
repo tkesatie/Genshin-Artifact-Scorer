@@ -80,6 +80,7 @@ def any_tier_upgrade_available(
     bench_results: List[Dict[str, Any]],
     skip_chars: set,
     char_slot_tier_lookup: Dict[Any, str],
+    min_probability: float = 0.0,
 ) -> bool:
     """
     Existence check across the WHOLE roster (both planners, every
@@ -88,6 +89,19 @@ def any_tier_upgrade_available(
     tier-upgrading candidate exists anywhere, no sidegrade should be a
     selectable candidate for anyone; sidegrades only become eligible once
     nothing better exists roster-wide.
+
+    `tier_upgrade_ok` on its own is a CEILING check (best case: every
+    remaining roll lands useful) - cheap to satisfy, and says nothing about
+    how likely that outcome actually is. Left unfiltered, a single
+    long-shot candidate (e.g. an 8% chance of crossing a tier) would be
+    enough to block sidegrades everywhere, including for characters with a
+    near-certain, worthwhile sidegrade sitting right there. `min_probability`
+    requires the candidate's own simulated probability (already computed by
+    the optimizer, or bench.py's optimal_probability) to also clear a real
+    bar - typically the same min_relevant_probability used to decide
+    whether a candidate could ever actually get funded - before it counts
+    as "a real upgrade exists" here. Pass 0.0 (the default) to fall back to
+    the old ceiling-only behavior.
     """
     skip_chars = skip_chars or set()
 
@@ -95,7 +109,10 @@ def any_tier_upgrade_available(
         if char_name in skip_chars:
             continue
         for candidates in slots.values():
-            if any(c.get("tier_upgrade_ok") for c in candidates):
+            if any(
+                c.get("tier_upgrade_ok") and c.get("probability", 0.0) >= min_probability
+                for c in candidates
+            ):
                 return True
 
     for b in bench_results:
@@ -105,7 +122,11 @@ def any_tier_upgrade_available(
             continue
         equipped_tier = char_slot_tier_lookup.get((b.get("character"), b.get("slot")))
         reachable = reachable_tier_for(b.get("max_rolls"), b.get("good"), b.get("excellent"))
-        if tier_upgrade_ok(equipped_tier, reachable):
+        # bench_results carry probability as optimal_probability on a 0-100
+        # scale (see score.py's "Attach probabilities to bench_results"),
+        # not the 0-1 scale used on optimizer candidates.
+        prob = (b.get("optimal_probability") or 0.0) / 100.0
+        if tier_upgrade_ok(equipped_tier, reachable) and prob >= min_probability:
             return True
 
     return False
@@ -163,18 +184,25 @@ def posterior_reach_probability(
 
     hidden_subs = artifact.get("unactivatedSubstats", [])
 
-    hidden_gain = 0
-    if hidden_subs and total_events > 0:
-        if STAT_LABEL.get(hidden_subs[0].get("key")) in useful_stats:
-            hidden_gain = 1
-        total_events -= 1
-
     active_subs = artifact.get("substats", [])
     useful_active = sum(
         1 for s in active_subs
         if STAT_LABEL.get(s.get("key")) in useful_stats
     )
-    active_count = len(active_subs) + (1 if hidden_subs and total_events >= 0 else 0)
+    active_count = len(active_subs)
+
+    hidden_gain = 0
+    if hidden_subs and total_events > 0:
+        hidden_useful = STAT_LABEL.get(hidden_subs[0].get("key")) in useful_stats
+        if hidden_useful:
+            hidden_gain = 1
+            # The revealed line joins the pool future rolls draw from, so it
+            # must count toward useful_active too (not just active_count) -
+            # otherwise p understates the odds of later rolls for the rest
+            # of this artifact's life, matching bench.expected_useful_rolls.
+            useful_active += 1
+        active_count += 1
+        total_events -= 1
 
     if total_events == 0 or active_count == 0:
         return 1.0 if current_rolls + hidden_gain >= threshold else 0.0
@@ -512,6 +540,32 @@ def build_leveling_plan(
 
 # ---- Optimizer-driven planning (primary path) ----
 
+def _can_ever_reach_good(cand: Dict[str, Any]) -> bool:
+    """Hard gate: can this candidate's own ceiling clear the slot's `good`
+    bar at all?
+
+    The optimizer probability is a RELATIVE measure - "best of whatever
+    candidates happen to be available" - so a piece that is the ONLY in-set
+    candidate for its slot gets ~100% win probability regardless of how bad
+    its substats are. Alone, that probability would buy it a full Commit to
+    max (expected_waste ~ 0), which is exactly how a zero-useful-substat
+    piece ended up being recommended for leveling. This absolute check uses
+    the candidate's honest reachable tier (computed upstream in score.py from
+    max_possible_useful_rolls, which only counts useful substat lines the
+    piece actually has): a "Needs Work" ceiling means even the best case -
+    every remaining roll landing useful - never clears `good`, so no amount
+    of simulated win probability makes leveling it worthwhile.
+
+    - "Good"/"Excellent" reachable tier -> True (it can reach the bar)
+    - "Needs Work" reachable tier       -> False (hard-block: never Scout,
+      never Commit - farm instead)
+    - missing/unknown reachable tier    -> True (callers that don't compute
+      tier reachability, e.g. require_tier_upgrade disabled, are unaffected;
+      this gate only hard-blocks on an explicit "Needs Work")
+    """
+    return cand.get("reachable_tier") != "Needs Work"
+
+
 def _select_contenders(
     candidates: List[Dict[str, Any]],
     min_relevant_prob: float,
@@ -558,6 +612,8 @@ def _cheapest_scout_step(artifact: Dict[str, Any], scout_options: List[int], max
     best = None
     for step in scout_options:
         target = min(current_level + step, max_scout_level, max_level)
+        # Round down to the nearest multiple of 4 (the real in-game checkpoints).
+        target = (target // 4) * 4
         if target <= current_level or target < first_meaningful:
             continue
         mora = _finish_mora_cost(rarity, current_level, target)
@@ -739,6 +795,12 @@ def plan_slot_actions(
     scout_options = leveling_config.get("scout_step_options", [4, 8, 12, 16])
 
     contenders = _select_contenders(candidates, min_relevant_prob, 0.0, max_contenders)
+    # Hard gate: only candidates that can actually reach the slot's Good bar
+    # are ever Scouted or Committed. High optimizer probability alone must
+    # not buy a leveling action for a piece whose best case still can't clear
+    # Good (see _can_ever_reach_good) - if nothing survives, this slot gets
+    # no action this run.
+    contenders = [c for c in contenders if _can_ever_reach_good(c)]
     if not contenders:
         return []
     decision = _decide_slot_action(contenders, leveling_config, char_roll_values)
@@ -779,6 +841,8 @@ def plan_slot_actions(
 
             for step in scout_options:
                 target = min(current_level + step, max_scout_level, max_level)
+                # Round down to the nearest multiple of 4 (the real in-game checkpoints).
+                target = (target // 4) * 4
                 if target <= current_level:
                     continue
                 # Skip if this step doesn't reach the first meaningful upgrade
@@ -1088,7 +1152,18 @@ def build_leveling_plan_from_optimizer(
         if commit_count:
             parts.append(f"commit {commit_count} resolved piece(s) to max level")
         if scout_count:
-            parts.append(f"scout {scout_count} contested piece(s) by +{leveling_config.get('scout_step_levels', 4)} levels")
+            # Report what actually got selected (each candidate's own
+            # cheapest-viable step from scout_step_options), not a static
+            # config number - individual pieces can land on different steps.
+            scout_steps = sorted({
+                a["target_level"] - a["current_level"]
+                for a in selected if a["action_type"] == "Scout"
+            })
+            if len(scout_steps) == 1:
+                step_desc = f"+{scout_steps[0]} levels"
+            else:
+                step_desc = f"+{scout_steps[0]}-{scout_steps[-1]} levels"
+            parts.append(f"scout {scout_count} contested piece(s) by {step_desc}")
         rec_text = (
             f"Spend {total_immediate_mora:,.0f} Mora and {total_immediate_exp:,.0f} EXP now to "
             + " and ".join(parts) + ". "
@@ -1239,6 +1314,7 @@ def build_combined_leveling_plan(
     require_tier_upgrade = leveling_config.get("require_tier_upgrade", True)
     exclude_non_upgraders = require_tier_upgrade and any_tier_upgrade_available(
         optimizer_candidates_by_char, bench_results, skip_chars, char_slot_tier_lookup or {},
+        min_probability=leveling_config.get("min_relevant_probability", 0.25),
     )
 
     optimizer_plan = build_leveling_plan_from_optimizer(
