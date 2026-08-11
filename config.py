@@ -37,6 +37,8 @@ def load_configs():
     roll_values = yaml.safe_load((HERE / "roll_values.yaml").read_text(encoding="utf-8")) or {}
     bases = yaml.safe_load((HERE / "character_bases.yaml").read_text(encoding="utf-8")) or {}
 
+    print(f"Number of chracters: {len(roster)}")
+
     for name, base_cfg in bases.items():
         if name in roster:
             roster[name].update(base_cfg)

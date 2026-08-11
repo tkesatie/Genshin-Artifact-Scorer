@@ -27,6 +27,7 @@ Public API:
 
 import json
 from pathlib import Path
+from typing import List
 
 
 def _esc_attr(value):
@@ -61,6 +62,75 @@ INVENTORY_COLOR = {
 STAT_TARGET_COLOR = {
     "Under Target": "#e05a4e", "Near Target": "#e0a94e", "Exceeds Target": "#4ec97a",
 }
+
+# Order sets appear in the in-game artifact strongbox selector. New
+# strongboxable sets get appended here as needed; sets not listed sort
+# after all listed sets (still shown, just at the end).
+STRONGBOX_SET_ORDER: List[str] = [
+    "DeepwoodMemories",
+    "GildedDreams",
+    "DesertPavilionChronicle",
+    "FlowerOfParadiseLost",
+    "NymphsDream",
+    "VourukashasGlow",
+    "MarechausseeHunter",
+    "GoldenTroupe",
+    "SongOfDaysPast",
+    "NighttimeWhispersInTheEchoingWoods",
+    "ScrollOfTheHeroOfCinderCity",
+    "ObsidianCodex",
+    "LongNightsOath",
+    "FinaleOfTheDeepGalleries",
+    "NightOfTheSkysUnveiling",
+    "SilkenMoonSerenade",
+    "AubadeOfMorningstarAndMoon",
+    "ADayCarvedFromRisingWinds",
+    "Thundersoother",
+    "GladiatorsFinale",
+    "ViridescentVenerer",
+    "WanderersTroupe",
+    "ThunderingFury",
+    "NoblesseOblige",
+    "BloodstainedChivalry",
+    "ArchaicPetra",
+    "TenacityOfTheMillelith",
+    "PaleFlame",
+    "EmblemOfSeveredFate",
+    "OceanHuedClam",
+]
+
+# Inventory Cleanup slot order: goblet, feather, circlet, flower, sands.
+# Keyed by the display labels render_html uses (see artifact_utils.SLOT_MAP).
+INVENTORY_SLOT_ORDER = {
+    "Goblet": 0, "Feather": 1, "Circlet": 2, "Flower": 3, "Sands": 4,
+}
+
+
+def sort_inventory_for_display(inventory_results):
+    """Filter inventory results down to SAFE_STRONGBOX pieces and order them
+    the way the in-game artifact strongbox selector is: by set
+    (STRONGBOX_SET_ORDER), then by slot (goblet, feather, circlet, flower,
+    sands), then by visible substat count (3-liners before 4-liners, matching
+    the in-game artifact list order), then by the artifact's original GOOD
+    JSON order.
+
+    The JSON-order tiebreak falls out for free: build_inventory_results
+    appends in GOOD JSON order and Python's sort is stable, so rows with equal
+    (set, slot, substat count) keys keep their relative order - no extra index
+    field needed. Sets not yet added to STRONGBOX_SET_ORDER sort after every
+    listed set (still shown, just at the end).
+    """
+    set_rank = {s: i for i, s in enumerate(STRONGBOX_SET_ORDER)}
+    return sorted(
+        (i for i in inventory_results if i["action"] == "SAFE_STRONGBOX"),
+        key=lambda i: (
+            set_rank.get(i["artifact"].get("setKey"), len(set_rank)),
+            INVENTORY_SLOT_ORDER.get(i["slot"], len(INVENTORY_SLOT_ORDER)),
+            # In-game, within a set+slot, pieces with fewer visible substats
+            # (3-line) are listed before 4-line ones.
+            len(i["artifact"].get("substats", [])),
+        ),
+    )
 
 
 def substat_display_for(artifact, useful_stats):
@@ -296,11 +366,10 @@ def render_html(char_results, domain_results, recommendations, out_path,
           <td>{opt_prob_display}</td>
         </tr>""")
 
+    # Inventory Cleanup shows only SAFE_STRONGBOX pieces, in in-game strongbox
+    # set order -> slot order -> original JSON order (see helper above).
     inventory_rows = []
-    inventory_sorted = sorted(
-        inventory_results,
-        key=lambda i: ({"REVIEW": 0, "SANCTIFY_ELIXIR": 1, "SAFE_STRONGBOX": 2}.get(i["action"], 3), -i["ceiling"])
-    )
+    inventory_sorted = sort_inventory_for_display(inventory_results)
     for i in inventory_sorted:
         art = i["artifact"]
         main_label = STAT_LABEL.get(art.get("mainStatKey"), art.get("mainStatKey", "?"))
@@ -329,8 +398,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
         <td>{i['reason']}</td>
         </tr>""")
 
-    strongbox_count = sum(1 for i in inventory_results if i["action"] == "SAFE_STRONGBOX")
-    elixir_count = sum(1 for i in inventory_results if i["action"] == "SANCTIFY_ELIXIR")
+    strongbox_count = len(inventory_sorted)  # only SAFE_STRONGBOX rows are shown
 
     def stat_badge(text):
         color = STAT_TARGET_COLOR.get(text, "#999")
@@ -885,7 +953,7 @@ set bonus itself, so treat these as leads to sanity-check, not auto-swaps. <b>Bu
 <tbody>{''.join(flex_rows) if flex_rows else '<tr><td colspan="8" style="color:#999;">No flex candidates cleared the EV-gain threshold.</td></tr>'}</tbody>
 </table>
 
-<h2>Inventory Cleanup ({strongbox_count} strongbox, {elixir_count} elixir fodder)</h2>
+<h2>Inventory Cleanup ({strongbox_count} strongbox)</h2>
 <p style="color:#999;font-size:13px;max-width:750px;">"Ceiling" is this artifact's maximum possible useful-roll
 count for its single best-fit roster character - any character whose main-stat rules allow this slot, in-set or
 not. <b>Bold</b> substats are the ones that count for that character. "Alt Homes" lists other characters this piece

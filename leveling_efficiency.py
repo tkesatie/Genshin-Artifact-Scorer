@@ -34,9 +34,30 @@ dropped from the plan. `build_combined_leveling_plan` merges both.
 
 from typing import Dict, List, Any, Optional
 from math import comb
+import os
+import datetime
 
 from artifact_utils import MAX_LEVEL, STAT_LABEL, get_leveling_cost
 
+# ---- Debug logging (writes to leveling_debug.log in CWD) ----
+DEBUG_FILE = "leveling_debug.log"
+
+def _log(message: str) -> None:
+    """Append a timestamped message to the debug log file."""
+    try:
+        with open(DEBUG_FILE, "a", encoding="utf-8") as f:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            f.write(f"[{timestamp}] {message}\n")
+    except Exception:
+        pass  # Don't let logging failures break the planner
+
+# Clear the log at the start of each run by calling _log_reset()
+def _log_reset() -> None:
+    try:
+        with open(DEBUG_FILE, "w", encoding="utf-8") as f:
+            f.write(f"=== Leveling planner debug log started at {datetime.datetime.now()} ===\n")
+    except Exception:
+        pass
 
 # ---- Tier-upgrade gate (shared by both the legacy and optimizer planners) ----
 #
@@ -295,6 +316,9 @@ def build_leveling_plan(
     char_usage_lookup = char_usage_lookup or {}
     require_tier_upgrade = leveling_config.get("require_tier_upgrade", True)
 
+    _log(f"LEGACY PLANNER: bench_results count={len(bench_results)}, skip_chars={skip_chars}, "
+         f"exclude_non_upgraders={exclude_non_upgraders}")
+
     # ---- Extract config ----
     max_mora = budget_config.get("max_mora", 2000000)
     max_exp = budget_config.get("max_artifact_exp", 10000000)
@@ -418,19 +442,13 @@ def build_leveling_plan(
             "efficiency_exp": efficiency_exp,
             "reachable_tier": reachable_tier,
             "tier_upgrade_ok": candidate_tier_upgrade_ok,
-            # Legacy candidates are each their own atomic decision (no
-            # contested-slot grouping like the optimizer path), so the
-            # group-level flag is just the candidate's own value.
             "group_tier_upgrade_ok": candidate_tier_upgrade_ok,
-            # Unified-schema fields so this can sit next to optimizer-driven
-            # actions in the combined plan (see build_combined_leveling_plan).
-            # These characters had no optimizer data to give a real build
-            # optimality probability, so "action_type" is flagged distinctly
-            # rather than faked as Scout/Commit.
             "action_type": "Legacy",
             "probability": None,
             "character_score": 0,
         })
+
+    _log(f"LEGACY: generated {len(candidates)} candidates after all filters.")
 
     if not candidates:
         return {
@@ -469,24 +487,31 @@ def build_leveling_plan(
 
     for c in candidates:
         if max_pieces is not None and len(selected) >= max_pieces:
+            _log(f"LEGACY: stopped at max_pieces={max_pieces}")
             break
 
         char = c["character"]
         per_char_count[char] = per_char_count.get(char, 0)
         if per_char_count[char] >= max_per_character:
+            _log(f"LEGACY: skip {char} {c['slot']} - already at max_per_character={max_per_character}")
             continue
 
         if c["immediate_cost"]["mora"] > remaining_immediate_mora:
+            _log(f"LEGACY: skip {char} {c['slot']} - immediate Mora {c['immediate_cost']['mora']} > remaining {remaining_immediate_mora}")
             continue
         if c["immediate_cost"]["exp"] > remaining_immediate_exp:
+            _log(f"LEGACY: skip {char} {c['slot']} - immediate EXP {c['immediate_cost']['exp']} > remaining {remaining_immediate_exp}")
             continue
 
         if total_committed_mora + c["immediate_cost"]["mora"] + c["finish_cost"]["mora"] > remaining_lifetime_mora:
+            _log(f"LEGACY: skip {char} {c['slot']} - lifetime Mora overrun")
             continue
         if total_committed_exp + c["immediate_cost"]["exp"] + c["finish_cost"]["exp"] > remaining_lifetime_exp:
+            _log(f"LEGACY: skip {char} {c['slot']} - lifetime EXP overrun")
             continue
 
         if c["efficiency_mora"] < cliff:
+            _log(f"LEGACY: break at cliff - efficiency {c['efficiency_mora']} < {cliff}")
             break
 
         selected.append(c)
@@ -497,6 +522,9 @@ def build_leveling_plan(
         selected_lifetime_finish_sum_mora += c["finish_cost"]["mora"]
         selected_lifetime_finish_sum_exp += c["finish_cost"]["exp"]
         per_char_count[char] += 1
+        _log(f"LEGACY: selected {char} {c['slot']} (tier_upgrade_ok={c['tier_upgrade_ok']})")
+
+    _log(f"LEGACY: selected {len(selected)} actions total.")
 
     # ---- Summary ----
     total_immediate_mora = sum(c["immediate_cost"]["mora"] for c in selected)
@@ -701,6 +729,10 @@ def _decide_slot_action(
     remaining_rolls = _remaining_hidden_rolls(artifact, max_level)
     expected_damage_gain = leader_p * remaining_rolls * avg_roll_value
 
+    _log(f"  _decide_slot_action: leader_p={leader_p:.3f}, finish_mora={remaining_finish_mora:.0f}, "
+         f"expected_waste={expected_waste:.0f}, scout_cost={scout_step[1] if scout_step else None}, "
+         f"resolved={resolved}")
+
     return {
         "resolved": resolved,
         "expected_waste": expected_waste,
@@ -794,15 +826,22 @@ def plan_slot_actions(
     # Options to evaluate for a scout step (in levels)
     scout_options = leveling_config.get("scout_step_options", [4, 8, 12, 16])
 
+    _log(f"plan_slot_actions: {char_name} {slot} - {len(candidates)} raw candidates")
+
     contenders = _select_contenders(candidates, min_relevant_prob, 0.0, max_contenders)
+    _log(f"  after min_relevant_prob ({min_relevant_prob}) + max_contenders: {len(contenders)} contenders")
+
     # Hard gate: only candidates that can actually reach the slot's Good bar
     # are ever Scouted or Committed. High optimizer probability alone must
     # not buy a leveling action for a piece whose best case still can't clear
     # Good (see _can_ever_reach_good) - if nothing survives, this slot gets
     # no action this run.
     contenders = [c for c in contenders if _can_ever_reach_good(c)]
+    _log(f"  after _can_ever_reach_good: {len(contenders)} contenders")
+
     if not contenders:
         return []
+
     decision = _decide_slot_action(contenders, leveling_config, char_roll_values)
     resolved = decision["resolved"]
 
@@ -827,6 +866,7 @@ def plan_slot_actions(
             # though the piece could go to 20, but the plan never recommends
             # past the cap.
             target_level = min(max_level, effective_max_level) if effective_max_level else max_level
+            _log(f"  {char_name} {slot} -> Commit to {target_level} (leader)")
         else:
             action_type = "Scout"
             # Determine the first level that actually gives new information
@@ -858,7 +898,9 @@ def plan_slot_actions(
 
             target_level = best_target
             if target_level <= current_level:
+                _log(f"  {char_name} {slot} -> Scout: no meaningful target found")
                 continue
+            _log(f"  {char_name} {slot} -> Scout to {target_level} (contested)")
 
         actions.append({
             "character": char_name,
@@ -872,16 +914,8 @@ def plan_slot_actions(
             "current_level": current_level,
             "target_level": target_level,
             "rarity": rarity,
-            # Precomputed strictly upstream (score.py) from this candidate's
-            # own max reachable rolls vs the equipped tier for (char, slot) -
-            # see tier_upgrade_ok() at the top of this module. Defaults to
-            # True if missing so callers that don't supply it aren't
-            # regressed/blocked.
             "tier_upgrade_ok": cand.get("tier_upgrade_ok", True),
             "reachable_tier": cand.get("reachable_tier"),
-            # Explore-vs-exploit diagnostics (see _decide_slot_action) -
-            # shared across every action for this slot this call, since the
-            # decision is made once for the leader, not per-contender.
             "expected_waste_mora": decision["expected_waste"],
             "scout_cost_mora": decision["scout_cost"],
             "expected_damage_gain": decision["expected_damage_gain"],
@@ -928,9 +962,13 @@ def build_leveling_plan_from_optimizer(
     max_per_character = leveling_config.get("max_per_character", 2)
     char_usage_lookup = char_usage_lookup or {}
 
+    _log(f"OPTIMIZER PLANNER: remaining_lifetime_mora={remaining_lifetime_mora}, max_pieces={max_pieces}, "
+         f"exclude_non_upgraders={exclude_non_upgraders}, skip_chars={skip_chars}")
+
     raw_actions = []
     for char_name, slots in optimizer_candidates_by_char.items():
         if skip_chars and char_name in skip_chars:
+            _log(f"  skip char {char_name} (covered by skip_chars)")
             continue
         # IT Only characters are capped below the artifact's true max (see
         # rules.yaml leveling.it_only_max_level) - analysis still runs as
@@ -950,9 +988,12 @@ def build_leveling_plan_from_optimizer(
                 # from contention if leveling it further can't raise its
                 # own tier - correct, since there's nothing to gain there
                 # while a real upgrade sits unfunded elsewhere.)
+                before = len(candidates)
                 candidates = [c for c in candidates if c.get("tier_upgrade_ok")]
                 if not candidates:
+                    _log(f"  {char_name} {slot}: all {before} candidates dropped by tier_upgrade_ok (exclude_non_upgraders)")
                     continue
+                _log(f"  {char_name} {slot}: kept {len(candidates)}/{before} tier_upgrade_ok=True")
             raw_actions.extend(plan_slot_actions(
                 char_name, slot, candidates, leveling_config,
                 char_roll_values=(roll_value_by_char or {}).get(char_name),
@@ -960,6 +1001,7 @@ def build_leveling_plan_from_optimizer(
             ))
 
     if not raw_actions:
+        _log("OPTIMIZER: no raw_actions produced")
         return {
             "actions": [],
             "summary": {
@@ -973,6 +1015,8 @@ def build_leveling_plan_from_optimizer(
                 "recommendation_text": "No artifacts worth leveling right now.",
             },
         }
+
+    _log(f"OPTIMIZER: raw_actions={len(raw_actions)}")
 
     for a in raw_actions:
         immediate_cost = get_leveling_cost(a["rarity"], a["current_level"], a["target_level"])
@@ -1001,6 +1045,10 @@ def build_leveling_plan_from_optimizer(
         value = max(a["probability"], 0.01) * urgency
         mora_cost = max(immediate_cost.get("mora", 1), 1)
         a["priority"] = value / mora_cost
+
+        _log(f"  action: {a['character']} {a['slot']} type={a['action_type']} prob={a['probability']:.3f} "
+             f"score={score} urgency={urgency:.3f} priority={a['priority']:.4f} "
+             f"immediate_mora={immediate_cost.get('mora',0)}")
 
     # ---- Group into atomic per-(character, slot) decisions ----
     # A contested slot's contenders are one decision (scout everyone still
@@ -1048,12 +1096,16 @@ def build_leveling_plan_from_optimizer(
         })
 
     # Tier-upgrading groups (can raise the slot's tier over what's equipped)
-    # get first claim on the budget globally, across the whole roster -
+    # get first claim on the budget globally, across the whole roster - 
     # ahead of character urgency. Only once every tier-upgrading group has
     # been considered does character urgency start deciding among the
     # non-upgraders. Priority (which folds in probability, urgency, and
     # cost) breaks any remaining ties within each tier.
     group_list.sort(key=lambda g: (-g["tier_upgrade_ok"], -g["character_score"], -g["best_priority"]))
+
+    _log(f"OPTIMIZER: {len(group_list)} groups after grouping. Sorted order:")
+    for i, g in enumerate(group_list):
+        _log(f"  {i}: {g['character']} {g['slot']} tier_upgrade={g['tier_upgrade_ok']} score={g['character_score']} priority={g['best_priority']:.4f}")
 
     selected = []
     remaining_immediate_mora = max_reveal_fraction * remaining_lifetime_mora
@@ -1077,21 +1129,27 @@ def build_leveling_plan_from_optimizer(
         char = g["character"]
         char_slots = per_char_slots.setdefault(char, set())
         if g["slot"] not in char_slots and len(char_slots) >= max_per_character:
+            _log(f"  skip group {char} {g['slot']}: already at max_per_character={max_per_character} (slots={char_slots})")
             continue
         # Piece cap: a group is one atomic decision (e.g. every live
         # contender in a contested slot gets scouted together), so a group
         # that would push the total over the cap is skipped whole rather
         # than partially split.
         if max_pieces is not None and len(selected) + len(g["actions"]) > max_pieces:
+            _log(f"  skip group {char} {g['slot']}: would exceed max_pieces={max_pieces} (current {len(selected)} + {len(g['actions'])})")
             continue
         if g["immediate_mora"] > remaining_immediate_mora:
+            _log(f"  skip group {char} {g['slot']}: immediate Mora {g['immediate_mora']} > remaining {remaining_immediate_mora}")
             continue
         if g["immediate_exp"] > remaining_immediate_exp:
+            _log(f"  skip group {char} {g['slot']}: immediate EXP {g['immediate_exp']} > remaining {remaining_immediate_exp}")
             continue
         # Check lifetime budget: immediate + reserved must fit
         if total_committed_mora + g["immediate_mora"] + g["reserved_finish_mora"] > remaining_lifetime_mora:
+            _log(f"  skip group {char} {g['slot']}: lifetime Mora overrun (committed {total_committed_mora} + immediate {g['immediate_mora']} + reserve {g['reserved_finish_mora']} > {remaining_lifetime_mora})")
             continue
         if total_committed_exp + g["immediate_exp"] + g["reserved_finish_exp"] > remaining_lifetime_exp:
+            _log(f"  skip group {char} {g['slot']}: lifetime EXP overrun")
             continue
 
         # Tag each action with the GROUP's tier-upgrade status (not its own
@@ -1110,6 +1168,7 @@ def build_leveling_plan_from_optimizer(
         committed_finish_mora += g["reserved_finish_mora"]
         committed_finish_exp += g["reserved_finish_exp"]
         char_slots.add(g["slot"])
+        _log(f"  SELECTED group {char} {g['slot']}: immediate {g['immediate_mora']} Mora, reserve {g['reserved_finish_mora']} Mora")
 
     # Absolute final guarantee, independent of every upstream code path:
     # nothing below min_relevant_probability leaves this function. Every
@@ -1119,7 +1178,10 @@ def build_leveling_plan_from_optimizer(
     # time" candidate is never fundable, full stop, no matter how it ended
     # up in `selected`.
     min_relevant_prob = leveling_config.get("min_relevant_probability", 0.08)
+    before_filter = len(selected)
     selected = [a for a in selected if a.get("probability", 0.0) >= min_relevant_prob]
+    if len(selected) < before_filter:
+        _log(f"  final min_relevant_prob filter removed {before_filter - len(selected)} actions")
 
     total_immediate_mora = sum(a["immediate_cost"]["mora"] for a in selected)
     total_immediate_exp = sum(a["immediate_cost"]["exp"] for a in selected)
@@ -1181,12 +1243,7 @@ def build_leveling_plan_from_optimizer(
             total_immediate_mora / (max_reveal_fraction * remaining_lifetime_mora)
             if remaining_lifetime_mora > 0 else 0
         ),
-        # The guaranteed-affordable reservation (max-per-contested-group, not
-        # sum) - this is what's checked against the lifetime budget.
         "total_finish_cost_if_all_completed": {"mora": total_finish_mora, "exp": total_finish_exp},
-        # FYI only: what it would cost if every scouted contender in every
-        # contested slot were ALSO fully maxed at once, which isn't the plan
-        # - only whichever piece wins each slot is expected to get finished.
         "total_finish_cost_worst_case": {"mora": naive_finish_mora, "exp": naive_finish_exp},
         "remaining_lifetime_mora": remaining_lifetime_mora,
         "remaining_lifetime_exp": remaining_lifetime_exp,
@@ -1230,20 +1287,19 @@ def build_combined_leveling_plan(
     budget. Optimizer-only characters with no bench coverage at all (no
     eligible on-set pieces) are likewise skipped.
     """
+    _log_reset()
+    _log("=== build_combined_leveling_plan START ===")
+    _log(f"budget_config: {budget_config}")
+    _log(f"leveling_config keys: {list(leveling_config.keys())}")
+
     min_distinct_slots = leveling_config.get("min_distinct_on_set_slots", 4)
     char_slot_tier_lookup = char_slot_tier_lookup or {}
     char_usage_lookup = char_usage_lookup or {}
-    # IT Only characters are only ever leveled to this level (the last +4
-    # bracket on a 5-star is the most expensive) - analysis still runs as
-    # though the piece could go to 20, only the recommended target and
-    # budget reservation are capped. See rules.yaml leveling.it_only_max_level.
     it_only_max_level = leveling_config.get("it_only_max_level")
-    # When true, only Active characters get leveling recommendations - IT
-    # Only characters are excluded from the leveling plan entirely. See
-    # rules.yaml leveling.active_chars_only.
     active_chars_only = leveling_config.get("active_chars_only", False)
 
     if active_chars_only:
+        _log("active_chars_only=True: filtering IT Only chars out")
         optimizer_candidates_by_char = {
             char: slots for char, slots in optimizer_candidates_by_char.items()
             if char_usage_lookup.get(char) != "IT Only"
@@ -1298,6 +1354,10 @@ def build_combined_leveling_plan(
     }
     skipped_count = len(skip_chars)
 
+    _log(f"covered_slots_by_char: { {c: list(slots) for c, slots in covered_slots_by_char.items()} }")
+    _log(f"eligible_by_coverage: {eligible_by_coverage}")
+    _log(f"skip_chars (coverage gate): {skip_chars}")
+
     # Global hard cap on the total number of pieces (artifacts) leveled in
     # one run, across both planners combined. The optimizer path is the
     # primary/preferred planner (see module docstring), so it gets first
@@ -1312,10 +1372,14 @@ def build_combined_leveling_plan(
     # budget, per rules.yaml's leveling.require_tier_upgrade. Sidegrades
     # only become eligible again once nothing better exists roster-wide.
     require_tier_upgrade = leveling_config.get("require_tier_upgrade", True)
-    exclude_non_upgraders = require_tier_upgrade and any_tier_upgrade_available(
+    min_prob_for_upgrade = leveling_config.get("min_relevant_probability", 0.25)
+    upgrade_exists = any_tier_upgrade_available(
         optimizer_candidates_by_char, bench_results, skip_chars, char_slot_tier_lookup or {},
-        min_probability=leveling_config.get("min_relevant_probability", 0.25),
+        min_probability=min_prob_for_upgrade,
     )
+    exclude_non_upgraders = require_tier_upgrade and upgrade_exists
+    _log(f"require_tier_upgrade={require_tier_upgrade}, min_prob_for_upgrade={min_prob_for_upgrade}")
+    _log(f"any_tier_upgrade_available={upgrade_exists} => exclude_non_upgraders={exclude_non_upgraders}")
 
     optimizer_plan = build_leveling_plan_from_optimizer(
         optimizer_candidates_by_char, char_score_lookup, budget_config, leveling_config,
@@ -1326,6 +1390,7 @@ def build_combined_leveling_plan(
         char_usage_lookup=char_usage_lookup,
         it_only_max_level=it_only_max_level,
     )
+    _log(f"optimizer_plan actions: {len(optimizer_plan['actions'])}")
 
     remaining_pieces = None
     if max_pieces is not None:
@@ -1336,6 +1401,7 @@ def build_combined_leveling_plan(
         if b.get("character") not in optimizer_chars
         and b.get("character") not in skip_chars
     ]
+    _log(f"legacy_bench_results count (after filtering optimizer_chars + skip_chars): {len(legacy_bench_results)}")
     if legacy_bench_results and (remaining_pieces is None or remaining_pieces > 0):
         legacy_plan = build_leveling_plan(legacy_bench_results, budget_config, leveling_config,
                                           skip_chars=skip_chars,
@@ -1346,8 +1412,10 @@ def build_combined_leveling_plan(
                                           it_only_max_level=it_only_max_level)
         for a in legacy_plan["actions"]:
             a["character_score"] = char_score_lookup.get(a["character"], 0)
+        _log(f"legacy_plan actions: {len(legacy_plan['actions'])}")
     else:
         legacy_plan = {"actions": [], "summary": {}}
+        _log("legacy_plan skipped (no bench results or remaining_pieces=0)")
 
     combined_actions = optimizer_plan["actions"] + legacy_plan["actions"]
     # Global priority: every tier-upgrading GROUP (a contested slot's whole
@@ -1426,6 +1494,9 @@ def build_combined_leveling_plan(
         "piece_count": len(combined_actions),
         "max_pieces_per_run": max_pieces,
     }
+
+    _log("=== build_combined_leveling_plan END ===")
+    _log(f"final summary: piece_count={summary['piece_count']}, scout={summary['scout_count']}, commit={summary['commit_count']}")
 
     return {
         "actions": combined_actions,

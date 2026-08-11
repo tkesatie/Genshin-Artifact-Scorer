@@ -1,6 +1,5 @@
 """
 Genshin artifact farming scorer.
-...
 """
 import argparse
 import json
@@ -9,6 +8,7 @@ import sys
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from collections import defaultdict
+import time
 
 # Optional progress bar
 try:
@@ -22,14 +22,15 @@ from artifact_utils import (
     parse_good_export,
     SLOT_MAP,
     valid_main_stat,
-    roll_count_for_artifact,      # <-- added
+    roll_count_for_artifact,
 )
 from bench import (
     bench_candidates_lookup,
     bench_potential_lookup,
     find_bench_potential,
-    max_possible_useful_rolls,    # <-- added
+    max_possible_useful_rolls,
     matched_characters_for_set,
+    expected_useful_rolls,
     SET_ALIASES,
 )
 from character_scoring import score_character, score_domains
@@ -43,6 +44,7 @@ from stat_targets import load_stat_targets, score_all_stat_targets
 from team_damage import load_teams, score_all_team_damage
 from thresholds import compute_thresholds
 from validate_config import has_errors, validate_config
+from strongbox_cache import confirm_cache, load_cache, update_cache, save_cache  # <-- NEW
 
 # NEW imports
 from optimizer import compute_optimal_probabilities
@@ -96,9 +98,11 @@ def best_fit_for_artifact(artifact, roster, slot, roll_values, rules):
         current, ceiling = max_possible_useful_rolls(artifact, useful_stats, roll_values)
         eff_pool = effective_useful_pool(artifact.get("mainStatKey"), useful_stats)
         good, excellent = compute_thresholds(rules, cfg["usage"], cfg["role"], slot, eff_pool, name)
+        current, expected = expected_useful_rolls(artifact, useful_stats, roll_values)
         fits.append({
             "character": name,
             "ceiling": ceiling,
+            "expected_rolls": expected,
             "current_rolls": current,
             "useful_stats": useful_stats,
             "in_set": name in matched_characters_for_set(artifact.get("setKey"), roster),
@@ -109,9 +113,16 @@ def best_fit_for_artifact(artifact, roster, slot, roll_values, rules):
     return fits
 
 
-def build_inventory_results(good_json, roster, rules, roll_values):
-    """Classify every unequipped artifact against every roster character
-    whose main-stat config allows this slot (not just set-matched ones)."""
+def build_inventory_results(good_json, roster, rules, roll_values,
+                            prob_cache=None, inventory_config=None):
+    """
+    Classify every unequipped artifact against every roster character
+    whose main-stat config allows this slot (not just set-matched ones).
+
+    If `prob_cache` is provided, classification uses cached optimizer
+    probabilities (max probability across all characters ever seen).
+    Otherwise falls back to the ceiling-based logic.
+    """
     results = []
 
     for art in good_json.get("artifacts", []):
@@ -124,7 +135,12 @@ def build_inventory_results(good_json, roster, rules, roll_values):
 
         fits = best_fit_for_artifact(art, roster, slot, roll_values, rules)
 
-        classification = classify_inventory_artifact(art, fits)
+        classification = classify_inventory_artifact(
+            art,
+            fits,
+            prob_cache=prob_cache,
+            inventory_config=inventory_config
+        )
         classification["artifact"] = art
         classification["slot"] = slot
         classification["ceiling"] = fits[0]["ceiling"] if fits else 0
@@ -187,26 +203,10 @@ def build_team_context_lookup(teams):
                 lookup[char_name] = assumptions
     return lookup
 
+
 # =============================================================================
 # Multiprocessing support for the global optimizer
 # =============================================================================
-# Each character's candidate-pool construction + compute_optimal_probabilities
-# call is fully independent of every other character, so this is close to
-# embarrassingly parallel. Two pieces make that safe:
-#
-#   1. _init_optimizer_worker runs ONCE per worker process (not once per
-#      character) via ProcessPoolExecutor's `initializer`, loading the data
-#      that's identical across every character (the full inventory,
-#      roll_values, pool-size settings) into a module-level dict in that
-#      worker's own memory. Without this, the same large objects would get
-#      re-pickled and re-sent over IPC for every single character task.
-#
-#   2. _optimize_one_character is a standalone, module-level function (a
-#      hard requirement for pickling - it can't be a closure/nested function)
-#      that takes only the per-character-varying inputs and returns a plain
-#      dict of results. It doesn't touch or mutate anything in the parent
-#      process; all merging back into candidate_pools_by_char / etc. happens
-#      in main() after the pool completes.
 _worker_ctx = {}
 
 
@@ -223,12 +223,8 @@ def _init_optimizer_worker(good_json_artifacts, roll_values, required_slots,
 
 
 def _optimize_one_character(task):
-    """
-    Runs in a worker process. `task` carries only what varies per character;
-    everything shared across characters comes from _worker_ctx, populated
-    once by _init_optimizer_worker. Same logic as the original inlined loop
-    body in main() - just restructured so it can run standalone.
-    """
+    start = time.perf_counter()
+    
     good_json_artifacts = _worker_ctx["good_json_artifacts"]
     roll_values = _worker_ctx["roll_values"]
     required_slots = _worker_ctx["required_slots"]
@@ -269,7 +265,7 @@ def _optimize_one_character(task):
             _, ceiling = max_possible_useful_rolls(art, useful_stats, roll_values)
             current_rolls = current_rolls_cache.get(slot, 0)
             if ceiling < current_rolls:
-                continue  # skip this candidate, it can never beat the current piece
+                continue
 
         expected_val = compute_expected_20_roll_value(art, roll_values, useful_stats)
         if is_in_set:
@@ -277,9 +273,7 @@ def _optimize_one_character(task):
         else:
             off_set_pools[slot].append((expected_val, art))
 
-    # Seed off-set pools from the full inventory (see the original comment
-    # in main() history - bench.find_bench_potential only evaluates
-    # set-matched pieces, so this scan catches everything else).
+    # Seed off-set pools from the full inventory
     for art in good_json_artifacts:
         slot = SLOT_MAP.get(art.get("slotKey"))
         if slot not in required_slots:
@@ -326,6 +320,8 @@ def _optimize_one_character(task):
         team_context=team_context,
     )
 
+    elapsed = time.perf_counter() - start
+
     return {
         "char_name": char_name,
         "in_set_pools": in_set_pools,
@@ -333,6 +329,7 @@ def _optimize_one_character(task):
         "current_artifacts": current_artifacts,
         "useful_stats": useful_stats,
         "probs_result": probs_result,
+        "elapsed": elapsed
     }
 
 
@@ -402,11 +399,6 @@ def main():
 
     stat_targets = load_stat_targets()
     # ---- Extract ER targets for optimizer ----
-    # Map absolute stat names (e.g. "hp" from stat_targets.yaml minimums)
-    # to the keys that actually exist in the CharacterStats dict produced by
-    # stats_calculator.combine_artifact_deltas. Without this, a floor like
-    # `hp: 40000` would be checked against stats.get("hp", 0) which is always
-    # 0, silently rejecting every build (infeasible_rate = 1.0).
     _FLOOR_KEY_MAP = {
         "hp": "raw_hp",
         "atk": "raw_atk",
@@ -420,7 +412,6 @@ def main():
     }
     stat_floors_by_char = {}
     for char, targets in stat_targets.items():
-        # Get the character's config block
         if isinstance(targets, dict) and "Default" in targets:
             char_targets = targets["Default"]
         else:
@@ -432,10 +423,6 @@ def main():
             if mapped is not None:
                 floors[mapped] = v
 
-        # Optional: keep ER in the main block for compatibility, merge it.
-        # YAML ER is a full percentage (e.g. 160 = 160%), but the optimizer's
-        # energy_recharge stat is a decimal multiplier (1.0 base + artifacts),
-        # so divide by 100 to keep the floor in the same unit.
         er_val = char_targets.get("ER")
         if er_val is not None and er_val > 0:
             floors["energy_recharge"] = er_val / 100.0
@@ -463,12 +450,6 @@ def main():
     bench_candidates = bench_candidates_lookup(bench_results)
 
     char_results = []
-    # {character_name: {substat_key: estimated damage from one average roll}}
-    # - see value_per_roll.py. Computed once per character here (reusing the
-    # same artifacts/team_context already fetched for score_character) since
-    # it's a handful of extra pipeline calls per character, not per
-    # candidate - cheap relative to the optimizer's per-slot Monte Carlo
-    # sims. Feeds the leveling planner's explore-vs-exploit terminal check.
     roll_value_by_char = {}
     for name, cfg in roster.items():
         artifacts = by_char.get(name, {})
@@ -480,12 +461,6 @@ def main():
     recommendations = build_recommendations(bench_results, char_results)
     ceiling_only_results = build_ceiling_only_candidates(bench_results, char_results)
 
-    # (character, slot) -> equipped tier status ("Needs Work"/"Good"/
-    # "Excellent"/"Missing"), used by the leveling planner's tier-upgrade
-    # priority rule (see leveling_efficiency.tier_upgrade_ok). Built here,
-    # right after score_character has run for the whole roster, so both the
-    # optimizer candidate annotation below and generate_leveling_recommendations
-    # can use the same lookup.
     char_slot_tier_lookup = {
         (r["name"], slot): r["slots"][slot]["status"]
         for r in char_results
@@ -493,9 +468,8 @@ def main():
     }
 
     # =========================================================================
-    # NEW: Global optimizer for each character
+    # Global optimizer
     # =========================================================================
-    # Read optimizer config from rules.yaml
     opt_cfg = rules.get("optimizer", {})
     num_sims = opt_cfg.get("num_sims", 1000)
     in_set_pool_size = opt_cfg.get("in_set_pool_size", 5)
@@ -507,50 +481,32 @@ def main():
           f"in_set_pool={in_set_pool_size}, off_set_pool={off_set_pool_size}, "
           f"ceiling_filter={apply_ceiling_filter})...")
 
-    # Build a lookup from character -> list of bench results
     char_bench_results = defaultdict(list)
     for b in bench_results:
         char_bench_results[b["character"]].append(b)
 
-    # We'll store probabilities in a dict: (character, slot, artifact_id) -> probability
     optimal_probabilities = {}
-    # Fraction of simulations where no combo met the stat floors, per character
     infeasible_rate_by_char = {}
 
     required_slots = {"Flower", "Feather", "Sands", "Goblet", "Circlet"}
 
-    # Build the list of per-character tasks. The same eligibility checks that
-    # used to be inline "continue"s in the loop are applied here instead, so
-    # only characters that would have actually run the optimizer get
-    # submitted to the pool.
     tasks = []
     for char_name, cfg in roster.items():
         current_artifacts = by_char.get(char_name, {})
-        # Allow characters with missing equipped slots to run the optimizer -
-        # candidate artifacts (bench/inventory) can fill the gap. Require at
-        # least one equipped piece so we don't run for characters with nothing.
         if not current_artifacts:
-            continue  # skip if no equipped pieces at all
-
+            continue
         char_benches = char_bench_results.get(char_name, [])
         if not char_benches:
             continue
-
         target_short = cfg.get("set")
         if not target_short or "/" in target_short:
-            continue  # split-set not supported for optimizer yet
-
-        stat_floors = stat_floors_by_char.get(char_name)   # None means no constraint
-
-        # Team context for build optimality: Active characters use the first
-        # team in teams.yaml order that lists them; IT Only characters get no
-        # team context (their builds are evaluated without team bonuses).
+            continue
+        stat_floors = stat_floors_by_char.get(char_name)
         team_context = (
             team_context_lookup.get(char_name, {})
             if cfg.get("usage") == "Active"
             else {}
         )
-
         tasks.append({
             "char_name": char_name,
             "cfg": cfg,
@@ -581,9 +537,8 @@ def main():
             char_name = futures[future]
             results_by_char[char_name] = future.result()
 
-    # Merge results back in character-name order (order doesn't affect
-    # correctness - every downstream dict is keyed by character/slot/id -
-    # but keeps output ordering stable and diff-friendly run to run).
+    # Merge results
+    elapsed_times = []
     for char_name, cfg in roster.items():
         result = results_by_char.get(char_name)
         if result is None:
@@ -600,17 +555,25 @@ def main():
         probs = probs_result["probabilities"]
         infeasible_rate_by_char[char_name] = probs_result["infeasible_rate"]
 
+        # Record worker-measured runtime for the per-character summary
+        elapsed_times.append((char_name, result["elapsed"]))
+
         for slot in required_slots:
             for art in result["in_set_pools"][slot] + result["off_set_pools"][slot]:
                 art_id = art.get('id')
                 if art_id is not None and art_id in probs:
                     optimal_probabilities[(char_name, slot, art_id)] = probs[art_id]
 
-    # Tier-upgrade rule toggle (rules.yaml leveling.require_tier_upgrade).
-    # Computed strictly here (each optimizer candidate's own max reachable
-    # useful rolls vs the good/excellent thresholds for its actual main
-    # stat), per the decision to evaluate this exactly on the optimizer path
-    # rather than assume every planned candidate already clears it.
+    # Print per-character runtime summary
+    if elapsed_times:
+        elapsed_times.sort(key=lambda x: x[1], reverse=True)
+        print("\nOptimizer per-character runtimes (top 5 slowest):")
+        for i, (name, sec) in enumerate(elapsed_times[:5]):
+            print(f"  {i+1}. {name}: {sec:.2f}s")
+        total_time = sum(t for _, t in elapsed_times)
+        print(f"Total optimizer worker time: {total_time:.2f}s (across {len(elapsed_times)} characters)")
+
+    # Tier-upgrade rule toggle
     require_tier_upgrade = rules.get("leveling", {}).get("require_tier_upgrade", True)
 
     optimizer_candidates_by_char = {}
@@ -621,14 +584,12 @@ def main():
         for slot in required_slots:
             candidates = []
             equipped_tier = char_slot_tier_lookup.get((char_name, slot))
-            # Combine in-set and off-set
             for art in pools["in_set"][slot] + pools["off_set"][slot]:
                 art_id = art.get('id')
                 if art_id is not None:
                     prob = optimal_probabilities.get((char_name, slot, art_id), 0.0)
                 else:
                     prob = 0.0
-                # Determine if this is the equipped piece (match by id)
                 is_equipped = (
                     art.get('id') == pools["current"].get(slot, {}).get('id')
                 )
@@ -652,12 +613,11 @@ def main():
                     "reachable_tier": reachable_tier,
                     "tier_upgrade_ok": candidate_tier_upgrade_ok,
                 })
-            # Sort by probability descending, equipped piece will fall where it belongs
             candidates.sort(key=lambda x: x["probability"], reverse=True)
             slot_candidates[slot] = candidates
         optimizer_candidates_by_char[char_name] = slot_candidates
-    
-    # Attach probabilities to bench_results
+
+    # Attach probabilities to bench_results and recommendations
     for b in bench_results:
         char_name = b["character"]
         slot = b["slot"]
@@ -668,7 +628,6 @@ def main():
         else:
             b["optimal_probability"] = 0.0
 
-    # Also attach to recommendations
     for rec in recommendations:
         art_id = rec.get("artifact_id")
         if art_id is not None:
@@ -681,13 +640,31 @@ def main():
 
     print("Optimizer complete.")
 
-    # Leveling plan runs after char_results (character urgency scores) and
-    # the optimizer (build-optimality probabilities per candidate) both
-    # exist, since it's driven by both now instead of raw roll thresholds.
+    # =========================================================================
+    # Strongbox cache: build prob_lookup and update persistent cache
+    # =========================================================================
+    # Build a global lookup: artifact_id -> max probability across all chars
+    prob_lookup = {}
+    for (char, slot, art_id), prob in optimal_probabilities.items():
+        if art_id not in prob_lookup or prob > prob_lookup[art_id]:
+            prob_lookup[art_id] = prob
+
+    # Load cache, confirm every cached piece still exists this run, merge, save
+    all_artifacts = good_json.get("artifacts", [])
+    cache = load_cache()
+    before = len(cache)
+    cache = confirm_cache(cache, all_artifacts)
+    pruned = before - len(cache)
+    cache = update_cache(cache, prob_lookup, all_artifacts)
+    save_cache(cache)
+    if pruned:
+        print(f"Strongbox cache pruned {pruned} stale piece(s) not present in this run's export.")
+    print(f"Strongbox cache updated with {len(prob_lookup)} artifact probabilities.")
+
+    # =========================================================================
+
+    # Leveling plan
     char_score_lookup = {r["name"]: r["score"] for r in char_results}
-    # Character usage ("Active"/"IT Only") drives the leveling planner's IT
-    # Only max-level cap and Active-only toggle (rules.yaml leveling.
-    # it_only_max_level / active_chars_only).
     char_usage_lookup = {name: cfg.get("usage") for name, cfg in roster.items()}
     leveling_plan = generate_leveling_recommendations(
         bench_results, rules, roll_values,
@@ -698,23 +675,27 @@ def main():
         char_usage_lookup=char_usage_lookup,
     )
 
-    # =========================================================================
-
+    # Flex and Inventory (now with cache)
     flex_min_gain = rules.get("flex_rules", {}).get("min_ev_gain", 2.0)
     flex_results = find_flex_candidates(
         good_json, roster, char_results, roll_values, min_ev_gain=flex_min_gain
     )
 
+    inventory_config = rules.get("inventory", {})
     inventory_results = build_inventory_results(
-        good_json, roster, rules, roll_values
+        good_json, roster, rules, roll_values,
+        prob_cache=cache,
+        inventory_config=inventory_config,
     )
 
     strongbox_count = sum(1 for i in inventory_results if i["action"] == "SAFE_STRONGBOX")
     elixir_count = sum(1 for i in inventory_results if i["action"] == "SANCTIFY_ELIXIR")
+    medium_risk_count = sum(1 for i in inventory_results if i["action"] == "MEDIUM_RISK_STRONGBOX")
+    keep_count = sum(1 for i in inventory_results if i["action"] == "KEEP")
+    review_count = sum(1 for i in inventory_results if i["action"] == "REVIEW")
     print(f"Flex slot suggestions: {len(flex_results)}")
-    print(f"Inventory: {strongbox_count} strongbox, {elixir_count} elixir fodder, "
-          f"{sum(1 for i in inventory_results if i['action'] == 'KEEP')} keep, "
-          f"{sum(1 for i in inventory_results if i['action'] == 'REVIEW')} review")
+    print(f"Inventory: {strongbox_count} strongbox, {medium_risk_count} medium-risk, "
+          f"{elixir_count} elixir fodder, {keep_count} keep, {review_count} review")
 
     progress_changes = None
     if not args.no_snapshot:
@@ -744,7 +725,7 @@ def main():
         prob_lookup=optimal_probabilities,
         equipped_artifacts_by_char=by_char,
         roster=roster,
-        optimizer_candidates_by_char=optimizer_candidates_by_char,   # <-- NEW
+        optimizer_candidates_by_char=optimizer_candidates_by_char,
         infeasible_rate_by_char=infeasible_rate_by_char,
         leveling_plan=leveling_plan,
     )

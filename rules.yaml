@@ -66,7 +66,7 @@ flex_rules:
 # elements: the currently active Imaginarium Theater elements, e.g.
 #   ["Pyro", "Hydro", "Cryo"]. Ignored when enabled is false.
 imaginarium_theater:
-  enabled: true
+  enabled: false
   elements: ["Hydro", "Cryo", "Electro"]
 
 # Run-to-run progress snapshot (see README Planned Features #1).
@@ -82,12 +82,12 @@ snapshot:
 # Global optimizer settings for probability of being optimal
 optimizer:
   num_sims: 1000
-  in_set_pool_size: 5
-  off_set_pool_size: 5
+  in_set_pool_size: 20
+  off_set_pool_size: 10
   apply_ceiling_filter: true
 
 budget:
-  max_mora: 4000000
+  max_mora: 3000000
   max_artifact_exp: 5500000
   already_spent_mora: 0
   already_spent_exp: 0
@@ -163,3 +163,17 @@ leveling:
   # rule + character urgency still decide WHICH pieces make the cut) - it
   # only limits HOW MANY get selected at once.
   max_pieces_per_run: 10
+
+  # Strongbox classification thresholds.
+# Used by inventory.py when cached optimizer probabilities are available.
+inventory:
+  # p <= strongbox_threshold -> SAFE_STRONGBOX
+  strongbox_threshold: 0.0
+  # strongbox_threshold < p < medium_risk_threshold -> MEDIUM_RISK_STRONGBOX
+  medium_risk_threshold: 0.10
+  # medium_risk_threshold <= p < review_threshold -> REVIEW
+  review_threshold: 0.50
+  # p >= keep_threshold -> KEEP
+  keep_threshold: 0.50
+  # Fallback for artifacts not in the cache: off-set penalty (extra excellent rolls required).
+  off_set_penalty: 1
