@@ -97,6 +97,14 @@ Chevreuse:
   ER: 180
 Thoma:
   ER: 160
+Collei:
+  ER: 200
+Iansan:
+  ER: 180
+Kazuha:
+  ER: 160
+Beidou: 
+  ER: 180
 
 # Phase 2 — team overrides. A team only needs to list the stats it
 # actually changes; everything else falls back to the character's default

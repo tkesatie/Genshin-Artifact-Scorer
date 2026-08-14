@@ -286,6 +286,74 @@ def compute_marginal_swap_probabilities(
     return results
 
 
+def _prune_slot_candidates(
+    slot_candidates: Dict[str, List[Tuple]],
+    win_counts: Dict[str, int],
+    warmup_sims: int,
+    threshold: float,
+    min_keep: int,
+    current_artifacts: Dict[str, Dict],
+) -> Dict[str, List[Tuple]]:
+    """
+    Drop candidates whose warm-up win rate is strictly below `threshold`.
+
+    The win rate is P(artifact is part of the optimal build) over the warm-up
+    sims - i.e. `win_counts[id] / warmup_sims`. A candidate whose probability
+    of being optimal is under the cutoff (e.g. 5%) is effectively never a
+    contender, so pruning it from the remaining simulations barely changes the
+    reported probabilities while drastically shrinking the combo search space.
+
+    Guards applied per slot so pruning never breaks build legality or the
+    semantics of the output:
+      - always keep at least `min_keep` candidates (by win rate),
+      - always keep at least one in-set candidate (>=4-in-set rule),
+      - always keep the currently-equipped piece.
+
+    Returns a NEW slot_candidates dict containing only the survivors.
+    """
+    pruned = {}
+    for slot, cand_list in slot_candidates.items():
+        survivors = []
+        ranked = []  # (win_rate, art_id, artifact, is_in) for min_keep fallback
+        for art_id, art, is_in in cand_list:
+            rate = win_counts.get(art_id, 0) / warmup_sims if warmup_sims > 0 else 1.0
+            ranked.append((rate, art_id, art, is_in))
+            if rate >= threshold:
+                survivors.append((art_id, art, is_in))
+
+        # Guard: keep at least one in-set candidate so the >=4-in-set rule can
+        # still be satisfied for this slot.
+        if not any(c[2] for c in survivors):
+            best_in = max(
+                (c for c in cand_list if c[2]),
+                key=lambda c: win_counts.get(c[0], 0),
+                default=None,
+            )
+            if best_in is not None and not any(c[0] == best_in[0] for c in survivors):
+                survivors.append(best_in)
+
+        # Guard: always keep the currently-equipped piece.
+        cur = current_artifacts.get(slot)
+        if cur is not None:
+            cur_id = cur.get('id')
+            if not any(c[0] == cur_id for c in survivors):
+                match = next((c for c in cand_list if c[0] == cur_id), None)
+                if match is not None:
+                    survivors.append(match)
+
+        # Guard: enforce min_keep by best warm-up win rate.
+        if len(survivors) < min_keep:
+            ranked.sort(key=lambda x: x[0], reverse=True)
+            for rate, art_id, art, is_in in ranked:
+                if len(survivors) >= min_keep:
+                    break
+                if not any(c[0] == art_id for c in survivors):
+                    survivors.append((art_id, art, is_in))
+
+        pruned[slot] = survivors
+    return pruned
+
+
 def compute_optimal_probabilities(
     char_config: Dict,
     in_set_pools: Dict[str, List[Dict]],   # slot -> list of artifact dicts (in-set)
@@ -295,7 +363,10 @@ def compute_optimal_probabilities(
     target_set_keys: set,                  # set of setKeys for the target set
     num_sims: int = 1000,
     stat_floors: dict = None,
-    team_context: dict = None
+    team_context: dict = None,
+    prune_after: int = 0,
+    prune_threshold: float = 0.05,
+    prune_min_keep: int = 1,
 ) -> Dict[str, Any]:
     """
     Main optimizer.
@@ -311,6 +382,19 @@ def compute_optimal_probabilities(
     failed the configured stat floors (e.g. ER/EM minimums from stat_targets.yaml).
     When it's non-zero, the per-artifact probabilities won't sum to 100% - the
     missing mass is exactly the builds that couldn't reach the minimum thresholds.
+
+    ---- Early pruning (optional) ----
+    `prune_after` (default 0 = disabled) runs that many "warm-up" simulations
+    with the full candidate pool to estimate each candidate's probability of
+    being in the optimal build. After that many sims, any candidate whose
+    warm-up probability is strictly below `prune_threshold` (default 0.05) is
+    dropped from the candidate pool for the remaining `num_sims - prune_after`
+    simulations. This shrinks the per-slot candidate lists (and therefore the
+    combo enumeration) dramatically while only discarding artifacts that are
+    effectively never optimal. Dropped candidates keep the win counts they
+    accumulated during the warm-up, so the final probabilities (computed over
+    the full `num_sims` run) still include them at their warm-up estimates.
+    `prune_min_keep` (default 1) forces at least that many survivors per slot.
     """
     # Build combined candidate lists per slot: include both in-set and off-set,
     # but we need to know which are in-set for the set rule.
@@ -344,7 +428,8 @@ def compute_optimal_probabilities(
     no_valid_sims = 0
 
     # Run simulations
-    for _ in range(num_sims):
+    pruned = False
+    for sim_idx in range(num_sims):
         # Project each candidate to +20, and precompute its stat delta ONCE
         # here (not once per combo). Each candidate appears in many combos
         # within this sim - previously, the full 5-artifact stat aggregation
@@ -426,6 +511,20 @@ def compute_optimal_probabilities(
             # No combo in this sim met the stat floors - count it so the
             # dashboard can show how much of the build space is unreachable.
             no_valid_sims += 1
+
+        # Early pruning: after the warm-up phase, drop candidates whose
+        # probability of being in the optimal build is below `prune_threshold`.
+        # Only happens once; subsequent sims enumerate only the survivors.
+        if prune_after > 0 and not pruned and sim_idx == prune_after - 1:
+            slot_candidates = _prune_slot_candidates(
+                slot_candidates,
+                win_counts,
+                sim_idx + 1,               # number of warm-up sims completed
+                prune_threshold,
+                prune_min_keep,
+                current_artifacts,
+            )
+            pruned = True
 
     # Compute probabilities
     total = num_sims

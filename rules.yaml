@@ -66,7 +66,7 @@ flex_rules:
 # elements: the currently active Imaginarium Theater elements, e.g.
 #   ["Pyro", "Hydro", "Cryo"]. Ignored when enabled is false.
 imaginarium_theater:
-  enabled: false
+  enabled: true
   elements: ["Hydro", "Cryo", "Electro"]
 
 # Run-to-run progress snapshot (see README Planned Features #1).
@@ -82,89 +82,23 @@ snapshot:
 # Global optimizer settings for probability of being optimal
 optimizer:
   num_sims: 1000
-  in_set_pool_size: 20
-  off_set_pool_size: 10
+  in_set_pool_size: 8
+  off_set_pool_size: 6
   apply_ceiling_filter: true
+  # Early pruning: after `prune_after` warm-up sims, drop any candidate whose
+  # probability of being in the optimal build is strictly below `prune_threshold`
+  # for the remaining sims. Set prune_after: 0 to disable.
+  prune_after: 100
+  prune_threshold: 0.05
+  prune_min_keep: 1
 
 budget:
-  max_mora: 3000000
-  max_artifact_exp: 5500000
+  max_mora: 10000000
+  max_artifact_exp: 382500
   already_spent_mora: 0
   already_spent_exp: 0
 
-leveling:
-  # --- General gate (both planners) ---
-  # A character needs at least this many distinct on-set slots with a bench
-  # piece that can reach Good/Excellent before any of their leveling actions
-  # are planned at all. Counting distinct slots (not total pieces) so 3
-  # feathers + 1 goblet doesn't clear the bar - you need real coverage.
-  min_distinct_on_set_slots: 4
-  # A piece must raise its slot's tier to be worth leveling (Needs Work ->
-  # Good/Excellent, or Good -> Excellent). Pieces that can't tier-up are not
-  # blocked, but sink to the bottom of the leveling priority - only funded
-  # when nothing better remains. Equipped Excellent is already top tier, so
-  # any action for that slot is automatically bottom-priority.
-  require_tier_upgrade: true
-
-  # --- Optimizer-driven planner (primary path - see leveling_efficiency.py) ---
-  # A candidate below this probability of being the final optimal piece for
-  # its slot is ignored entirely (dead weight, not worth planning for). This
-  # is a pure Mora-efficiency knob, unrelated to the tier-upgrade rule above:
-  # start high while the roster is fresh and real contests are plentiful
-  # (nothing is lost by waiting - a below-floor candidate just sits until a
-  # later, lower-floor run), and only lower it once runs start coming back
-  # thin. Currently tuned to 0.25 for an early-roster run.
-  min_relevant_probability: 0.25
-  # Cap on how many candidates in one slot get planned for at once, even if
-  # more clear this bar. Keeps a heavily-contested slot (5+ similar rolls)
-  # from generating a scouting action for every single one of them.
-  max_contenders_per_slot: 3
-  # Scout-vs-Commit is no longer a probability/margin threshold - it's an
-  # explore-vs-exploit cost comparison, priced entirely in Mora (see
-  # leveling_efficiency._decide_slot_action):
-  #   expected_waste = leader's remaining finish cost x P(leader is wrong)
-  #   scout_cost     = Mora cost of the leader's cheapest next scout step
-  # Scout while expected_waste > scout_cost (still cheaper to learn more
-  # than to gamble); Commit once that flips, or once nothing is left to
-  # scout at all. No manual confidence bar to tune here anymore - it falls
-  # out of each candidate's own cost and probability every run.
-  # Level increment options for a "Scout" action on a contested slot - each
-  # candidate independently picks whichever of these is cheapest while still
-  # reaching a meaningful reveal (see leveling_efficiency.plan_slot_actions),
-  # so different pieces in the same run can land on different steps. Uncomment
-  # to override the code's default of [4, 8, 12, 16].
-  # scout_step_options: [4, 8, 12, 16]
-  max_scout_level: 16
-
-  # --- Legacy closed-form planner (fallback for characters the optimizer
-  # has no data for - split sets, no equipped pieces, etc.) ---
-  soft_stop_floor: 0.15
-  cliff_ratio: 0.25
-  max_per_character: 2
-  simulation_count: 500
-
-  # --- IT Only character handling ---
-  # IT Only characters are only ever leveled to this level (the last +4
-  # bracket on a 5-star is the most expensive). Analysis still runs as
-  # though the piece could go to 20; only the recommended target level and
-  # the budget reservation are capped here.
-  it_only_max_level: 16
-  # When true, only Active characters get leveling recommendations - IT
-  # Only characters are excluded from the leveling plan entirely. Defaults
-  # to false (both Active and IT Only characters are planned for).
-  active_chars_only: false
-
-  # --- Shared budget-selection knobs (both planners) ---
-  max_reveal_fraction: 0.40
-  # Hard cap on the total number of pieces (artifacts) leveled in one run,
-  # across both planners combined. The optimizer-driven planner (primary
-  # path) gets first claim on this budget; the legacy fallback planner only
-  # fills whatever's left. Doesn't affect selection priority (tier-upgrade
-  # rule + character urgency still decide WHICH pieces make the cut) - it
-  # only limits HOW MANY get selected at once.
-  max_pieces_per_run: 10
-
-  # Strongbox classification thresholds.
+# Strongbox classification thresholds.
 # Used by inventory.py when cached optimizer probabilities are available.
 inventory:
   # p <= strongbox_threshold -> SAFE_STRONGBOX
@@ -177,3 +111,78 @@ inventory:
   keep_threshold: 0.50
   # Fallback for artifacts not in the cache: off-set penalty (extra excellent rolls required).
   off_set_penalty: 1
+
+# ... existing content ...
+
+# Strongbox recommender configuration
+strongbox:
+  # List of set short labels (as used in roster.yaml) that are available in the strongbox.
+  # These must match the keys in bench.SET_ALIASES (or the short name itself).
+  eligible_sets:
+    - "Obsidian"
+    - "Scroll"
+    - "TotM"
+    - "NO"
+    - "VV"
+    - "Deepwood"
+    - "Ocean-Hued Clam"
+    - "Gilded"
+    - "Emblem"
+    - "Petra"
+    - "Golden Troupe"
+    - "Thundering Fury"
+    - "Husk"
+    - "Nighttime"
+    - "Galleries"
+    - "Night Sky"
+    - "SMS"
+
+  # Simulation parameters (optional)
+  num_sims: 1000
+  substat_sims: 500
+  max_crafts_per_set: 100
+  coverage_prob_threshold: 0.50
+  it_focus_fraction: 0.7
+
+# Leveling configuration (merged)
+leveling:
+  # General gate (both planners)
+  min_distinct_on_set_slots: 4
+  require_tier_upgrade: true
+
+  # Optimizer-driven planner
+  max_contenders_per_slot: 3
+  max_scout_level: 16
+  # scout_step_options: [4, 8, 12, 16]  # optional override
+
+  # Legacy closed-form planner
+  soft_stop_floor: 0.15
+  cliff_ratio: 0.25
+  max_per_character: 2
+  simulation_count: 500
+
+  # IT Only handling
+  it_only_max_level: 16
+  active_chars_only: false
+
+  # Hard tier priority: only the highest character tier with any viable
+  # Scout/Commit action gets suggestions this run (tier 1 = Active+Farming);
+  # lower tiers are deferred until that tier is finished. See
+  # character_scoring.score_character's tier mapping.
+  tier_gated: true
+
+  # Shared budget-selection
+  max_reveal_fraction: 0.40
+  max_pieces_per_run: 10
+
+  # Added from the second block (these were previously overwritten)
+  min_commit_absolute_probability: 0.50
+  min_absolute_probability_for_action: 0.15
+  min_relevant_probability: 0.20
+  commit_priority_multiplier: 1.5
+  close_damage_threshold: 0.02
+
+  # Hybrid fast-path for clear-cut Commits:
+  fast_path_min_leader_p: 0.70      # Leader must have at least this probability
+  fast_path_min_gap: 0.20           # Leader must beat runner-up by at least this much (absolute)
+  fast_path_min_abs_prob: 0.50      # Leader must have at least this chance to reach "Good" by max level

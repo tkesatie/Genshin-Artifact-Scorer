@@ -185,6 +185,7 @@ def generate_leveling_recommendations(
     char_slot_tier_lookup: dict = None,
     roll_value_by_char: dict = None,
     char_usage_lookup: dict = None,
+    char_status_lookup: dict = None,
 ) -> dict:
     """
     Generate a leveling plan.
@@ -251,6 +252,7 @@ def generate_leveling_recommendations(
         char_slot_tier_lookup=char_slot_tier_lookup,
         roll_value_by_char=roll_value_by_char,
         char_usage_lookup=char_usage_lookup,
+        char_status_lookup=char_status_lookup,
     )
 
     # Add a display-friendly version of the actions

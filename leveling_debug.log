@@ -1,718 +1,982 @@
-=== Leveling planner debug log started at 2026-08-10 17:12:58.287350 ===
-[2026-08-10 17:12:58.287] === build_combined_leveling_plan START ===
-[2026-08-10 17:12:58.287] budget_config: {'max_mora': 3000000, 'max_artifact_exp': 5500000, 'already_spent_mora': 0, 'already_spent_exp': 0}
-[2026-08-10 17:12:58.287] leveling_config keys: ['min_distinct_on_set_slots', 'require_tier_upgrade', 'min_relevant_probability', 'max_contenders_per_slot', 'max_scout_level', 'soft_stop_floor', 'cliff_ratio', 'max_per_character', 'simulation_count', 'it_only_max_level', 'active_chars_only', 'max_reveal_fraction', 'max_pieces_per_run']
-[2026-08-10 17:12:58.287] covered_slots_by_char: {'Xilonen': ['Feather', 'Sands', 'Circlet', 'Goblet'], 'Zibai': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Kachina': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'Mualani': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'Columbina': ['Flower', 'Feather', 'Goblet'], 'Diluc': ['Flower', 'Goblet', 'Circlet'], 'Jean': ['Flower', 'Sands', 'Feather'], 'LanYan': ['Flower', 'Sands', 'Feather', 'Goblet'], 'Nahida': ['Feather', 'Flower', 'Circlet'], 'Lauma': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Rosaria': ['Sands', 'Goblet'], 'Linnea': ['Feather', 'Flower', 'Sands'], 'Fischl': ['Flower'], 'Skirk': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'Aino': ['Flower', 'Sands', 'Feather', 'Circlet'], 'Escoffier': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'Ororon': ['Flower', 'Sands', 'Feather', 'Circlet'], 'Furina': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Diona': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Gorou': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'Illuga': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Layla': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'Chevreuse': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Candace': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Citlali': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Bennett': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Sucrose': ['Flower', 'Sands', 'Feather', 'Goblet'], 'Mona': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'SangonomiyaKokomi': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'Barbara': ['Flower', 'Sands', 'Goblet', 'Circlet'], 'Faruzan': ['Goblet', 'Feather', 'Flower', 'Circlet', 'Sands'], 'Thoma': ['Flower', 'Sands', 'Feather', 'Circlet'], 'Mavuika': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'Keqing': ['Feather', 'Circlet'], 'Nilou': ['Goblet', 'Flower', 'Feather', 'Circlet', 'Sands'], 'KukiShinobu': ['Feather', 'Sands', 'Circlet', 'Goblet'], 'Xingqiu': ['Circlet'], 'Xiangling': ['Feather', 'Sands'], 'Kaeya': ['Circlet']}
-[2026-08-10 17:12:58.287] eligible_by_coverage: {'Mualani', 'Candace', 'Gorou', 'Layla', 'Lauma', 'LanYan', 'Escoffier', 'Faruzan', 'SangonomiyaKokomi', 'Thoma', 'Citlali', 'Zibai', 'Kachina', 'Diona', 'KukiShinobu', 'Xilonen', 'Furina', 'Barbara', 'Illuga', 'Bennett', 'Aino', 'Mavuika', 'Chevreuse', 'Ororon', 'Mona', 'Nilou', 'Sucrose', 'Skirk'}
-[2026-08-10 17:12:58.287] skip_chars (coverage gate): {'Nahida', 'Xiangling', 'Diluc', 'Keqing', 'Rosaria', 'Kaeya', 'Columbina', 'Fischl', 'Linnea', 'Jean', 'Xingqiu'}
-[2026-08-10 17:12:58.287] require_tier_upgrade=True, min_prob_for_upgrade=0.25
-[2026-08-10 17:12:58.287] any_tier_upgrade_available=True => exclude_non_upgraders=True
-[2026-08-10 17:12:58.287] OPTIMIZER PLANNER: remaining_lifetime_mora=3000000, max_pieces=10, exclude_non_upgraders=True, skip_chars={'Nahida', 'Xiangling', 'Diluc', 'Keqing', 'Rosaria', 'Kaeya', 'Columbina', 'Fischl', 'Linnea', 'Jean', 'Xingqiu'}
-[2026-08-10 17:12:58.287]   Skirk Flower: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Skirk Feather: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Skirk Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Skirk Circlet: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Skirk Sands: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Escoffier Flower: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Escoffier Feather: kept 5/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.287] plan_slot_actions: Escoffier Feather - 5 raw candidates
-[2026-08-10 17:12:58.287]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.287]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.287]   Escoffier Goblet: kept 5/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.287] plan_slot_actions: Escoffier Goblet - 5 raw candidates
-[2026-08-10 17:12:58.287]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.287]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.287]   _decide_slot_action: leader_p=0.524, finish_mora=270475, expected_waste=128746, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.287]   Escoffier Goblet -> Scout to 4 (contested)
-[2026-08-10 17:12:58.287]   Escoffier Circlet: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Escoffier Sands: kept 6/8 tier_upgrade_ok=True
-[2026-08-10 17:12:58.287] plan_slot_actions: Escoffier Sands - 6 raw candidates
-[2026-08-10 17:12:58.287]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.287]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.287]   _decide_slot_action: leader_p=0.966, finish_mora=183325, expected_waste=6233, scout_cost=None, resolved=True
-[2026-08-10 17:12:58.287]   Escoffier Sands -> Commit to 20 (leader)
-[2026-08-10 17:12:58.287]   Mavuika Flower: kept 5/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.287] plan_slot_actions: Mavuika Flower - 5 raw candidates
-[2026-08-10 17:12:58.287]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.287]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.287]   Mavuika Feather: kept 6/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.287] plan_slot_actions: Mavuika Feather - 6 raw candidates
-[2026-08-10 17:12:58.287]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.287]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.287]   _decide_slot_action: leader_p=0.314, finish_mora=270475, expected_waste=185546, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.287]   Mavuika Feather -> Scout to 4 (contested)
-[2026-08-10 17:12:58.287]   Mavuika Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Mavuika Circlet: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Mavuika Sands: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Mualani Flower: all 8 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Mualani Feather: all 4 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Mualani Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Mualani Circlet: kept 8/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.287] plan_slot_actions: Mualani Circlet - 8 raw candidates
-[2026-08-10 17:12:58.287]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.287]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.287]   Mualani Sands: kept 9/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.287] plan_slot_actions: Mualani Sands - 9 raw candidates
-[2026-08-10 17:12:58.287]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.287]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.287]   Zibai Flower: all 9 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Zibai Feather: all 3 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Zibai Goblet: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Zibai Circlet: all 4 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Zibai Sands: all 9 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.287]   Citlali Flower: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.303]   Citlali Feather: kept 9/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.303] plan_slot_actions: Citlali Feather - 9 raw candidates
-[2026-08-10 17:12:58.303]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.303]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.303]   Citlali Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.303]   Citlali Circlet: kept 4/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.303] plan_slot_actions: Citlali Circlet - 4 raw candidates
-[2026-08-10 17:12:58.303]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.304]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.304]   Citlali Sands: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.305] plan_slot_actions: Citlali Sands - 10 raw candidates
-[2026-08-10 17:12:58.305]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.305]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.305]   _decide_slot_action: leader_p=0.904, finish_mora=270475, expected_waste=25966, scout_cost=44725, resolved=True
-[2026-08-10 17:12:58.305]   Citlali Sands -> Commit to 20 (leader)
-[2026-08-10 17:12:58.305]   Furina Flower: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.306]   Furina Feather: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.306] plan_slot_actions: Furina Feather - 10 raw candidates
-[2026-08-10 17:12:58.306]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.306]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.307]   _decide_slot_action: leader_p=0.622, finish_mora=225750, expected_waste=85334, scout_cost=42425, resolved=False
-[2026-08-10 17:12:58.307]   Furina Feather -> Scout to 12 (contested)
-[2026-08-10 17:12:58.307]   Furina Goblet: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.307]   Furina Circlet: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.308] plan_slot_actions: Furina Circlet - 5 raw candidates
-[2026-08-10 17:12:58.308]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.308]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.308]   Furina Sands: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.308]   Mona Flower: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.308]   Mona Feather: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.309] plan_slot_actions: Mona Feather - 10 raw candidates
-[2026-08-10 17:12:58.309]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.309]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.309]   _decide_slot_action: leader_p=0.586, finish_mora=183325, expected_waste=75897, scout_cost=66375, resolved=False
-[2026-08-10 17:12:58.309]   Mona Feather -> Scout to 16 (contested)
-[2026-08-10 17:12:58.309]   Mona Feather -> Scout to 16 (contested)
-[2026-08-10 17:12:58.309]   Mona Goblet: kept 4/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.309] plan_slot_actions: Mona Goblet - 4 raw candidates
-[2026-08-10 17:12:58.309]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.309]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.309]   Mona Circlet: all 9 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.309]   Mona Sands: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.309]   Sucrose Flower: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.309]   Sucrose Feather: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.309]   Sucrose Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.312]   Sucrose Circlet: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.312] plan_slot_actions: Sucrose Circlet - 5 raw candidates
-[2026-08-10 17:12:58.312]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.312]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.312]   Sucrose Sands: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.312]   skip char Keqing (covered by skip_chars)
-[2026-08-10 17:12:58.312]   Lauma Flower: all 8 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.312]   Lauma Feather: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.314]   Lauma Goblet: kept 4/5 tier_upgrade_ok=True
-[2026-08-10 17:12:58.314] plan_slot_actions: Lauma Goblet - 4 raw candidates
-[2026-08-10 17:12:58.314]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.314]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.314]   _decide_slot_action: leader_p=0.579, finish_mora=270475, expected_waste=113870, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.315]   Lauma Goblet -> Scout to 4 (contested)
-[2026-08-10 17:12:58.315]   Lauma Goblet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.315]   Lauma Circlet: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.315] plan_slot_actions: Lauma Circlet - 10 raw candidates
-[2026-08-10 17:12:58.316]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.316]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.316]   _decide_slot_action: leader_p=0.639, finish_mora=270475, expected_waste=97641, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.316]   Lauma Circlet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.316]   Lauma Sands: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.317] plan_slot_actions: Lauma Sands - 10 raw candidates
-[2026-08-10 17:12:58.317]   after min_relevant_prob (0.25) + max_contenders: 3 contenders
-[2026-08-10 17:12:58.317]   after _can_ever_reach_good: 3 contenders
-[2026-08-10 17:12:58.317]   _decide_slot_action: leader_p=0.450, finish_mora=270475, expected_waste=148761, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.318]   Lauma Sands -> Scout to 8 (contested)
-[2026-08-10 17:12:58.318]   Lauma Sands -> Scout to 4 (contested)
-[2026-08-10 17:12:58.318]   Lauma Sands -> Scout to 8 (contested)
-[2026-08-10 17:12:58.318]   skip char Nahida (covered by skip_chars)
-[2026-08-10 17:12:58.318]   skip char Columbina (covered by skip_chars)
-[2026-08-10 17:12:58.319]   SangonomiyaKokomi Flower: kept 9/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.319] plan_slot_actions: SangonomiyaKokomi Flower - 9 raw candidates
-[2026-08-10 17:12:58.319]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.319]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.319]   SangonomiyaKokomi Feather: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.320]   SangonomiyaKokomi Goblet: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.320] plan_slot_actions: SangonomiyaKokomi Goblet - 5 raw candidates
-[2026-08-10 17:12:58.320]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.320]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.320]   SangonomiyaKokomi Circlet: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.321]   SangonomiyaKokomi Sands: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.321]   KukiShinobu Flower: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.321] plan_slot_actions: KukiShinobu Flower - 5 raw candidates
-[2026-08-10 17:12:58.321]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.321]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.322]   KukiShinobu Feather: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.322] plan_slot_actions: KukiShinobu Feather - 5 raw candidates
-[2026-08-10 17:12:58.322]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.322]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.322]   KukiShinobu Goblet: kept 4/5 tier_upgrade_ok=True
-[2026-08-10 17:12:58.322] plan_slot_actions: KukiShinobu Goblet - 4 raw candidates
-[2026-08-10 17:12:58.322]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.322]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.322]   KukiShinobu Circlet: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.322] plan_slot_actions: KukiShinobu Circlet - 5 raw candidates
-[2026-08-10 17:12:58.322]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.322]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.322]   _decide_slot_action: leader_p=0.468, finish_mora=225750, expected_waste=120099, scout_cost=108800, resolved=False
-[2026-08-10 17:12:58.322]   KukiShinobu Circlet -> Scout to 16 (contested)
-[2026-08-10 17:12:58.322]   KukiShinobu Sands: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.322] plan_slot_actions: KukiShinobu Sands - 5 raw candidates
-[2026-08-10 17:12:58.322]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.322]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.322]   Candace Flower: kept 7/9 tier_upgrade_ok=True
-[2026-08-10 17:12:58.322] plan_slot_actions: Candace Flower - 7 raw candidates
-[2026-08-10 17:12:58.322]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.322]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.322]   Candace Feather: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.322] plan_slot_actions: Candace Feather - 10 raw candidates
-[2026-08-10 17:12:58.322]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.322]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.327]   Candace Goblet: kept 6/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.327] plan_slot_actions: Candace Goblet - 6 raw candidates
-[2026-08-10 17:12:58.327]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.327]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.327]   Candace Circlet: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.328]   Candace Sands: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.328] plan_slot_actions: Candace Sands - 5 raw candidates
-[2026-08-10 17:12:58.328]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.328]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.328]   Xilonen Flower: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.329] plan_slot_actions: Xilonen Flower - 5 raw candidates
-[2026-08-10 17:12:58.329]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.329]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.329]   Xilonen Feather: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.329]   Xilonen Goblet: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.330]   Xilonen Circlet: all 5 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.330]   Xilonen Sands: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.330] plan_slot_actions: Xilonen Sands - 5 raw candidates
-[2026-08-10 17:12:58.330]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.330]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.331]   skip char Linnea (covered by skip_chars)
-[2026-08-10 17:12:58.331]   Illuga Flower: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.331]   Illuga Feather: kept 11/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.331] plan_slot_actions: Illuga Feather - 11 raw candidates
-[2026-08-10 17:12:58.332]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.332]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.332]   Illuga Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.332]   Illuga Circlet: kept 7/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.332] plan_slot_actions: Illuga Circlet - 7 raw candidates
-[2026-08-10 17:12:58.332]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.333]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.333]   _decide_slot_action: leader_p=0.914, finish_mora=270475, expected_waste=23261, scout_cost=44725, resolved=True
-[2026-08-10 17:12:58.333]   Illuga Circlet -> Commit to 20 (leader)
-[2026-08-10 17:12:58.333]   Illuga Sands: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.334]   Kachina Flower: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.334] plan_slot_actions: Kachina Flower - 10 raw candidates
-[2026-08-10 17:12:58.334]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.334]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.334]   _decide_slot_action: leader_p=0.492, finish_mora=270475, expected_waste=137401, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.335]   Kachina Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.335]   Kachina Feather: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.335]   Kachina Goblet: all 2 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.335]   Kachina Circlet: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.335]   Kachina Sands: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.336]   skip char Rosaria (covered by skip_chars)
-[2026-08-10 17:12:58.336]   skip char Fischl (covered by skip_chars)
-[2026-08-10 17:12:58.336]   Ororon Flower: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.336] plan_slot_actions: Ororon Flower - 10 raw candidates
-[2026-08-10 17:12:58.336]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.336]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.643, finish_mora=254175, expected_waste=90740, scout_cost=28425, resolved=False
-[2026-08-10 17:12:58.337]   Ororon Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.337]   Ororon Feather: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Ororon Feather - 10 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 3 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 3 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.336, finish_mora=270475, expected_waste=179595, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.337]   Ororon Feather -> Scout to 8 (contested)
-[2026-08-10 17:12:58.337]   Ororon Feather -> Scout to 8 (contested)
-[2026-08-10 17:12:58.337]   Ororon Feather -> Scout to 8 (contested)
-[2026-08-10 17:12:58.337]   Ororon Goblet: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Ororon Goblet - 5 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.419, finish_mora=183325, expected_waste=106512, scout_cost=66375, resolved=False
-[2026-08-10 17:12:58.337]   Ororon Goblet -> Scout to 16 (contested)
-[2026-08-10 17:12:58.337]   Ororon Goblet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.337]   Ororon Circlet: kept 9/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Ororon Circlet - 9 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.480, finish_mora=270475, expected_waste=140647, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.337]   Ororon Circlet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.337]   Ororon Sands: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Ororon Sands - 10 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.586, finish_mora=183325, expected_waste=75897, scout_cost=None, resolved=True
-[2026-08-10 17:12:58.337]   Ororon Sands -> Commit to 16 (leader)
-[2026-08-10 17:12:58.337]   skip char Xingqiu (covered by skip_chars)
-[2026-08-10 17:12:58.337]   Bennett Flower: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.337]   Bennett Feather: kept 10/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Bennett Feather - 10 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.266, finish_mora=225750, expected_waste=165700, scout_cost=42425, resolved=False
-[2026-08-10 17:12:58.337]   Bennett Feather -> Scout to 12 (contested)
-[2026-08-10 17:12:58.337]   Bennett Goblet: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.337]   Bennett Circlet: kept 9/9 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Bennett Circlet - 9 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=1.000, finish_mora=116950, expected_waste=0, scout_cost=None, resolved=True
-[2026-08-10 17:12:58.337]   Bennett Circlet -> Commit to 20 (leader)
-[2026-08-10 17:12:58.337]   Bennett Sands: kept 6/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Bennett Sands - 6 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.337]   skip char Xiangling (covered by skip_chars)
-[2026-08-10 17:12:58.337]   skip char Jean (covered by skip_chars)
-[2026-08-10 17:12:58.337]   skip char Diluc (covered by skip_chars)
-[2026-08-10 17:12:58.337]   Gorou Flower: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Gorou Flower - 10 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.718, finish_mora=270475, expected_waste=76274, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.337]   Gorou Flower -> Scout to 4 (contested)
-[2026-08-10 17:12:58.337]   Gorou Feather: kept 9/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Gorou Feather - 9 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.352, finish_mora=270475, expected_waste=175268, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.337]   Gorou Feather -> Scout to 4 (contested)
-[2026-08-10 17:12:58.337]   Gorou Feather -> Scout to 8 (contested)
-[2026-08-10 17:12:58.337]   Gorou Goblet: kept 5/8 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Gorou Goblet - 5 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.296, finish_mora=270475, expected_waste=190414, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.337]   Gorou Goblet -> Scout to 4 (contested)
-[2026-08-10 17:12:58.337]   Gorou Circlet: kept 9/9 tier_upgrade_ok=True
-[2026-08-10 17:12:58.337] plan_slot_actions: Gorou Circlet - 9 raw candidates
-[2026-08-10 17:12:58.337]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.337]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.337]   _decide_slot_action: leader_p=0.515, finish_mora=270475, expected_waste=131180, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.337]   Gorou Circlet -> Scout to 4 (contested)
-[2026-08-10 17:12:58.337]   Gorou Circlet -> Scout to 4 (contested)
-[2026-08-10 17:12:58.337]   Gorou Sands: kept 7/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: Gorou Sands - 7 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.651, finish_mora=270475, expected_waste=94396, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.352]   Gorou Sands -> Scout to 8 (contested)
-[2026-08-10 17:12:58.352]   Gorou Sands -> Scout to 8 (contested)
-[2026-08-10 17:12:58.352]   LanYan Flower: kept 11/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: LanYan Flower - 11 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.636, finish_mora=270475, expected_waste=98453, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.352]   LanYan Flower -> Scout to 4 (contested)
-[2026-08-10 17:12:58.352]   LanYan Flower -> Scout: no meaningful target found
-[2026-08-10 17:12:58.352]   LanYan Feather: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: LanYan Feather - 10 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.876, finish_mora=270475, expected_waste=33539, scout_cost=44725, resolved=True
-[2026-08-10 17:12:58.352]   LanYan Feather -> Commit to 16 (leader)
-[2026-08-10 17:12:58.352]   LanYan Goblet: kept 5/5 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: LanYan Goblet - 5 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.973, finish_mora=270475, expected_waste=7303, scout_cost=16300, resolved=True
-[2026-08-10 17:12:58.352]   LanYan Goblet -> Commit to 16 (leader)
-[2026-08-10 17:12:58.352]   LanYan Circlet: kept 6/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: LanYan Circlet - 6 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=1.000, finish_mora=270475, expected_waste=0, scout_cost=44725, resolved=True
-[2026-08-10 17:12:58.352]   LanYan Circlet -> Commit to 16 (leader)
-[2026-08-10 17:12:58.352]   LanYan Sands: kept 6/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: LanYan Sands - 6 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=1.000, finish_mora=270475, expected_waste=0, scout_cost=44725, resolved=True
-[2026-08-10 17:12:58.352]   LanYan Sands -> Commit to 16 (leader)
-[2026-08-10 17:12:58.352]   Faruzan Flower: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: Faruzan Flower - 10 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.315, finish_mora=270475, expected_waste=185275, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.352]   Faruzan Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.352]   Faruzan Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.352]   Faruzan Feather: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: Faruzan Feather - 10 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.293, finish_mora=270475, expected_waste=191226, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.352]   Faruzan Feather -> Scout to 4 (contested)
-[2026-08-10 17:12:58.352]   Faruzan Feather -> Scout to 8 (contested)
-[2026-08-10 17:12:58.352]   Faruzan Goblet: kept 11/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: Faruzan Goblet - 11 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.602, finish_mora=270475, expected_waste=107649, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.352]   Faruzan Goblet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.352]   Faruzan Goblet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.352]   Faruzan Circlet: kept 5/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: Faruzan Circlet - 5 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.352]   Faruzan Sands: kept 5/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: Faruzan Sands - 5 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.352]   Layla Flower: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: Layla Flower - 10 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.406, finish_mora=270475, expected_waste=160662, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.352]   Layla Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.352]   Layla Flower -> Scout to 4 (contested)
-[2026-08-10 17:12:58.352]   Layla Feather: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.352] plan_slot_actions: Layla Feather - 10 raw candidates
-[2026-08-10 17:12:58.352]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.352]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.352]   _decide_slot_action: leader_p=0.591, finish_mora=225750, expected_waste=92332, scout_cost=42425, resolved=False
-[2026-08-10 17:12:58.352]   Layla Feather -> Scout to 12 (contested)
-[2026-08-10 17:12:58.368]   Layla Goblet: kept 5/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Layla Goblet - 5 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.267, finish_mora=254175, expected_waste=186310, scout_cost=28425, resolved=False
-[2026-08-10 17:12:58.368]   Layla Goblet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.368]   Layla Circlet: kept 7/8 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Layla Circlet - 7 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.398, finish_mora=225750, expected_waste=135902, scout_cost=42425, resolved=False
-[2026-08-10 17:12:58.368]   Layla Circlet -> Scout to 12 (contested)
-[2026-08-10 17:12:58.368]   Layla Circlet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.368]   Layla Sands: kept 6/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Layla Sands - 6 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.579, finish_mora=183325, expected_waste=77180, scout_cost=None, resolved=True
-[2026-08-10 17:12:58.368]   Layla Sands -> Commit to 16 (leader)
-[2026-08-10 17:12:58.368]   Diona Flower: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Diona Flower - 10 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.528, finish_mora=270475, expected_waste=127664, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.368]   Diona Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.368]   Diona Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.368]   Diona Feather: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Diona Feather - 10 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.857, finish_mora=270475, expected_waste=38678, scout_cost=44725, resolved=True
-[2026-08-10 17:12:58.368]   Diona Feather -> Commit to 16 (leader)
-[2026-08-10 17:12:58.368]   Diona Goblet: kept 9/11 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Diona Goblet - 9 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.652, finish_mora=225750, expected_waste=78561, scout_cost=42425, resolved=False
-[2026-08-10 17:12:58.368]   Diona Goblet -> Scout to 12 (contested)
-[2026-08-10 17:12:58.368]   Diona Circlet: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Diona Circlet - 10 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.569, finish_mora=270475, expected_waste=116575, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.368]   Diona Circlet -> Scout to 4 (contested)
-[2026-08-10 17:12:58.368]   Diona Sands: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.368]   skip char Kaeya (covered by skip_chars)
-[2026-08-10 17:12:58.368]   Aino Flower: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.368]   Aino Feather: all 11 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.368]   Aino Goblet: kept 4/5 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Aino Goblet - 4 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=1.000, finish_mora=270475, expected_waste=0, scout_cost=16300, resolved=True
-[2026-08-10 17:12:58.368]   Aino Goblet -> Commit to 16 (leader)
-[2026-08-10 17:12:58.368]   Aino Circlet: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Aino Circlet - 10 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=1.000, finish_mora=270475, expected_waste=0, scout_cost=44725, resolved=True
-[2026-08-10 17:12:58.368]   Aino Circlet -> Commit to 16 (leader)
-[2026-08-10 17:12:58.368]   Aino Sands: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Aino Sands - 10 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=1.000, finish_mora=270475, expected_waste=0, scout_cost=16300, resolved=True
-[2026-08-10 17:12:58.368]   Aino Sands -> Commit to 16 (leader)
-[2026-08-10 17:12:58.368]   Barbara Flower: kept 9/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Barbara Flower - 9 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.372, finish_mora=270475, expected_waste=169858, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.368]   Barbara Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.368]   Barbara Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.368]   Barbara Feather: kept 6/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.368] plan_slot_actions: Barbara Feather - 6 raw candidates
-[2026-08-10 17:12:58.368]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.368]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.368]   _decide_slot_action: leader_p=0.529, finish_mora=116950, expected_waste=55083, scout_cost=None, resolved=True
-[2026-08-10 17:12:58.368]   Barbara Feather -> Commit to 16 (leader)
-[2026-08-10 17:12:58.368]   Barbara Goblet: kept 6/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Barbara Goblet - 6 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.384]   _decide_slot_action: leader_p=0.720, finish_mora=254175, expected_waste=71169, scout_cost=28425, resolved=False
-[2026-08-10 17:12:58.384]   Barbara Goblet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.384]   Barbara Circlet: kept 6/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Barbara Circlet - 6 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.384]   _decide_slot_action: leader_p=0.883, finish_mora=270475, expected_waste=31646, scout_cost=44725, resolved=True
-[2026-08-10 17:12:58.384]   Barbara Circlet -> Commit to 16 (leader)
-[2026-08-10 17:12:58.384]   Barbara Sands: kept 7/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Barbara Sands - 7 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.384]   _decide_slot_action: leader_p=0.733, finish_mora=225750, expected_waste=60275, scout_cost=108800, resolved=True
-[2026-08-10 17:12:58.384]   Barbara Sands -> Commit to 16 (leader)
-[2026-08-10 17:12:58.384]   Chevreuse Flower: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Chevreuse Flower - 10 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.384]   _decide_slot_action: leader_p=0.508, finish_mora=270475, expected_waste=133074, scout_cost=44725, resolved=False
-[2026-08-10 17:12:58.384]   Chevreuse Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.384]   Chevreuse Flower -> Scout to 8 (contested)
-[2026-08-10 17:12:58.384]   Chevreuse Feather: kept 10/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Chevreuse Feather - 10 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.384]   _decide_slot_action: leader_p=0.733, finish_mora=270475, expected_waste=72217, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.384]   Chevreuse Feather -> Scout to 4 (contested)
-[2026-08-10 17:12:58.384]   Chevreuse Goblet: kept 9/10 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Chevreuse Goblet - 9 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.384]   _decide_slot_action: leader_p=0.666, finish_mora=225750, expected_waste=75400, scout_cost=42425, resolved=False
-[2026-08-10 17:12:58.384]   Chevreuse Goblet -> Scout to 12 (contested)
-[2026-08-10 17:12:58.384]   Chevreuse Circlet: kept 9/9 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Chevreuse Circlet - 9 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 2 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 2 contenders
-[2026-08-10 17:12:58.384]   _decide_slot_action: leader_p=0.367, finish_mora=270475, expected_waste=171211, scout_cost=16300, resolved=False
-[2026-08-10 17:12:58.384]   Chevreuse Circlet -> Scout to 4 (contested)
-[2026-08-10 17:12:58.384]   Chevreuse Circlet -> Scout to 8 (contested)
-[2026-08-10 17:12:58.384]   Chevreuse Sands: kept 7/7 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Chevreuse Sands - 7 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 1 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 1 contenders
-[2026-08-10 17:12:58.384]   _decide_slot_action: leader_p=0.410, finish_mora=116950, expected_waste=69001, scout_cost=None, resolved=True
-[2026-08-10 17:12:58.384]   Chevreuse Sands -> Commit to 16 (leader)
-[2026-08-10 17:12:58.384]   Thoma Flower: kept 6/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Thoma Flower - 6 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.384]   Thoma Feather: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.384]   Thoma Goblet: kept 6/6 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Thoma Goblet - 6 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.384]   Thoma Circlet: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
-[2026-08-10 17:12:58.384]   Thoma Sands: kept 8/8 tier_upgrade_ok=True
-[2026-08-10 17:12:58.384] plan_slot_actions: Thoma Sands - 8 raw candidates
-[2026-08-10 17:12:58.384]   after min_relevant_prob (0.25) + max_contenders: 0 contenders
-[2026-08-10 17:12:58.384]   after _can_ever_reach_good: 0 contenders
-[2026-08-10 17:12:58.384] OPTIMIZER: raw_actions=73
-[2026-08-10 17:12:58.384]   action: Escoffier Goblet type=Scout prob=0.524 score=648 urgency=0.648 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.384]   action: Escoffier Sands type=Commit prob=0.966 score=648 urgency=0.648 priority=0.0000 immediate_mora=183325
-[2026-08-10 17:12:58.384]   action: Mavuika Feather type=Scout prob=0.314 score=647 urgency=0.647 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.384]   action: Citlali Sands type=Commit prob=0.904 score=449 urgency=0.449 priority=0.0000 immediate_mora=270475
-[2026-08-10 17:12:58.384]   action: Furina Feather type=Scout prob=0.622 score=447 urgency=0.447 priority=0.0000 immediate_mora=42425
-[2026-08-10 17:12:58.384]   action: Mona Feather type=Scout prob=0.586 score=447 urgency=0.447 priority=0.0000 immediate_mora=66375
-[2026-08-10 17:12:58.384]   action: Mona Feather type=Scout prob=0.348 score=447 urgency=0.447 priority=0.0000 immediate_mora=66375
-[2026-08-10 17:12:58.384]   action: Lauma Goblet type=Scout prob=0.579 score=448 urgency=0.448 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.384]   action: Lauma Goblet type=Scout prob=0.373 score=448 urgency=0.448 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.384]   action: Lauma Circlet type=Scout prob=0.639 score=448 urgency=0.448 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.384]   action: Lauma Sands type=Scout prob=0.450 score=448 urgency=0.448 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.384]   action: Lauma Sands type=Scout prob=0.294 score=448 urgency=0.448 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.384]   action: Lauma Sands type=Scout prob=0.256 score=448 urgency=0.448 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.384]   action: KukiShinobu Circlet type=Scout prob=0.468 score=760 urgency=0.760 priority=0.0000 immediate_mora=108800
-[2026-08-10 17:12:58.384]   action: Illuga Circlet type=Commit prob=0.914 score=447 urgency=0.447 priority=0.0000 immediate_mora=270475
-[2026-08-10 17:12:58.399]   action: Kachina Flower type=Scout prob=0.492 score=446 urgency=0.446 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Ororon Flower type=Scout prob=0.643 score=790 urgency=0.790 priority=0.0000 immediate_mora=28425
-[2026-08-10 17:12:58.399]   action: Ororon Feather type=Scout prob=0.336 score=790 urgency=0.790 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Ororon Feather type=Scout prob=0.316 score=790 urgency=0.790 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Ororon Feather type=Scout prob=0.301 score=790 urgency=0.790 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Ororon Goblet type=Scout prob=0.419 score=790 urgency=0.790 priority=0.0000 immediate_mora=66375
-[2026-08-10 17:12:58.399]   action: Ororon Goblet type=Scout prob=0.289 score=790 urgency=0.790 priority=0.0000 immediate_mora=28425
-[2026-08-10 17:12:58.399]   action: Ororon Circlet type=Scout prob=0.480 score=790 urgency=0.790 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Ororon Sands type=Commit prob=0.586 score=790 urgency=0.790 priority=0.0000 immediate_mora=66375
-[2026-08-10 17:12:58.399]   action: Bennett Feather type=Scout prob=0.266 score=648 urgency=0.648 priority=0.0000 immediate_mora=42425
-[2026-08-10 17:12:58.399]   action: Bennett Circlet type=Commit prob=1.000 score=648 urgency=0.648 priority=0.0000 immediate_mora=116950
-[2026-08-10 17:12:58.399]   action: Gorou Flower type=Scout prob=0.718 score=760 urgency=0.760 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Gorou Feather type=Scout prob=0.352 score=760 urgency=0.760 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Gorou Feather type=Scout prob=0.251 score=760 urgency=0.760 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Gorou Goblet type=Scout prob=0.296 score=760 urgency=0.760 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Gorou Circlet type=Scout prob=0.515 score=760 urgency=0.760 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Gorou Circlet type=Scout prob=0.485 score=760 urgency=0.760 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Gorou Sands type=Scout prob=0.651 score=760 urgency=0.760 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Gorou Sands type=Scout prob=0.278 score=760 urgency=0.760 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: LanYan Flower type=Scout prob=0.636 score=790 urgency=0.790 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: LanYan Feather type=Commit prob=0.876 score=790 urgency=0.790 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: LanYan Goblet type=Commit prob=0.973 score=790 urgency=0.790 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: LanYan Circlet type=Commit prob=1.000 score=790 urgency=0.790 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: LanYan Sands type=Commit prob=1.000 score=790 urgency=0.790 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: Faruzan Flower type=Scout prob=0.315 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Faruzan Flower type=Scout prob=0.294 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Faruzan Feather type=Scout prob=0.293 score=770 urgency=0.770 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Faruzan Feather type=Scout prob=0.288 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Faruzan Goblet type=Scout prob=0.602 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Faruzan Goblet type=Scout prob=0.364 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Layla Flower type=Scout prob=0.406 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Layla Flower type=Scout prob=0.271 score=780 urgency=0.780 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Layla Feather type=Scout prob=0.591 score=780 urgency=0.780 priority=0.0000 immediate_mora=42425
-[2026-08-10 17:12:58.399]   action: Layla Goblet type=Scout prob=0.267 score=780 urgency=0.780 priority=0.0000 immediate_mora=28425
-[2026-08-10 17:12:58.399]   action: Layla Circlet type=Scout prob=0.398 score=780 urgency=0.780 priority=0.0000 immediate_mora=42425
-[2026-08-10 17:12:58.399]   action: Layla Circlet type=Scout prob=0.279 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Layla Sands type=Commit prob=0.579 score=780 urgency=0.780 priority=0.0000 immediate_mora=66375
-[2026-08-10 17:12:58.399]   action: Diona Flower type=Scout prob=0.528 score=759 urgency=0.759 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Diona Flower type=Scout prob=0.346 score=759 urgency=0.759 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Diona Feather type=Commit prob=0.857 score=759 urgency=0.759 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: Diona Goblet type=Scout prob=0.652 score=759 urgency=0.759 priority=0.0000 immediate_mora=42425
-[2026-08-10 17:12:58.399]   action: Diona Circlet type=Scout prob=0.569 score=759 urgency=0.759 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Aino Goblet type=Commit prob=1.000 score=758 urgency=0.758 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: Aino Circlet type=Commit prob=1.000 score=758 urgency=0.758 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: Aino Sands type=Commit prob=1.000 score=758 urgency=0.758 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: Barbara Flower type=Scout prob=0.372 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Barbara Flower type=Scout prob=0.295 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Barbara Feather type=Commit prob=0.529 score=770 urgency=0.770 priority=0.4073 immediate_mora=0
-[2026-08-10 17:12:58.399]   action: Barbara Goblet type=Scout prob=0.720 score=770 urgency=0.770 priority=0.0000 immediate_mora=28425
-[2026-08-10 17:12:58.399]   action: Barbara Circlet type=Commit prob=0.883 score=770 urgency=0.770 priority=0.0000 immediate_mora=153525
-[2026-08-10 17:12:58.399]   action: Barbara Sands type=Commit prob=0.733 score=770 urgency=0.770 priority=0.0000 immediate_mora=108800
-[2026-08-10 17:12:58.399]   action: Chevreuse Flower type=Scout prob=0.508 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Chevreuse Flower type=Scout prob=0.279 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Chevreuse Feather type=Scout prob=0.733 score=770 urgency=0.770 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Chevreuse Goblet type=Scout prob=0.666 score=770 urgency=0.770 priority=0.0000 immediate_mora=42425
-[2026-08-10 17:12:58.399]   action: Chevreuse Circlet type=Scout prob=0.367 score=770 urgency=0.770 priority=0.0000 immediate_mora=16300
-[2026-08-10 17:12:58.399]   action: Chevreuse Circlet type=Scout prob=0.267 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
-[2026-08-10 17:12:58.399]   action: Chevreuse Sands type=Commit prob=0.410 score=770 urgency=0.770 priority=0.3157 immediate_mora=0
-[2026-08-10 17:12:58.399] OPTIMIZER: 54 groups after grouping. Sorted order:
-[2026-08-10 17:12:58.399]   0: LanYan Flower tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.399]   1: Ororon Flower tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.399]   2: Ororon Circlet tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.399]   3: Ororon Goblet tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.413]   4: Ororon Sands tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.413]   5: Ororon Feather tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.413]   6: LanYan Circlet tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.413]   7: LanYan Sands tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.413]   8: LanYan Goblet tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.413]   9: LanYan Feather tier_upgrade=True score=790 priority=0.0000
-[2026-08-10 17:12:58.413]   10: Layla Flower tier_upgrade=True score=780 priority=0.0000
-[2026-08-10 17:12:58.413]   11: Layla Feather tier_upgrade=True score=780 priority=0.0000
-[2026-08-10 17:12:58.413]   12: Layla Goblet tier_upgrade=True score=780 priority=0.0000
-[2026-08-10 17:12:58.413]   13: Layla Circlet tier_upgrade=True score=780 priority=0.0000
-[2026-08-10 17:12:58.413]   14: Layla Sands tier_upgrade=True score=780 priority=0.0000
-[2026-08-10 17:12:58.413]   15: Barbara Feather tier_upgrade=True score=770 priority=0.4073
-[2026-08-10 17:12:58.413]   16: Chevreuse Sands tier_upgrade=True score=770 priority=0.3157
-[2026-08-10 17:12:58.413]   17: Chevreuse Feather tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.413]   18: Barbara Goblet tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.413]   19: Chevreuse Circlet tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   20: Faruzan Feather tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   21: Chevreuse Goblet tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   22: Faruzan Goblet tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   23: Chevreuse Flower tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   24: Barbara Flower tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   25: Faruzan Flower tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   26: Barbara Sands tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   27: Barbara Circlet tier_upgrade=True score=770 priority=0.0000
-[2026-08-10 17:12:58.415]   28: Gorou Flower tier_upgrade=True score=760 priority=0.0000
-[2026-08-10 17:12:58.415]   29: Gorou Circlet tier_upgrade=True score=760 priority=0.0000
-[2026-08-10 17:12:58.415]   30: Gorou Feather tier_upgrade=True score=760 priority=0.0000
-[2026-08-10 17:12:58.415]   31: Gorou Goblet tier_upgrade=True score=760 priority=0.0000
-[2026-08-10 17:12:58.415]   32: Gorou Sands tier_upgrade=True score=760 priority=0.0000
-[2026-08-10 17:12:58.415]   33: KukiShinobu Circlet tier_upgrade=True score=760 priority=0.0000
-[2026-08-10 17:12:58.415]   34: Diona Circlet tier_upgrade=True score=759 priority=0.0000
-[2026-08-10 17:12:58.415]   35: Diona Goblet tier_upgrade=True score=759 priority=0.0000
-[2026-08-10 17:12:58.415]   36: Diona Flower tier_upgrade=True score=759 priority=0.0000
-[2026-08-10 17:12:58.415]   37: Diona Feather tier_upgrade=True score=759 priority=0.0000
-[2026-08-10 17:12:58.415]   38: Aino Goblet tier_upgrade=True score=758 priority=0.0000
-[2026-08-10 17:12:58.415]   39: Aino Circlet tier_upgrade=True score=758 priority=0.0000
-[2026-08-10 17:12:58.415]   40: Aino Sands tier_upgrade=True score=758 priority=0.0000
-[2026-08-10 17:12:58.415]   41: Escoffier Goblet tier_upgrade=True score=648 priority=0.0000
-[2026-08-10 17:12:58.415]   42: Bennett Circlet tier_upgrade=True score=648 priority=0.0000
-[2026-08-10 17:12:58.415]   43: Bennett Feather tier_upgrade=True score=648 priority=0.0000
-[2026-08-10 17:12:58.415]   44: Escoffier Sands tier_upgrade=True score=648 priority=0.0000
-[2026-08-10 17:12:58.415]   45: Mavuika Feather tier_upgrade=True score=647 priority=0.0000
-[2026-08-10 17:12:58.415]   46: Citlali Sands tier_upgrade=True score=449 priority=0.0000
-[2026-08-10 17:12:58.415]   47: Lauma Goblet tier_upgrade=True score=448 priority=0.0000
-[2026-08-10 17:12:58.415]   48: Lauma Sands tier_upgrade=True score=448 priority=0.0000
-[2026-08-10 17:12:58.415]   49: Lauma Circlet tier_upgrade=True score=448 priority=0.0000
-[2026-08-10 17:12:58.415]   50: Furina Feather tier_upgrade=True score=447 priority=0.0000
-[2026-08-10 17:12:58.415]   51: Mona Feather tier_upgrade=True score=447 priority=0.0000
-[2026-08-10 17:12:58.415]   52: Illuga Circlet tier_upgrade=True score=447 priority=0.0000
-[2026-08-10 17:12:58.415]   53: Kachina Flower tier_upgrade=True score=446 priority=0.0000
-[2026-08-10 17:12:58.415]   SELECTED group LanYan Flower: immediate 16300 Mora, reserve 153525 Mora
-[2026-08-10 17:12:58.415]   SELECTED group Ororon Flower: immediate 28425 Mora, reserve 137225 Mora
-[2026-08-10 17:12:58.415]   SELECTED group Ororon Circlet: immediate 44725 Mora, reserve 153525 Mora
-[2026-08-10 17:12:58.415]   skip group Ororon Goblet: already at max_per_character=2 (slots={'Flower', 'Circlet'})
-[2026-08-10 17:12:58.415]   skip group Ororon Sands: already at max_per_character=2 (slots={'Flower', 'Circlet'})
-[2026-08-10 17:12:58.415]   skip group Ororon Feather: already at max_per_character=2 (slots={'Flower', 'Circlet'})
-[2026-08-10 17:12:58.415]   SELECTED group LanYan Circlet: immediate 153525 Mora, reserve 153525 Mora
-[2026-08-10 17:12:58.415]   skip group LanYan Sands: already at max_per_character=2 (slots={'Flower', 'Circlet'})
-[2026-08-10 17:12:58.415]   skip group LanYan Goblet: already at max_per_character=2 (slots={'Flower', 'Circlet'})
-[2026-08-10 17:12:58.415]   skip group LanYan Feather: already at max_per_character=2 (slots={'Flower', 'Circlet'})
-[2026-08-10 17:12:58.415]   SELECTED group Layla Flower: immediate 61025 Mora, reserve 153525 Mora
-[2026-08-10 17:12:58.415]   SELECTED group Layla Feather: immediate 42425 Mora, reserve 108800 Mora
-[2026-08-10 17:12:58.415]   skip group Layla Goblet: already at max_per_character=2 (slots={'Flower', 'Feather'})
-[2026-08-10 17:12:58.415]   skip group Layla Circlet: already at max_per_character=2 (slots={'Flower', 'Feather'})
-[2026-08-10 17:12:58.415]   skip group Layla Sands: already at max_per_character=2 (slots={'Flower', 'Feather'})
-[2026-08-10 17:12:58.415]   SELECTED group Barbara Feather: immediate 0 Mora, reserve 0 Mora
-[2026-08-10 17:12:58.415]   SELECTED group Chevreuse Sands: immediate 0 Mora, reserve 0 Mora
-[2026-08-10 17:12:58.415]   SELECTED group Chevreuse Feather: immediate 16300 Mora, reserve 153525 Mora
-[2026-08-10 17:12:58.415]   skip group Barbara Goblet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Chevreuse Circlet: already at max_per_character=2 (slots={'Feather', 'Sands'})
-[2026-08-10 17:12:58.415]   skip group Faruzan Feather: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.415]   skip group Chevreuse Goblet: already at max_per_character=2 (slots={'Feather', 'Sands'})
-[2026-08-10 17:12:58.415]   skip group Faruzan Goblet: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.415]   skip group Chevreuse Flower: already at max_per_character=2 (slots={'Feather', 'Sands'})
-[2026-08-10 17:12:58.415]   skip group Barbara Flower: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.415]   skip group Faruzan Flower: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.415]   skip group Barbara Sands: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Barbara Circlet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Gorou Flower: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Gorou Circlet: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.415]   skip group Gorou Feather: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.415]   skip group Gorou Goblet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Gorou Sands: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.415]   skip group KukiShinobu Circlet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Diona Circlet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Diona Goblet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Diona Flower: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.415]   skip group Diona Feather: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Aino Goblet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Aino Circlet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Aino Sands: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Escoffier Goblet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Bennett Circlet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Bennett Feather: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Escoffier Sands: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Mavuika Feather: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Citlali Sands: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.415]   skip group Lauma Goblet: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.431]   skip group Lauma Sands: would exceed max_pieces=10 (current 10 + 3)
-[2026-08-10 17:12:58.431]   skip group Lauma Circlet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.431]   skip group Furina Feather: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.431]   skip group Mona Feather: would exceed max_pieces=10 (current 10 + 2)
-[2026-08-10 17:12:58.431]   skip group Illuga Circlet: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.431]   skip group Kachina Flower: would exceed max_pieces=10 (current 10 + 1)
-[2026-08-10 17:12:58.431] optimizer_plan actions: 10
-[2026-08-10 17:12:58.431] legacy_bench_results count (after filtering optimizer_chars + skip_chars): 0
-[2026-08-10 17:12:58.431] legacy_plan skipped (no bench results or remaining_pieces=0)
-[2026-08-10 17:12:58.431] === build_combined_leveling_plan END ===
-[2026-08-10 17:12:58.431] final summary: piece_count=10, scout=7, commit=3
+=== Leveling planner debug log started at 2026-08-14 10:23:26.208400 ===
+[2026-08-14 10:23:26.208] === build_combined_leveling_plan START ===
+[2026-08-14 10:23:26.208] budget_config: {'max_mora': 10000000, 'max_artifact_exp': 500000, 'already_spent_mora': 0, 'already_spent_exp': 0}
+[2026-08-14 10:23:26.208] leveling_config keys: ['min_distinct_on_set_slots', 'require_tier_upgrade', 'max_contenders_per_slot', 'max_scout_level', 'soft_stop_floor', 'cliff_ratio', 'max_per_character', 'simulation_count', 'it_only_max_level', 'active_chars_only', 'tier_gated', 'max_reveal_fraction', 'max_pieces_per_run', 'min_commit_absolute_probability', 'min_absolute_probability_for_action', 'min_relevant_probability', 'commit_priority_multiplier', 'close_damage_threshold', 'fast_path_min_leader_p', 'fast_path_min_gap', 'fast_path_min_abs_prob']
+[2026-08-14 10:23:26.210] covered_slots_by_char (full): {'Zibai': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Mualani': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Xilonen': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Escoffier': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Ororon': ['Feather', 'Goblet', 'Flower', 'Sands'], 'Columbina': ['Feather', 'Flower'], 'Xingqiu': ['Feather', 'Circlet', 'Flower'], 'Fischl': ['Feather', 'Goblet', 'Flower'], 'Mavuika': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Rosaria': ['Goblet', 'Sands'], 'Keqing': ['Circlet', 'Feather', 'Sands'], 'Beidou': ['Feather', 'Circlet', 'Flower', 'Sands'], 'Citlali': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Bennett': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Diona': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Skirk': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Aino': ['Feather', 'Sands', 'Flower', 'Circlet'], 'Furina': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Linnea': ['Sands', 'Goblet', 'Flower', 'Circlet'], 'Candace': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Kaeya': ['Flower', 'Circlet'], 'Illuga': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Layla': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Mona': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'SangonomiyaKokomi': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Sucrose': ['Feather', 'Goblet', 'Flower', 'Sands'], 'Iansan': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet'], 'Barbara': ['Goblet', 'Sands', 'Circlet', 'Flower'], 'KukiShinobu': ['Circlet', 'Goblet', 'Feather', 'Sands'], 'Nilou': ['Flower', 'Sands', 'Goblet', 'Feather', 'Circlet']}
+[2026-08-14 10:23:26.210] skip_chars_legacy: {'Kaeya', 'Columbina', 'Rosaria', 'Xingqiu', 'Keqing', 'Fischl'}
+[2026-08-14 10:23:26.210] commit_blocked_chars: set()
+[2026-08-14 10:23:26.211] require_tier_upgrade=True, min_prob_for_upgrade=0.2
+[2026-08-14 10:23:26.211] any_tier_upgrade_available=True => exclude_non_upgraders=True
+[2026-08-14 10:23:26.211] OPTIMIZER PLANNER: remaining_lifetime_mora=10000000, max_pieces=10, exclude_non_upgraders=True, skip_chars=set(), scarcity_multiplier=1.000
+[2026-08-14 10:23:26.211]   Skirk Flower: all 12 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.211]   Skirk Sands: all 13 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.212]   Skirk Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.212]   Skirk Feather: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.212]   Skirk Circlet: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.212]   Escoffier Flower: all 8 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.212]   Escoffier Sands: kept 6/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.212] plan_slot_actions: Escoffier Sands - 6 raw candidates
+[2026-08-14 10:23:26.213]   relevant candidates: [(0.254, None), (0.202, None)]
+[2026-08-14 10:23:26.213]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.213]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.213]     None abs_prob to reach Good by 20: 0.996
+[2026-08-14 10:23:26.214]     None abs_prob to reach Good by 20: 0.999
+[2026-08-14 10:23:26.214]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.214]   abs_prob of reaching Good by 20: 0.996
+[2026-08-14 10:23:26.214]   _decide_slot_action: leader_p=0.254, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=201774, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.215]   Escoffier Sands -> Scout to 8 (contested)
+[2026-08-14 10:23:26.215]   Escoffier Sands -> Scout to 4 (contested)
+[2026-08-14 10:23:26.215]   Escoffier Goblet: kept 4/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.215] plan_slot_actions: Escoffier Goblet - 4 raw candidates
+[2026-08-14 10:23:26.216]   relevant candidates: [(0.796, None)]
+[2026-08-14 10:23:26.216]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.216]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.216]     None abs_prob to reach Good by 20: 0.500
+[2026-08-14 10:23:26.217]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.217]   abs_prob of reaching Good by 20: 0.500
+[2026-08-14 10:23:26.217]   _decide_slot_action: leader_p=0.796, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=55177, scout_cost=16300, resolved=False
+[2026-08-14 10:23:26.217]   Escoffier Goblet -> Scout to 4 (contested)
+[2026-08-14 10:23:26.218]   Escoffier Feather: kept 6/11 tier_upgrade_ok=True
+[2026-08-14 10:23:26.218] plan_slot_actions: Escoffier Feather - 6 raw candidates
+[2026-08-14 10:23:26.218]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.218]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.218]   Escoffier Circlet: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.219]   Mavuika Flower: kept 5/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.219] plan_slot_actions: Mavuika Flower - 5 raw candidates
+[2026-08-14 10:23:26.219]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.219]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.220]   Mavuika Sands: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.220]   Mavuika Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.220]   Mavuika Feather: kept 7/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.221] plan_slot_actions: Mavuika Feather - 7 raw candidates
+[2026-08-14 10:23:26.221]   relevant candidates: [(0.304, None)]
+[2026-08-14 10:23:26.221]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.221]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.222]     None abs_prob to reach Good by 20: 0.633
+[2026-08-14 10:23:26.222]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.222]   abs_prob of reaching Good by 20: 0.633
+[2026-08-14 10:23:26.222]   _decide_slot_action: leader_p=0.304, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=188251, scout_cost=16300, resolved=False
+[2026-08-14 10:23:26.223]   Mavuika Feather -> Scout to 4 (contested)
+[2026-08-14 10:23:26.223]   Mavuika Circlet: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.223]   Mualani Flower: all 9 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.223]   Mualani Sands: kept 13/15 tier_upgrade_ok=True
+[2026-08-14 10:23:26.223] plan_slot_actions: Mualani Sands - 13 raw candidates
+[2026-08-14 10:23:26.225]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.225]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.225]   Mualani Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.225]   Mualani Feather: all 5 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.226]   Mualani Circlet: kept 9/13 tier_upgrade_ok=True
+[2026-08-14 10:23:26.226] plan_slot_actions: Mualani Circlet - 9 raw candidates
+[2026-08-14 10:23:26.226]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.226]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.226]   Zibai Flower: all 10 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.227]   Zibai Sands: all 9 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.227]   Zibai Goblet: all 8 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.227]   Zibai Feather: all 4 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.228]   Zibai Circlet: all 5 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.228]   Citlali Flower: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.228]   Citlali Sands: kept 10/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.228] plan_slot_actions: Citlali Sands - 10 raw candidates
+[2026-08-14 10:23:26.228]   relevant candidates: [(0.873, None)]
+[2026-08-14 10:23:26.229]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.229]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.229]     None abs_prob to reach Good by 20: 0.684
+[2026-08-14 10:23:26.229]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.230]   abs_prob of reaching Good by 20: 0.684
+[2026-08-14 10:23:26.230]   _decide_slot_action: leader_p=0.873, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=34350, scout_cost=44725, resolved=True
+[2026-08-14 10:23:26.230]   Citlali Sands -> Commit to 20 (leader)
+[2026-08-14 10:23:26.230]   Citlali Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.231]   Citlali Feather: kept 12/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.231] plan_slot_actions: Citlali Feather - 12 raw candidates
+[2026-08-14 10:23:26.231]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.231]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.232]   Citlali Circlet: kept 5/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.232] plan_slot_actions: Citlali Circlet - 5 raw candidates
+[2026-08-14 10:23:26.232]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.232]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.232]   Furina Flower: all 12 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.232]   Furina Sands: all 8 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.233]   Furina Goblet: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.233]   Furina Feather: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.233] plan_slot_actions: Furina Feather - 13 raw candidates
+[2026-08-14 10:23:26.233]   relevant candidates: [(0.45, None)]
+[2026-08-14 10:23:26.234]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.234]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.234]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.234]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.235]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.235]   _decide_slot_action: leader_p=0.450, finish_mora=225750, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=124163, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.235]   Furina Feather -> Scout to 12 (contested)
+[2026-08-14 10:23:26.235]   Furina Circlet: kept 7/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.236] plan_slot_actions: Furina Circlet - 7 raw candidates
+[2026-08-14 10:23:26.236]   relevant candidates: [(1.0, None)]
+[2026-08-14 10:23:26.236]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.236]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.237]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.237]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.237]   Furina Circlet: 1 maxed contender(s) set aside (already finished, not levelable) -> 0 actionable left
+[2026-08-14 10:23:26.237]   Furina Circlet: no under-leveled contenders - slot settled by an existing finished piece, no leveling action
+[2026-08-14 10:23:26.239]   Mona Flower: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.239]   Mona Sands: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.239]   Mona Goblet: kept 5/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.239] plan_slot_actions: Mona Goblet - 5 raw candidates
+[2026-08-14 10:23:26.240]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.240]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.240]   Mona Feather: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.240] plan_slot_actions: Mona Feather - 14 raw candidates
+[2026-08-14 10:23:26.241]   relevant candidates: [(0.29, None), (0.27, None), (0.218, None)]
+[2026-08-14 10:23:26.241]   after min_relevant_prob (0.2) + max_contenders: 3 contenders
+[2026-08-14 10:23:26.241]   after _can_ever_reach_good: 3 contenders
+[2026-08-14 10:23:26.241]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.242]     None abs_prob to reach Good by 20: 0.688
+[2026-08-14 10:23:26.242]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.242]   after absolute probability gate (non-zero Good probability): 3 contenders
+[2026-08-14 10:23:26.242]   Mona Feather: 1 maxed contender(s) set aside (already finished, not levelable) -> 2 actionable left
+[2026-08-14 10:23:26.242]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.243]   _decide_slot_action: leader_p=0.290, finish_mora=183325, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=130161, scout_cost=66375, resolved=False
+[2026-08-14 10:23:26.243]   Mona Feather -> Scout to 16 (contested)
+[2026-08-14 10:23:26.243]   Mona Feather -> Scout to 8 (contested)
+[2026-08-14 10:23:26.243]   Mona Circlet: kept 10/11 tier_upgrade_ok=True
+[2026-08-14 10:23:26.244] plan_slot_actions: Mona Circlet - 10 raw candidates
+[2026-08-14 10:23:26.244]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.244]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.244]   Sucrose Flower: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.245] plan_slot_actions: Sucrose Flower - 13 raw candidates
+[2026-08-14 10:23:26.245]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.245]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.245]   Sucrose Sands: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.245]   Sucrose Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.246]   Sucrose Feather: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.246]   Sucrose Circlet: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.246] plan_slot_actions: Sucrose Circlet - 6 raw candidates
+[2026-08-14 10:23:26.246]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.247]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.247]   Keqing Flower: kept 8/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.247] plan_slot_actions: Keqing Flower - 8 raw candidates
+[2026-08-14 10:23:26.247]   relevant candidates: [(0.913, None)]
+[2026-08-14 10:23:26.248]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.248]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.248]     None abs_prob to reach Good by 20: 0.316
+[2026-08-14 10:23:26.248]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.249]   abs_prob of reaching Good by 20: 0.316
+[2026-08-14 10:23:26.249]   abs_prob 0.316 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.249]   _decide_slot_action: leader_p=0.913, finish_mora=270475, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=30591, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.249]   Keqing Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.250]   Keqing Sands: kept 10/11 tier_upgrade_ok=True
+[2026-08-14 10:23:26.250] plan_slot_actions: Keqing Sands - 10 raw candidates
+[2026-08-14 10:23:26.250]   relevant candidates: [(1.0, None)]
+[2026-08-14 10:23:26.250]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.250]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.251]     None abs_prob to reach Good by 20: 0.984
+[2026-08-14 10:23:26.251]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.251]   abs_prob of reaching Good by 20: 0.984
+[2026-08-14 10:23:26.251]   _decide_slot_action: leader_p=1.000, finish_mora=270475, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=0, scout_cost=16300, resolved=True
+[2026-08-14 10:23:26.252]   Keqing Sands -> Commit to 16 (leader)
+[2026-08-14 10:23:26.252]   Keqing Goblet: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.252] plan_slot_actions: Keqing Goblet - 6 raw candidates
+[2026-08-14 10:23:26.252]   relevant candidates: [(0.69, None), (0.237, None)]
+[2026-08-14 10:23:26.253]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.253]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.253]     None abs_prob to reach Good by 20: 0.844
+[2026-08-14 10:23:26.253]     None abs_prob to reach Good by 20: 0.738
+[2026-08-14 10:23:26.254]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.254]   abs_prob of reaching Good by 20: 0.844
+[2026-08-14 10:23:26.254]   _decide_slot_action: leader_p=0.690, finish_mora=225750, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=90977, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.254]   Keqing Goblet -> Scout to 12 (contested)
+[2026-08-14 10:23:26.254]   Keqing Goblet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.255]   Keqing Feather: kept 7/10 tier_upgrade_ok=True
+[2026-08-14 10:23:26.255] plan_slot_actions: Keqing Feather - 7 raw candidates
+[2026-08-14 10:23:26.255]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.255]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.256]   Keqing Circlet: kept 8/9 tier_upgrade_ok=True
+[2026-08-14 10:23:26.256] plan_slot_actions: Keqing Circlet - 8 raw candidates
+[2026-08-14 10:23:26.256]   relevant candidates: [(0.221, None)]
+[2026-08-14 10:23:26.256]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.256]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.257]     None abs_prob to reach Good by 20: 0.312
+[2026-08-14 10:23:26.257]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.257]   abs_prob of reaching Good by 20: 0.312
+[2026-08-14 10:23:26.257]   abs_prob 0.312 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.258]   _decide_slot_action: leader_p=0.221, finish_mora=270475, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=273910, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.258]   Keqing Circlet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.258]   Columbina Flower: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.258]   Columbina Sands: kept 9/12 tier_upgrade_ok=True
+[2026-08-14 10:23:26.259] plan_slot_actions: Columbina Sands - 9 raw candidates
+[2026-08-14 10:23:26.259]   relevant candidates: [(0.512, None)]
+[2026-08-14 10:23:26.259]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.259]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.260]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.260]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.260]   Columbina Sands: 1 maxed contender(s) set aside (already finished, not levelable) -> 0 actionable left
+[2026-08-14 10:23:26.260]   Columbina Sands: no under-leveled contenders - slot settled by an existing finished piece, no leveling action
+[2026-08-14 10:23:26.261]   Columbina Goblet: kept 8/9 tier_upgrade_ok=True
+[2026-08-14 10:23:26.261] plan_slot_actions: Columbina Goblet - 8 raw candidates
+[2026-08-14 10:23:26.261]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.261]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.262]   Columbina Feather: all 8 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.262]   Columbina Circlet: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.262] plan_slot_actions: Columbina Circlet - 13 raw candidates
+[2026-08-14 10:23:26.262]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.262]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.262]   SangonomiyaKokomi Flower: kept 10/12 tier_upgrade_ok=True
+[2026-08-14 10:23:26.262] plan_slot_actions: SangonomiyaKokomi Flower - 10 raw candidates
+[2026-08-14 10:23:26.263]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.263]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.263]   SangonomiyaKokomi Sands: all 8 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.263]   SangonomiyaKokomi Goblet: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.264] plan_slot_actions: SangonomiyaKokomi Goblet - 6 raw candidates
+[2026-08-14 10:23:26.264]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.264]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.265]   SangonomiyaKokomi Feather: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.265]   SangonomiyaKokomi Circlet: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.265]   KukiShinobu Flower: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.265] plan_slot_actions: KukiShinobu Flower - 6 raw candidates
+[2026-08-14 10:23:26.266]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.266]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.266]   KukiShinobu Sands: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.266] plan_slot_actions: KukiShinobu Sands - 6 raw candidates
+[2026-08-14 10:23:26.267]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.267]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.267]   KukiShinobu Goblet: kept 3/4 tier_upgrade_ok=True
+[2026-08-14 10:23:26.267] plan_slot_actions: KukiShinobu Goblet - 3 raw candidates
+[2026-08-14 10:23:26.268]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.268]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.268]   KukiShinobu Feather: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.268] plan_slot_actions: KukiShinobu Feather - 6 raw candidates
+[2026-08-14 10:23:26.269]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.269]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.269]   KukiShinobu Circlet: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.269] plan_slot_actions: KukiShinobu Circlet - 6 raw candidates
+[2026-08-14 10:23:26.270]   relevant candidates: [(0.477, None)]
+[2026-08-14 10:23:26.270]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.270]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.270]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.271]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.271]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.271]   _decide_slot_action: leader_p=0.477, finish_mora=225750, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=135777, scout_cost=108800, resolved=False
+[2026-08-14 10:23:26.272]   KukiShinobu Circlet -> Scout to 16 (contested)
+[2026-08-14 10:23:26.272]   Candace Flower: kept 14/15 tier_upgrade_ok=True
+[2026-08-14 10:23:26.272] plan_slot_actions: Candace Flower - 14 raw candidates
+[2026-08-14 10:23:26.272]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.273]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.273]   Candace Sands: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.273] plan_slot_actions: Candace Sands - 6 raw candidates
+[2026-08-14 10:23:26.273]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.273]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.273]   Candace Goblet: kept 9/10 tier_upgrade_ok=True
+[2026-08-14 10:23:26.275] plan_slot_actions: Candace Goblet - 9 raw candidates
+[2026-08-14 10:23:26.275]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.275]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.275]   Candace Feather: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.276] plan_slot_actions: Candace Feather - 14 raw candidates
+[2026-08-14 10:23:26.276]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.276]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.276]   Candace Circlet: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.276]   Xilonen Flower: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.277]   Xilonen Sands: kept 6/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.277] plan_slot_actions: Xilonen Sands - 6 raw candidates
+[2026-08-14 10:23:26.277]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.277]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.278]   Xilonen Goblet: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.278]   Xilonen Feather: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.278] plan_slot_actions: Xilonen Feather - 6 raw candidates
+[2026-08-14 10:23:26.278]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.279]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.279]   Xilonen Circlet: kept 5/6 tier_upgrade_ok=True
+[2026-08-14 10:23:26.279] plan_slot_actions: Xilonen Circlet - 5 raw candidates
+[2026-08-14 10:23:26.279]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.280]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.280]   Linnea Flower: kept 5/12 tier_upgrade_ok=True
+[2026-08-14 10:23:26.280] plan_slot_actions: Linnea Flower - 5 raw candidates
+[2026-08-14 10:23:26.280]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.281]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.281]   Linnea Sands: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.281]   Linnea Goblet: kept 5/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.281] plan_slot_actions: Linnea Goblet - 5 raw candidates
+[2026-08-14 10:23:26.282]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.282]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.282]   Linnea Feather: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.282] plan_slot_actions: Linnea Feather - 13 raw candidates
+[2026-08-14 10:23:26.282]   relevant candidates: [(0.31, None), (0.228, None)]
+[2026-08-14 10:23:26.282]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.283]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.283]     None abs_prob to reach Good by 20: 0.750
+[2026-08-14 10:23:26.283]     None abs_prob to reach Good by 20: 0.188
+[2026-08-14 10:23:26.283]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.284]   abs_prob of reaching Good by 20: 0.750
+[2026-08-14 10:23:26.284]   _decide_slot_action: leader_p=0.310, finish_mora=116950, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=92800, scout_cost=None, resolved=True
+[2026-08-14 10:23:26.284]   Linnea Feather -> Commit to 20 (leader)
+[2026-08-14 10:23:26.285]   Linnea Circlet: kept 10/12 tier_upgrade_ok=True
+[2026-08-14 10:23:26.285] plan_slot_actions: Linnea Circlet - 10 raw candidates
+[2026-08-14 10:23:26.285]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.285]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.286]   Illuga Flower: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.286] plan_slot_actions: Illuga Flower - 13 raw candidates
+[2026-08-14 10:23:26.286]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.286]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.287]   Illuga Sands: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.287]   Illuga Goblet: all 1 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.287]   Illuga Feather: kept 15/15 tier_upgrade_ok=True
+[2026-08-14 10:23:26.287] plan_slot_actions: Illuga Feather - 15 raw candidates
+[2026-08-14 10:23:26.288]   relevant candidates: [(0.206, None)]
+[2026-08-14 10:23:26.288]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.288]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.288]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.289]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.289]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.289]   _decide_slot_action: leader_p=0.206, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=214757, scout_cost=16300, resolved=False
+[2026-08-14 10:23:26.289]   Illuga Feather -> Scout to 4 (contested)
+[2026-08-14 10:23:26.290]   Illuga Circlet: kept 10/11 tier_upgrade_ok=True
+[2026-08-14 10:23:26.290] plan_slot_actions: Illuga Circlet - 10 raw candidates
+[2026-08-14 10:23:26.290]   relevant candidates: [(0.996, None)]
+[2026-08-14 10:23:26.290]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.291]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.291]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.291]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.291]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.292]   _decide_slot_action: leader_p=0.996, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=1082, scout_cost=44725, resolved=True
+[2026-08-14 10:23:26.292]   Illuga Circlet -> Commit to 20 (leader)
+[2026-08-14 10:23:26.292]   Rosaria Flower: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.292] plan_slot_actions: Rosaria Flower - 13 raw candidates
+[2026-08-14 10:23:26.293]   relevant candidates: [(0.515, None)]
+[2026-08-14 10:23:26.293]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.293]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.294]     None abs_prob to reach Good by 20: 0.125
+[2026-08-14 10:23:26.294]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.294]   abs_prob of reaching Good by 20: 0.125
+[2026-08-14 10:23:26.294]   abs_prob 0.125 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.295]   _decide_slot_action: leader_p=0.515, finish_mora=225750, exposure_multiplier=1.450, scarcity_multiplier=1.000, expected_waste=158759, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.295]   Rosaria Flower -> Scout to 12 (contested)
+[2026-08-14 10:23:26.295]   Rosaria Sands: kept 12/12 tier_upgrade_ok=True
+[2026-08-14 10:23:26.295] plan_slot_actions: Rosaria Sands - 12 raw candidates
+[2026-08-14 10:23:26.296]   relevant candidates: [(0.969, None)]
+[2026-08-14 10:23:26.296]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.296]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.296]     None abs_prob to reach Good by 20: 0.999
+[2026-08-14 10:23:26.297]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.297]   abs_prob of reaching Good by 20: 0.999
+[2026-08-14 10:23:26.297]   _decide_slot_action: leader_p=0.969, finish_mora=270475, exposure_multiplier=1.450, scarcity_multiplier=1.000, expected_waste=12158, scout_cost=16300, resolved=True
+[2026-08-14 10:23:26.297]   Rosaria Sands -> Commit to 16 (leader)
+[2026-08-14 10:23:26.298]   Rosaria Goblet: kept 7/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.298] plan_slot_actions: Rosaria Goblet - 7 raw candidates
+[2026-08-14 10:23:26.298]   relevant candidates: [(0.798, None)]
+[2026-08-14 10:23:26.298]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.299]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.299]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.299]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.299]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.300]   _decide_slot_action: leader_p=0.798, finish_mora=225750, exposure_multiplier=1.450, scarcity_multiplier=1.000, expected_waste=66122, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.300]   Rosaria Goblet -> Scout to 12 (contested)
+[2026-08-14 10:23:26.300]   Rosaria Feather: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.300] plan_slot_actions: Rosaria Feather - 13 raw candidates
+[2026-08-14 10:23:26.301]   relevant candidates: [(0.427, None), (0.202, None)]
+[2026-08-14 10:23:26.301]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.301]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.301]     None abs_prob to reach Good by 20: 0.562
+[2026-08-14 10:23:26.302]     None abs_prob to reach Good by 20: 0.062
+[2026-08-14 10:23:26.302]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.302]   abs_prob of reaching Good by 20: 0.562
+[2026-08-14 10:23:26.302]   _decide_slot_action: leader_p=0.427, finish_mora=183325, exposure_multiplier=1.450, scarcity_multiplier=1.000, expected_waste=152316, scout_cost=66375, resolved=False
+[2026-08-14 10:23:26.302]   Rosaria Feather -> Scout to 16 (contested)
+[2026-08-14 10:23:26.302]   Rosaria Feather -> Scout to 8 (contested)
+[2026-08-14 10:23:26.303]   Rosaria Circlet: kept 10/11 tier_upgrade_ok=True
+[2026-08-14 10:23:26.303] plan_slot_actions: Rosaria Circlet - 10 raw candidates
+[2026-08-14 10:23:26.303]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.303]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.304]   Fischl Flower: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.304] plan_slot_actions: Fischl Flower - 13 raw candidates
+[2026-08-14 10:23:26.304]   relevant candidates: [(0.736, None)]
+[2026-08-14 10:23:26.304]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.305]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.305]     None abs_prob to reach Good by 20: 0.949
+[2026-08-14 10:23:26.305]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.306]   abs_prob of reaching Good by 20: 0.949
+[2026-08-14 10:23:26.306]   _decide_slot_action: leader_p=0.736, finish_mora=254175, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=87233, scout_cost=28425, resolved=False
+[2026-08-14 10:23:26.306]   Fischl Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.306]   Fischl Sands: kept 11/13 tier_upgrade_ok=True
+[2026-08-14 10:23:26.307] plan_slot_actions: Fischl Sands - 11 raw candidates
+[2026-08-14 10:23:26.307]   relevant candidates: [(0.451, None)]
+[2026-08-14 10:23:26.307]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.307]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.308]     None abs_prob to reach Good by 20: 0.312
+[2026-08-14 10:23:26.308]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.308]   abs_prob of reaching Good by 20: 0.312
+[2026-08-14 10:23:26.308]   abs_prob 0.312 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.308]   _decide_slot_action: leader_p=0.451, finish_mora=254175, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=181405, scout_cost=28425, resolved=False
+[2026-08-14 10:23:26.309]   Fischl Sands -> Scout to 8 (contested)
+[2026-08-14 10:23:26.309]   Fischl Goblet: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.309]   Fischl Feather: kept 14/15 tier_upgrade_ok=True
+[2026-08-14 10:23:26.309] plan_slot_actions: Fischl Feather - 14 raw candidates
+[2026-08-14 10:23:26.310]   relevant candidates: [(0.942, None)]
+[2026-08-14 10:23:26.310]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.310]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.310]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.311]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.311]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.311]   _decide_slot_action: leader_p=0.942, finish_mora=270475, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=20394, scout_cost=44725, resolved=True
+[2026-08-14 10:23:26.311]   Fischl Feather -> Commit to 16 (leader)
+[2026-08-14 10:23:26.312]   Fischl Circlet: kept 8/11 tier_upgrade_ok=True
+[2026-08-14 10:23:26.312] plan_slot_actions: Fischl Circlet - 8 raw candidates
+[2026-08-14 10:23:26.312]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.312]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.313]   Ororon Flower: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.313] plan_slot_actions: Ororon Flower - 14 raw candidates
+[2026-08-14 10:23:26.313]   relevant candidates: [(0.755, None), (0.239, None)]
+[2026-08-14 10:23:26.313]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.313]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.314]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.314]     None abs_prob to reach Good by 20: 0.738
+[2026-08-14 10:23:26.314]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.314]   Ororon Flower: 1 maxed contender(s) set aside (already finished, not levelable) -> 1 actionable left
+[2026-08-14 10:23:26.315]   abs_prob of reaching Good by 20: 0.738
+[2026-08-14 10:23:26.315]   _decide_slot_action: leader_p=0.239, finish_mora=254175, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=222441, scout_cost=28425, resolved=False
+[2026-08-14 10:23:26.315]   Ororon Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.315]   Ororon Sands: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.316] plan_slot_actions: Ororon Sands - 14 raw candidates
+[2026-08-14 10:23:26.316]   relevant candidates: [(1.0, None)]
+[2026-08-14 10:23:26.316]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.316]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.317]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.317]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.317]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.317]   _decide_slot_action: leader_p=1.000, finish_mora=183325, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=0, scout_cost=None, resolved=True
+[2026-08-14 10:23:26.318]   Ororon Sands -> Commit to 16 (leader)
+[2026-08-14 10:23:26.318]   Ororon Goblet: kept 6/6 tier_upgrade_ok=True
+[2026-08-14 10:23:26.318] plan_slot_actions: Ororon Goblet - 6 raw candidates
+[2026-08-14 10:23:26.318]   relevant candidates: [(0.461, None), (0.273, None), (0.216, None)]
+[2026-08-14 10:23:26.319]   after min_relevant_prob (0.2) + max_contenders: 3 contenders
+[2026-08-14 10:23:26.319]   after _can_ever_reach_good: 3 contenders
+[2026-08-14 10:23:26.319]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.319]     None abs_prob to reach Good by 20: 0.984
+[2026-08-14 10:23:26.320]     None abs_prob to reach Good by 20: 0.949
+[2026-08-14 10:23:26.320]   after absolute probability gate (non-zero Good probability): 3 contenders
+[2026-08-14 10:23:26.320]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.320]   _decide_slot_action: leader_p=0.461, finish_mora=183325, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=113634, scout_cost=66375, resolved=False
+[2026-08-14 10:23:26.321]   Ororon Goblet -> Scout to 16 (contested)
+[2026-08-14 10:23:26.321]   Ororon Goblet -> Scout to 12 (contested)
+[2026-08-14 10:23:26.321]   Ororon Goblet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.321]   Ororon Feather: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.322] plan_slot_actions: Ororon Feather - 14 raw candidates
+[2026-08-14 10:23:26.322]   relevant candidates: [(0.603, None), (0.223, None)]
+[2026-08-14 10:23:26.322]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.322]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.323]     None abs_prob to reach Good by 20: 0.844
+[2026-08-14 10:23:26.323]     None abs_prob to reach Good by 20: 0.738
+[2026-08-14 10:23:26.324]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.324]   abs_prob of reaching Good by 20: 0.844
+[2026-08-14 10:23:26.324]   _decide_slot_action: leader_p=0.603, finish_mora=225750, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=103066, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.324]   Ororon Feather -> Scout to 12 (contested)
+[2026-08-14 10:23:26.325]   Ororon Feather -> Scout to 8 (contested)
+[2026-08-14 10:23:26.325]   Ororon Circlet: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.325] plan_slot_actions: Ororon Circlet - 13 raw candidates
+[2026-08-14 10:23:26.325]   relevant candidates: [(0.484, None), (0.217, None)]
+[2026-08-14 10:23:26.326]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.326]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.326]     None abs_prob to reach Good by 20: 0.312
+[2026-08-14 10:23:26.326]     None abs_prob to reach Good by 20: 0.312
+[2026-08-14 10:23:26.327]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.327]   abs_prob of reaching Good by 20: 0.312
+[2026-08-14 10:23:26.327]   abs_prob 0.312 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.327]   _decide_slot_action: leader_p=0.484, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=160500, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.328]   Ororon Circlet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.328]   Ororon Circlet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.328]   Xingqiu Flower: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.328] plan_slot_actions: Xingqiu Flower - 13 raw candidates
+[2026-08-14 10:23:26.328]   relevant candidates: [(0.399, None), (0.338, None)]
+[2026-08-14 10:23:26.329]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.329]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.329]     None abs_prob to reach Good by 20: 0.738
+[2026-08-14 10:23:26.329]     None abs_prob to reach Good by 20: 0.738
+[2026-08-14 10:23:26.330]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.330]   abs_prob of reaching Good by 20: 0.738
+[2026-08-14 10:23:26.330]   _decide_slot_action: leader_p=0.399, finish_mora=254175, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=198587, scout_cost=28425, resolved=False
+[2026-08-14 10:23:26.331]   Xingqiu Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.331]   Xingqiu Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.331]   Xingqiu Sands: kept 7/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.331] plan_slot_actions: Xingqiu Sands - 7 raw candidates
+[2026-08-14 10:23:26.332]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.332]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.332]   Xingqiu Goblet: kept 4/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.332] plan_slot_actions: Xingqiu Goblet - 4 raw candidates
+[2026-08-14 10:23:26.332]   relevant candidates: [(0.451, None)]
+[2026-08-14 10:23:26.333]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.333]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.333]     None abs_prob to reach Good by 20: 0.949
+[2026-08-14 10:23:26.333]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.333]   abs_prob of reaching Good by 20: 0.949
+[2026-08-14 10:23:26.334]   _decide_slot_action: leader_p=0.451, finish_mora=270475, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=193038, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.334]   Xingqiu Goblet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.334]   Xingqiu Feather: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.335] plan_slot_actions: Xingqiu Feather - 14 raw candidates
+[2026-08-14 10:23:26.335]   relevant candidates: [(0.731, None)]
+[2026-08-14 10:23:26.335]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.335]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.336]     None abs_prob to reach Good by 20: 0.984
+[2026-08-14 10:23:26.336]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.336]   abs_prob of reaching Good by 20: 0.984
+[2026-08-14 10:23:26.336]   _decide_slot_action: leader_p=0.731, finish_mora=225750, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=78945, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.337]   Xingqiu Feather -> Scout to 12 (contested)
+[2026-08-14 10:23:26.337]   Xingqiu Circlet: kept 8/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.338] plan_slot_actions: Xingqiu Circlet - 8 raw candidates
+[2026-08-14 10:23:26.338]   relevant candidates: [(0.373, None), (0.317, None)]
+[2026-08-14 10:23:26.338]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.338]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.339]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.339]     None abs_prob to reach Good by 20: 0.016
+[2026-08-14 10:23:26.339]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.339]   Xingqiu Circlet: 1 maxed contender(s) set aside (already finished, not levelable) -> 1 actionable left
+[2026-08-14 10:23:26.340]   abs_prob of reaching Good by 20: 0.016
+[2026-08-14 10:23:26.340]   abs_prob 0.016 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.340]   _decide_slot_action: leader_p=0.317, finish_mora=225750, exposure_multiplier=1.300, scarcity_multiplier=1.000, expected_waste=200443, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.340]   Xingqiu Circlet -> Scout to 12 (contested)
+[2026-08-14 10:23:26.341]   Bennett Flower: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.341]   Bennett Sands: kept 7/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.341] plan_slot_actions: Bennett Sands - 7 raw candidates
+[2026-08-14 10:23:26.341]   relevant candidates: [(0.326, None), (0.212, None)]
+[2026-08-14 10:23:26.342]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.342]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.342]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.342]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.342]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.342]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.344]   _decide_slot_action: leader_p=0.326, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=182300, scout_cost=16300, resolved=False
+[2026-08-14 10:23:26.344]   Bennett Sands -> Scout to 4 (contested)
+[2026-08-14 10:23:26.344]   Bennett Sands -> Scout to 4 (contested)
+[2026-08-14 10:23:26.344]   Bennett Goblet: all 12 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.344]   Bennett Feather: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.345] plan_slot_actions: Bennett Feather - 13 raw candidates
+[2026-08-14 10:23:26.345]   relevant candidates: [(0.845, None)]
+[2026-08-14 10:23:26.345]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.345]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.346]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.346]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.346]   Bennett Feather: 1 maxed contender(s) set aside (already finished, not levelable) -> 0 actionable left
+[2026-08-14 10:23:26.346]   Bennett Feather: no under-leveled contenders - slot settled by an existing finished piece, no leveling action
+[2026-08-14 10:23:26.347]   Bennett Circlet: kept 11/11 tier_upgrade_ok=True
+[2026-08-14 10:23:26.347] plan_slot_actions: Bennett Circlet - 11 raw candidates
+[2026-08-14 10:23:26.347]   relevant candidates: [(1.0, None)]
+[2026-08-14 10:23:26.347]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.348]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.348]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.348]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.348]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.349]   _decide_slot_action: leader_p=1.000, finish_mora=116950, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=0, scout_cost=None, resolved=True
+[2026-08-14 10:23:26.349]   Bennett Circlet -> Commit to 20 (leader)
+[2026-08-14 10:23:26.349]   Layla Flower: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.349] plan_slot_actions: Layla Flower - 14 raw candidates
+[2026-08-14 10:23:26.350]   relevant candidates: [(0.452, None), (0.27, None)]
+[2026-08-14 10:23:26.350]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.350]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.350]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.351]     None abs_prob to reach Good by 20: 0.969
+[2026-08-14 10:23:26.351]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.351]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.351]   _decide_slot_action: leader_p=0.452, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=148220, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.352]   Layla Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.352]   Layla Flower -> Scout to 4 (contested)
+[2026-08-14 10:23:26.352]   Layla Sands: kept 7/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.352] plan_slot_actions: Layla Sands - 7 raw candidates
+[2026-08-14 10:23:26.353]   relevant candidates: [(0.565, None), (0.415, None)]
+[2026-08-14 10:23:26.353]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.353]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.353]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.354]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.354]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.354]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.354]   _decide_slot_action: leader_p=0.565, finish_mora=183325, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=79746, scout_cost=None, resolved=True
+[2026-08-14 10:23:26.354]   Layla Sands -> Commit to 16 (leader)
+[2026-08-14 10:23:26.355]   Layla Goblet: kept 7/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.355] plan_slot_actions: Layla Goblet - 7 raw candidates
+[2026-08-14 10:23:26.355]   relevant candidates: [(0.339, None), (0.306, None)]
+[2026-08-14 10:23:26.355]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.355]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.356]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.356]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.356]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.356]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.357]   _decide_slot_action: leader_p=0.339, finish_mora=254175, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=168010, scout_cost=28425, resolved=False
+[2026-08-14 10:23:26.357]   Layla Goblet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.357]   Layla Goblet -> already at IT cap 16, no action (slot closed)
+[2026-08-14 10:23:26.357]   Layla Feather: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.358] plan_slot_actions: Layla Feather - 14 raw candidates
+[2026-08-14 10:23:26.358]   relevant candidates: [(0.523, None)]
+[2026-08-14 10:23:26.358]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.358]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.359]     None abs_prob to reach Good by 20: 0.156
+[2026-08-14 10:23:26.359]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.359]   abs_prob of reaching Good by 20: 0.156
+[2026-08-14 10:23:26.359]   abs_prob 0.156 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.360]   _decide_slot_action: leader_p=0.523, finish_mora=225750, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=107683, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.360]   Layla Feather -> Scout to 12 (contested)
+[2026-08-14 10:23:26.360]   Layla Circlet: kept 8/9 tier_upgrade_ok=True
+[2026-08-14 10:23:26.360] plan_slot_actions: Layla Circlet - 8 raw candidates
+[2026-08-14 10:23:26.361]   relevant candidates: [(0.384, None), (0.281, None), (0.235, None)]
+[2026-08-14 10:23:26.361]   after min_relevant_prob (0.2) + max_contenders: 3 contenders
+[2026-08-14 10:23:26.361]   after _can_ever_reach_good: 3 contenders
+[2026-08-14 10:23:26.361]     None abs_prob to reach Good by 20: 0.578
+[2026-08-14 10:23:26.362]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.362]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.362]   after absolute probability gate (non-zero Good probability): 3 contenders
+[2026-08-14 10:23:26.362]   abs_prob of reaching Good by 20: 0.578
+[2026-08-14 10:23:26.362]   _decide_slot_action: leader_p=0.384, finish_mora=225750, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=139062, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.362]   Layla Circlet -> Scout to 12 (contested)
+[2026-08-14 10:23:26.364]   Layla Circlet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.364]   Layla Circlet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.364]   Diona Flower: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.364] plan_slot_actions: Diona Flower - 14 raw candidates
+[2026-08-14 10:23:26.365]   relevant candidates: [(0.576, None)]
+[2026-08-14 10:23:26.365]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.365]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.365]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.366]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.366]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.366]   _decide_slot_action: leader_p=0.576, finish_mora=116950, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=49587, scout_cost=None, resolved=True
+[2026-08-14 10:23:26.366]   Diona Flower -> already at IT cap 16, no action (slot closed)
+[2026-08-14 10:23:26.366]   Diona Sands: all 9 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.367]   Diona Goblet: kept 11/13 tier_upgrade_ok=True
+[2026-08-14 10:23:26.367] plan_slot_actions: Diona Goblet - 11 raw candidates
+[2026-08-14 10:23:26.367]   relevant candidates: [(0.382, None)]
+[2026-08-14 10:23:26.367]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.368]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.368]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.368]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.368]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.369]   _decide_slot_action: leader_p=0.382, finish_mora=225750, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=139514, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.369]   Diona Goblet -> Scout to 12 (contested)
+[2026-08-14 10:23:26.369]   Diona Feather: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.369] plan_slot_actions: Diona Feather - 14 raw candidates
+[2026-08-14 10:23:26.370]   relevant candidates: [(0.586, None), (0.295, None)]
+[2026-08-14 10:23:26.370]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.370]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.370]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.371]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.371]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.371]   Diona Feather: 1 maxed contender(s) set aside (already finished, not levelable) -> 1 actionable left
+[2026-08-14 10:23:26.372]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.372]   _decide_slot_action: leader_p=0.295, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=190685, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.372]   Diona Feather -> Scout to 8 (contested)
+[2026-08-14 10:23:26.372]   Diona Circlet: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.373] plan_slot_actions: Diona Circlet - 14 raw candidates
+[2026-08-14 10:23:26.373]   relevant candidates: [(0.355, None), (0.221, None)]
+[2026-08-14 10:23:26.373]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.373]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.374]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.374]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.374]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.374]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.374]   _decide_slot_action: leader_p=0.355, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=174456, scout_cost=16300, resolved=False
+[2026-08-14 10:23:26.375]   Diona Circlet -> Scout to 4 (contested)
+[2026-08-14 10:23:26.375]   Diona Circlet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.375]   Kaeya Flower: kept 13/15 tier_upgrade_ok=True
+[2026-08-14 10:23:26.375] plan_slot_actions: Kaeya Flower - 13 raw candidates
+[2026-08-14 10:23:26.376]   relevant candidates: [(0.42, None), (0.225, None)]
+[2026-08-14 10:23:26.376]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.376]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.376]     None abs_prob to reach Good by 20: 0.062
+[2026-08-14 10:23:26.377]     None abs_prob to reach Good by 20: 0.062
+[2026-08-14 10:23:26.377]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.377]   abs_prob of reaching Good by 20: 0.062
+[2026-08-14 10:23:26.377]   abs_prob 0.062 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.378]   _decide_slot_action: leader_p=0.420, finish_mora=270475, exposure_multiplier=1.450, scarcity_multiplier=1.000, expected_waste=227469, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.378]   Kaeya Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.378]   Kaeya Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.378]   Kaeya Sands: kept 8/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.378] plan_slot_actions: Kaeya Sands - 8 raw candidates
+[2026-08-14 10:23:26.379]   relevant candidates: [(0.737, None), (0.263, None)]
+[2026-08-14 10:23:26.379]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.379]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.379]     None abs_prob to reach Good by 20: 0.051
+[2026-08-14 10:23:26.380]     None abs_prob to reach Good by 20: 0.104
+[2026-08-14 10:23:26.380]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.380]   abs_prob of reaching Good by 20: 0.051
+[2026-08-14 10:23:26.381]   abs_prob 0.051 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.381]   _decide_slot_action: leader_p=0.737, finish_mora=270475, exposure_multiplier=1.450, scarcity_multiplier=1.000, expected_waste=103146, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.381]   Kaeya Sands -> Scout to 8 (contested)
+[2026-08-14 10:23:26.381]   Kaeya Sands -> Scout to 4 (contested)
+[2026-08-14 10:23:26.382]   Kaeya Goblet: kept 7/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.382] plan_slot_actions: Kaeya Goblet - 7 raw candidates
+[2026-08-14 10:23:26.382]   relevant candidates: [(1.0, None)]
+[2026-08-14 10:23:26.382]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.382]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.382]     None abs_prob to reach Good by 20: 0.312
+[2026-08-14 10:23:26.382]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.383]   abs_prob of reaching Good by 20: 0.312
+[2026-08-14 10:23:26.383]   abs_prob 0.312 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.383]   _decide_slot_action: leader_p=1.000, finish_mora=270475, exposure_multiplier=1.450, scarcity_multiplier=1.000, expected_waste=0, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.383]   Kaeya Goblet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.384]   Kaeya Feather: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.384] plan_slot_actions: Kaeya Feather - 13 raw candidates
+[2026-08-14 10:23:26.384]   relevant candidates: [(0.213, None)]
+[2026-08-14 10:23:26.384]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.385]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.385]     None abs_prob to reach Good by 20: 0.062
+[2026-08-14 10:23:26.385]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.385]   abs_prob of reaching Good by 20: 0.062
+[2026-08-14 10:23:26.386]   abs_prob 0.062 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.386]   _decide_slot_action: leader_p=0.213, finish_mora=270475, exposure_multiplier=1.450, scarcity_multiplier=1.000, expected_waste=308653, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.386]   Kaeya Feather -> Scout to 8 (contested)
+[2026-08-14 10:23:26.386]   Kaeya Circlet: all 6 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.387]   Aino Flower: kept 13/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.387] plan_slot_actions: Aino Flower - 13 raw candidates
+[2026-08-14 10:23:26.387]   relevant candidates: [(0.293, None), (0.227, None)]
+[2026-08-14 10:23:26.387]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.388]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.388]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.388]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.388]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.389]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.389]   _decide_slot_action: leader_p=0.293, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=219910, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.389]   Aino Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.389]   Aino Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.390]   Aino Sands: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.390] plan_slot_actions: Aino Sands - 14 raw candidates
+[2026-08-14 10:23:26.390]   relevant candidates: [(1.0, None)]
+[2026-08-14 10:23:26.390]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.391]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.391]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.391]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.391]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.392]   _decide_slot_action: leader_p=1.000, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=0, scout_cost=16300, resolved=True
+[2026-08-14 10:23:26.392]   Aino Sands -> Commit to 16 (leader)
+[2026-08-14 10:23:26.392]   Aino Goblet: kept 4/6 tier_upgrade_ok=True
+[2026-08-14 10:23:26.392] plan_slot_actions: Aino Goblet - 4 raw candidates
+[2026-08-14 10:23:26.393]   relevant candidates: [(1.0, None)]
+[2026-08-14 10:23:26.393]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.394]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.394]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.394]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.394]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.394]   _decide_slot_action: leader_p=1.000, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=0, scout_cost=16300, resolved=True
+[2026-08-14 10:23:26.395]   Aino Goblet -> Commit to 16 (leader)
+[2026-08-14 10:23:26.395]   Aino Feather: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.395]   Aino Circlet: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.395] plan_slot_actions: Aino Circlet - 14 raw candidates
+[2026-08-14 10:23:26.396]   relevant candidates: [(1.0, None)]
+[2026-08-14 10:23:26.396]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.396]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.396]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.397]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.397]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.397]   _decide_slot_action: leader_p=1.000, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=0, scout_cost=44725, resolved=True
+[2026-08-14 10:23:26.397]   Aino Circlet -> Commit to 16 (leader)
+[2026-08-14 10:23:26.398]   Barbara Flower: kept 10/11 tier_upgrade_ok=True
+[2026-08-14 10:23:26.398] plan_slot_actions: Barbara Flower - 10 raw candidates
+[2026-08-14 10:23:26.398]   relevant candidates: [(0.428, None), (0.248, None)]
+[2026-08-14 10:23:26.398]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.399]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.399]     None abs_prob to reach Good by 20: 0.684
+[2026-08-14 10:23:26.399]     None abs_prob to reach Good by 20: 0.684
+[2026-08-14 10:23:26.399]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.400]   abs_prob of reaching Good by 20: 0.684
+[2026-08-14 10:23:26.400]   _decide_slot_action: leader_p=0.428, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=177918, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.400]   Barbara Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.401]   Barbara Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.401]   Barbara Sands: kept 8/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.401] plan_slot_actions: Barbara Sands - 8 raw candidates
+[2026-08-14 10:23:26.401]   relevant candidates: [(0.612, None), (0.24, None)]
+[2026-08-14 10:23:26.401]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.402]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.402]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.402]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.402]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.402]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.402]   _decide_slot_action: leader_p=0.612, finish_mora=225750, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=100730, scout_cost=108800, resolved=True
+[2026-08-14 10:23:26.403]   Barbara Sands -> Commit to 16 (leader)
+[2026-08-14 10:23:26.403]   Barbara Goblet: kept 7/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.403] plan_slot_actions: Barbara Goblet - 7 raw candidates
+[2026-08-14 10:23:26.404]   relevant candidates: [(0.702, None)]
+[2026-08-14 10:23:26.404]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.404]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.404]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.405]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.405]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.405]   _decide_slot_action: leader_p=0.702, finish_mora=254175, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=87106, scout_cost=28425, resolved=False
+[2026-08-14 10:23:26.405]   Barbara Goblet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.406]   Barbara Feather: kept 7/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.406] plan_slot_actions: Barbara Feather - 7 raw candidates
+[2026-08-14 10:23:26.406]   relevant candidates: [(0.854, None)]
+[2026-08-14 10:23:26.406]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.407]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.407]     None abs_prob to reach Good by 20: 0.250
+[2026-08-14 10:23:26.407]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.407]   abs_prob of reaching Good by 20: 0.250
+[2026-08-14 10:23:26.408]   abs_prob 0.250 < 0.5 -> forced Scout
+[2026-08-14 10:23:26.408]   _decide_slot_action: leader_p=0.854, finish_mora=116950, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=19636, scout_cost=None, resolved=False
+[2026-08-14 10:23:26.408]   Barbara Feather -> already at IT cap 16, no action (slot closed)
+[2026-08-14 10:23:26.408]   Barbara Circlet: kept 7/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.409] plan_slot_actions: Barbara Circlet - 7 raw candidates
+[2026-08-14 10:23:26.409]   relevant candidates: [(0.684, None)]
+[2026-08-14 10:23:26.409]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.409]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.410]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.410]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.410]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.410]   _decide_slot_action: leader_p=0.684, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=98291, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.411]   Barbara Circlet -> Scout to 8 (contested)
+[2026-08-14 10:23:26.411]   Beidou Flower: kept 14/15 tier_upgrade_ok=True
+[2026-08-14 10:23:26.411] plan_slot_actions: Beidou Flower - 14 raw candidates
+[2026-08-14 10:23:26.411]   relevant candidates: [(0.591, None), (0.312, None)]
+[2026-08-14 10:23:26.412]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.412]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.412]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.412]     None abs_prob to reach Good by 20: 0.738
+[2026-08-14 10:23:26.412]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.413]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.413]   _decide_slot_action: leader_p=0.591, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=127218, scout_cost=44725, resolved=False
+[2026-08-14 10:23:26.414]   Beidou Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.414]   Beidou Flower -> Scout to 8 (contested)
+[2026-08-14 10:23:26.414]   Beidou Sands: kept 8/9 tier_upgrade_ok=True
+[2026-08-14 10:23:26.414] plan_slot_actions: Beidou Sands - 8 raw candidates
+[2026-08-14 10:23:26.415]   relevant candidates: [(0.668, None), (0.332, None)]
+[2026-08-14 10:23:26.415]   after min_relevant_prob (0.2) + max_contenders: 2 contenders
+[2026-08-14 10:23:26.415]   after _can_ever_reach_good: 2 contenders
+[2026-08-14 10:23:26.415]     None abs_prob to reach Good by 20: 0.500
+[2026-08-14 10:23:26.416]     None abs_prob to reach Good by 20: 0.949
+[2026-08-14 10:23:26.416]   after absolute probability gate (non-zero Good probability): 2 contenders
+[2026-08-14 10:23:26.416]   abs_prob of reaching Good by 20: 0.500
+[2026-08-14 10:23:26.416]   _decide_slot_action: leader_p=0.668, finish_mora=270475, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=103267, scout_cost=16300, resolved=False
+[2026-08-14 10:23:26.417]   Beidou Sands -> Scout to 4 (contested)
+[2026-08-14 10:23:26.417]   Beidou Sands -> Scout to 8 (contested)
+[2026-08-14 10:23:26.417]   Beidou Goblet: kept 6/7 tier_upgrade_ok=True
+[2026-08-14 10:23:26.417] plan_slot_actions: Beidou Goblet - 6 raw candidates
+[2026-08-14 10:23:26.418]   relevant candidates: [(0.514, None)]
+[2026-08-14 10:23:26.418]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.418]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.418]     None abs_prob to reach Good by 20: 0.984
+[2026-08-14 10:23:26.419]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.419]   abs_prob of reaching Good by 20: 0.984
+[2026-08-14 10:23:26.419]   _decide_slot_action: leader_p=0.514, finish_mora=225750, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=126172, scout_cost=42425, resolved=False
+[2026-08-14 10:23:26.419]   Beidou Goblet -> Scout to 12 (contested)
+[2026-08-14 10:23:26.420]   Beidou Feather: kept 14/14 tier_upgrade_ok=True
+[2026-08-14 10:23:26.420] plan_slot_actions: Beidou Feather - 14 raw candidates
+[2026-08-14 10:23:26.420]   relevant candidates: [(0.814, None)]
+[2026-08-14 10:23:26.420]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.421]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.421]     None abs_prob to reach Good by 20: 0.750
+[2026-08-14 10:23:26.421]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.421]   abs_prob of reaching Good by 20: 0.750
+[2026-08-14 10:23:26.422]   _decide_slot_action: leader_p=0.814, finish_mora=116950, exposure_multiplier=1.150, scarcity_multiplier=1.000, expected_waste=25016, scout_cost=None, resolved=True
+[2026-08-14 10:23:26.422]   Beidou Feather -> already at IT cap 16, no action (slot closed)
+[2026-08-14 10:23:26.422]   Beidou Circlet: all 7 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.422]   Iansan Flower: all 14 candidates dropped by tier_upgrade_ok (exclude_non_upgraders)
+[2026-08-14 10:23:26.422]   Iansan Sands: kept 7/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.422] plan_slot_actions: Iansan Sands - 7 raw candidates
+[2026-08-14 10:23:26.423]   after min_relevant_prob (0.2) + max_contenders: 0 contenders
+[2026-08-14 10:23:26.423]   after _can_ever_reach_good: 0 contenders
+[2026-08-14 10:23:26.423]   Iansan Goblet: kept 8/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.423] plan_slot_actions: Iansan Goblet - 8 raw candidates
+[2026-08-14 10:23:26.424]   relevant candidates: [(0.93, None)]
+[2026-08-14 10:23:26.424]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.424]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.424]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.425]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.425]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.425]   _decide_slot_action: leader_p=0.930, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=18933, scout_cost=16300, resolved=False
+[2026-08-14 10:23:26.425]   Iansan Goblet -> Scout to 4 (contested)
+[2026-08-14 10:23:26.426]   Iansan Feather: kept 15/15 tier_upgrade_ok=True
+[2026-08-14 10:23:26.426] plan_slot_actions: Iansan Feather - 15 raw candidates
+[2026-08-14 10:23:26.426]   relevant candidates: [(0.883, None)]
+[2026-08-14 10:23:26.426]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.427]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.427]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.427]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.427]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.428]   _decide_slot_action: leader_p=0.883, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=31646, scout_cost=44725, resolved=True
+[2026-08-14 10:23:26.428]   Iansan Feather -> Commit to 16 (leader)
+[2026-08-14 10:23:26.428]   Iansan Circlet: kept 8/8 tier_upgrade_ok=True
+[2026-08-14 10:23:26.428] plan_slot_actions: Iansan Circlet - 8 raw candidates
+[2026-08-14 10:23:26.428]   relevant candidates: [(0.874, None)]
+[2026-08-14 10:23:26.429]   after min_relevant_prob (0.2) + max_contenders: 1 contenders
+[2026-08-14 10:23:26.429]   after _can_ever_reach_good: 1 contenders
+[2026-08-14 10:23:26.429]     None abs_prob to reach Good by 20: 1.000
+[2026-08-14 10:23:26.429]   after absolute probability gate (non-zero Good probability): 1 contenders
+[2026-08-14 10:23:26.430]   abs_prob of reaching Good by 20: 1.000
+[2026-08-14 10:23:26.430]   _decide_slot_action: leader_p=0.874, finish_mora=270475, exposure_multiplier=1.000, scarcity_multiplier=1.000, expected_waste=34080, scout_cost=44725, resolved=True
+[2026-08-14 10:23:26.430]   Iansan Circlet -> Commit to 16 (leader)
+[2026-08-14 10:23:26.430]   action: Escoffier Sands type=Scout prob=0.254 score=648 urgency=0.648 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.431]   action: Escoffier Sands type=Scout prob=0.202 score=648 urgency=0.648 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.431]   action: Escoffier Goblet type=Scout prob=0.796 score=648 urgency=0.648 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.431]   action: Mavuika Feather type=Scout prob=0.304 score=647 urgency=0.647 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.431]   action: Citlali Sands type=Commit prob=0.873 score=449 urgency=0.449 priority=0.0000 immediate_mora=270475
+[2026-08-14 10:23:26.432]   action: Furina Feather type=Scout prob=0.450 score=447 urgency=0.447 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.432]   action: Mona Feather type=Scout prob=0.290 score=447 urgency=0.447 priority=0.0000 immediate_mora=66375
+[2026-08-14 10:23:26.432]   action: Mona Feather type=Scout prob=0.270 score=447 urgency=0.447 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.432]   action: Keqing Flower type=Scout prob=0.913 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.433]   action: Keqing Sands type=Commit prob=1.000 score=780 urgency=0.780 priority=0.0000 immediate_mora=153525
+[2026-08-14 10:23:26.433]   action: Keqing Goblet type=Scout prob=0.690 score=780 urgency=0.780 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.433]   action: Keqing Goblet type=Scout prob=0.237 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.433]   action: Keqing Circlet type=Scout prob=0.221 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.433]   action: KukiShinobu Circlet type=Scout prob=0.477 score=760 urgency=0.760 priority=0.0000 immediate_mora=108800
+[2026-08-14 10:23:26.435]   action: Linnea Feather type=Commit prob=0.310 score=869 urgency=0.869 priority=0.0000 immediate_mora=116950
+[2026-08-14 10:23:26.435]   action: Illuga Feather type=Scout prob=0.206 score=447 urgency=0.447 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.435]   action: Illuga Circlet type=Commit prob=0.996 score=447 urgency=0.447 priority=0.0000 immediate_mora=270475
+[2026-08-14 10:23:26.435]   action: Rosaria Flower type=Scout prob=0.515 score=790 urgency=0.790 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.436]   action: Rosaria Sands type=Commit prob=0.969 score=790 urgency=0.790 priority=0.0000 immediate_mora=153525
+[2026-08-14 10:23:26.436]   action: Rosaria Goblet type=Scout prob=0.798 score=790 urgency=0.790 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.436]   action: Rosaria Feather type=Scout prob=0.427 score=790 urgency=0.790 priority=0.0000 immediate_mora=66375
+[2026-08-14 10:23:26.436]   action: Rosaria Feather type=Scout prob=0.202 score=790 urgency=0.790 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.437]   action: Fischl Flower type=Scout prob=0.736 score=789 urgency=0.789 priority=0.0000 immediate_mora=28425
+[2026-08-14 10:23:26.437]   action: Fischl Sands type=Scout prob=0.451 score=789 urgency=0.789 priority=0.0000 immediate_mora=28425
+[2026-08-14 10:23:26.437]   action: Fischl Feather type=Commit prob=0.942 score=789 urgency=0.789 priority=0.0000 immediate_mora=153525
+[2026-08-14 10:23:26.437]   action: Ororon Flower type=Scout prob=0.239 score=780 urgency=0.780 priority=0.0000 immediate_mora=28425
+[2026-08-14 10:23:26.438]   action: Ororon Sands type=Commit prob=1.000 score=780 urgency=0.780 priority=0.0000 immediate_mora=66375
+[2026-08-14 10:23:26.438]   action: Ororon Goblet type=Scout prob=0.461 score=780 urgency=0.780 priority=0.0000 immediate_mora=66375
+[2026-08-14 10:23:26.438]   action: Ororon Goblet type=Scout prob=0.273 score=780 urgency=0.780 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.438]   action: Ororon Goblet type=Scout prob=0.216 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.438]   action: Ororon Feather type=Scout prob=0.603 score=780 urgency=0.780 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.438]   action: Ororon Feather type=Scout prob=0.223 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.439]   action: Ororon Circlet type=Scout prob=0.484 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.439]   action: Ororon Circlet type=Scout prob=0.217 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.439]   action: Xingqiu Flower type=Scout prob=0.399 score=800 urgency=0.800 priority=0.0000 immediate_mora=28425
+[2026-08-14 10:23:26.439]   action: Xingqiu Flower type=Scout prob=0.338 score=800 urgency=0.800 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.440]   action: Xingqiu Goblet type=Scout prob=0.451 score=800 urgency=0.800 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.440]   action: Xingqiu Feather type=Scout prob=0.731 score=800 urgency=0.800 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.440]   action: Xingqiu Circlet type=Scout prob=0.317 score=800 urgency=0.800 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.440]   action: Bennett Sands type=Scout prob=0.326 score=648 urgency=0.648 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.441]   action: Bennett Sands type=Scout prob=0.212 score=648 urgency=0.648 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.441]   action: Bennett Circlet type=Commit prob=1.000 score=648 urgency=0.648 priority=0.0000 immediate_mora=116950
+[2026-08-14 10:23:26.441]   action: Layla Flower type=Scout prob=0.452 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.441]   action: Layla Flower type=Scout prob=0.270 score=780 urgency=0.780 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.442]   action: Layla Sands type=Commit prob=0.565 score=780 urgency=0.780 priority=0.0000 immediate_mora=66375
+[2026-08-14 10:23:26.442]   action: Layla Goblet type=Scout prob=0.339 score=780 urgency=0.780 priority=0.0000 immediate_mora=28425
+[2026-08-14 10:23:26.442]   action: Layla Feather type=Scout prob=0.523 score=780 urgency=0.780 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.442]   action: Layla Circlet type=Scout prob=0.384 score=780 urgency=0.780 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.442]   action: Layla Circlet type=Scout prob=0.281 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.442]   action: Layla Circlet type=Scout prob=0.235 score=780 urgency=0.780 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.444]   action: Diona Goblet type=Scout prob=0.382 score=759 urgency=0.759 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.444]   action: Diona Feather type=Scout prob=0.295 score=759 urgency=0.759 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.444]   action: Diona Circlet type=Scout prob=0.355 score=759 urgency=0.759 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.444]   action: Diona Circlet type=Scout prob=0.221 score=759 urgency=0.759 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.445]   action: Kaeya Flower type=Scout prob=0.420 score=789 urgency=0.789 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.445]   action: Kaeya Flower type=Scout prob=0.225 score=789 urgency=0.789 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.445]   action: Kaeya Sands type=Scout prob=0.737 score=789 urgency=0.789 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.445]   action: Kaeya Sands type=Scout prob=0.263 score=789 urgency=0.789 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.445]   action: Kaeya Goblet type=Scout prob=1.000 score=789 urgency=0.789 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.446]   action: Kaeya Feather type=Scout prob=0.213 score=789 urgency=0.789 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.446]   action: Aino Flower type=Scout prob=0.293 score=758 urgency=0.758 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.446]   action: Aino Flower type=Scout prob=0.227 score=758 urgency=0.758 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.446]   action: Aino Sands type=Commit prob=1.000 score=758 urgency=0.758 priority=0.0000 immediate_mora=153525
+[2026-08-14 10:23:26.447]   action: Aino Goblet type=Commit prob=1.000 score=758 urgency=0.758 priority=0.0000 immediate_mora=153525
+[2026-08-14 10:23:26.447]   action: Aino Circlet type=Commit prob=1.000 score=758 urgency=0.758 priority=0.0000 immediate_mora=153525
+[2026-08-14 10:23:26.447]   action: Barbara Flower type=Scout prob=0.428 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.447]   action: Barbara Flower type=Scout prob=0.248 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.448]   action: Barbara Sands type=Commit prob=0.612 score=770 urgency=0.770 priority=0.0000 immediate_mora=108800
+[2026-08-14 10:23:26.448]   action: Barbara Goblet type=Scout prob=0.702 score=770 urgency=0.770 priority=0.0000 immediate_mora=28425
+[2026-08-14 10:23:26.448]   action: Barbara Circlet type=Scout prob=0.684 score=770 urgency=0.770 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.448]   action: Beidou Flower type=Scout prob=0.591 score=779 urgency=0.779 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.449]   action: Beidou Flower type=Scout prob=0.312 score=779 urgency=0.779 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.449]   action: Beidou Sands type=Scout prob=0.668 score=779 urgency=0.779 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.449]   action: Beidou Sands type=Scout prob=0.332 score=779 urgency=0.779 priority=0.0000 immediate_mora=44725
+[2026-08-14 10:23:26.450]   action: Beidou Goblet type=Scout prob=0.514 score=779 urgency=0.779 priority=0.0000 immediate_mora=42425
+[2026-08-14 10:23:26.450]   action: Iansan Goblet type=Scout prob=0.930 score=758 urgency=0.758 priority=0.0000 immediate_mora=16300
+[2026-08-14 10:23:26.450]   action: Iansan Feather type=Commit prob=0.883 score=758 urgency=0.758 priority=0.0000 immediate_mora=153525
+[2026-08-14 10:23:26.450]   action: Iansan Circlet type=Commit prob=0.874 score=758 urgency=0.758 priority=0.0000 immediate_mora=153525
+[2026-08-14 10:23:26.451] OPTIMIZER: attempting tier 1 with 1 actions
+[2026-08-14 10:23:26.451]   SELECTED group Linnea Feather: immediate 116950 Mora, reserve 0 Mora
+[2026-08-14 10:23:26.451] OPTIMIZER: selected 1 actions from tier 1, stopping.
+[2026-08-14 10:23:26.451] optimizer_plan actions: 1
+[2026-08-14 10:23:26.452] legacy_bench_results count (after filtering optimizer_chars + skip_chars_legacy): 0
+[2026-08-14 10:23:26.452] legacy_plan skipped (no bench results or remaining_pieces=0)
+[2026-08-14 10:23:26.452] COMBINED: tier_gated -> global top tier 1, 1 action(s) kept
+[2026-08-14 10:23:26.452] === build_combined_leveling_plan END ===
+[2026-08-14 10:23:26.453] final summary: piece_count=1, scout=0, commit=1

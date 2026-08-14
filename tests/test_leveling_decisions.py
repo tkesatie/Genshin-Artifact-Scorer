@@ -283,6 +283,60 @@ def test_plan_slot_actions_single_survivor_still_needs_real_confidence():
 
 
 # ---------------------------------------------------------------------------
+# plan_slot_actions - max-level (already-finished) contenders
+# ---------------------------------------------------------------------------
+
+def test_plan_slot_actions_only_maxed_contenders_returns_no_action():
+    # A finished piece is a zero-Mora slot option - with nothing under-leveled
+    # left to contend, the slot is settled and must not spend any Mora.
+    candidates = [make_candidate(0.90, level=20)]
+    actions = le.plan_slot_actions("TestChar", "Circlet", candidates, DEFAULT_LEVELING_CONFIG)
+    assert actions == []
+
+
+def test_plan_slot_actions_maxed_leader_does_not_close_contested_slot():
+    # A maxed leader used to force Commit via finish_cost(20->20)=0 and then be
+    # skipped in the action loop, silently closing the slot. Now the maxed piece
+    # is set aside and the under-leveled live contender is decided on its own
+    # probability: 30% at level 0 with a hidden substat -> expected_waste
+    # 200,000 x (1-0.30) = 140,000 > 80,000 scout cost -> Scout, not a closed slot.
+    candidates = [
+        make_candidate(0.40, level=20),           # finished bench piece
+        make_candidate(0.30, level=0, hidden=True),
+    ]
+    actions = le.plan_slot_actions("TestChar", "Circlet", candidates, DEFAULT_LEVELING_CONFIG)
+    assert len(actions) == 1
+    assert actions[0]["action_type"] == "Scout"
+    assert actions[0]["target_level"] == 8  # cheapest meaningful reveal
+
+
+def test_plan_slot_actions_maxed_runner_up_decision_uses_actionable_only():
+    # The maxed piece at 90% would otherwise Commit-and-skip (0 actions). With it
+    # set aside, the 60% under-leveled leader hits the breakeven Commit
+    # (expected_waste == scout_cost at 60%) and gets committed to max.
+    candidates = [
+        make_candidate(0.90, level=20),
+        make_candidate(0.60, level=0, hidden=True),
+    ]
+    actions = le.plan_slot_actions("TestChar", "Circlet", candidates, DEFAULT_LEVELING_CONFIG)
+    assert len(actions) == 1
+    assert actions[0]["action_type"] == "Commit"
+    assert actions[0]["target_level"] == 20  # FAKE_MAX_LEVEL[5]
+
+
+def test_plan_slot_actions_maxed_contender_with_sub_floor_actionable_no_action():
+    # The finished piece dominates (90%); the lone under-leveled contender is
+    # below min_relevant_probability, so it never reaches `contenders` at all.
+    # Nothing to level -> the slot is settled by the finished piece.
+    candidates = [
+        make_candidate(0.90, level=20),
+        make_candidate(0.10, level=0),
+    ]
+    actions = le.plan_slot_actions("TestChar", "Circlet", candidates, DEFAULT_LEVELING_CONFIG)
+    assert actions == []
+
+
+# ---------------------------------------------------------------------------
 # tier_upgrade_ok / reachable_tier_for - the tier-upgrade gate
 # ---------------------------------------------------------------------------
 
@@ -389,3 +443,285 @@ def test_plan_slot_actions_still_plans_candidates_that_reach_good_or_excellent()
     actions = le.plan_slot_actions("TestChar", "Circlet", candidates, DEFAULT_LEVELING_CONFIG)
     assert len(actions) == 1
     assert actions[0]["action_type"] == "Commit"
+
+
+def test_plan_slot_actions_absolute_gate_keeps_candidate_that_can_reach_good():
+    # Candidates with a non-zero posterior probability of reaching Good must
+    # pass the absolute probability gate even if that probability is small.
+    artifact = make_artifact(level=0, hidden=True)
+    artifact["substats"] = [
+        {"key": "critRate_", "value": 3.5},
+        {"key": "critDMG_", "value": 7.8},
+        {"key": "hp_", "value": 269},
+        {"key": "def_", "value": 19},
+    ]
+    artifact["unactivatedSubstats"] = [{"key": "critDMG_", "value": 7.8}]
+    cand = {
+        "artifact": artifact,
+        "probability": 0.90,
+        "is_equipped": False,
+        "tier_upgrade_ok": True,
+        "reachable_tier": "Good",
+        "good": 5,
+        "excellent": 7,
+        "useful_stats": ["CR", "CD"],
+        "current_rolls": 2,
+        "max_rolls": 6,
+    }
+    actions = le.plan_slot_actions("TestChar", "Circlet", [cand], DEFAULT_LEVELING_CONFIG)
+    assert len(actions) == 1
+    assert actions[0]["action_type"] == "Commit"
+
+
+def test_plan_slot_actions_absolute_gate_drops_candidate_that_cannot_reach_good():
+    # abs_prob == 0 (best case still below `good`) -> dropped by the gate,
+    # even if the cached reachable_tier is stale/optimistic.
+    artifact = make_artifact(level=0, hidden=False)
+    artifact["substats"] = [
+        {"key": "hp_", "value": 269},
+        {"key": "def_", "value": 19},
+    ]
+    cand = {
+        "artifact": artifact,
+        "probability": 0.90,
+        "is_equipped": False,
+        "tier_upgrade_ok": True,
+        "reachable_tier": "Good",  # stale cache - honest ceiling is Needs Work
+        "good": 5,
+        "excellent": 7,
+        "useful_stats": ["CR", "CD"],
+        "current_rolls": 0,
+        "max_rolls": 2,
+    }
+    actions = le.plan_slot_actions("TestChar", "Circlet", [cand], DEFAULT_LEVELING_CONFIG)
+    assert actions == []
+
+
+def test_plan_slot_actions_no_action_when_leader_already_at_it_cap():
+    """
+    Regression for the 16 -> 16 rows: an IT Only piece already sitting at
+    rules.yaml leveling.it_only_max_level (16) has nothing left to level.
+    Analysis still treats it as improvable to its true max (20), so the slot
+    resolves - but a Commit with target_level == current_level is a no-op and
+    must never appear as a recommendation.
+    """
+    candidates = [make_candidate(0.90, level=16, hidden=False)]
+    actions = le.plan_slot_actions(
+        "ITChar", "Feather", candidates, DEFAULT_LEVELING_CONFIG,
+        effective_max_level=16,
+    )
+    assert actions == []
+
+
+def test_plan_slot_actions_at_cap_leader_closes_slot_no_weaker_promotion():
+    """
+    The stronger piece is already at the IT cap and (having no scout step
+    left) the slot resolves to Commit. We must NOT drop it from contention and
+    then start recommending the weaker level-8 runner-up as a "new leader" -
+    closing the slot means closing it: zero actions for the whole slot and the
+    weaker piece left unleveled.
+    """
+    candidates = [
+        make_candidate(0.90, level=16, hidden=False),  # at cap -> slot's final answer
+        make_candidate(0.30, level=8, hidden=False),   # weaker - must not be promoted
+    ]
+    actions = le.plan_slot_actions(
+        "ITChar", "Feather", candidates, DEFAULT_LEVELING_CONFIG,
+        effective_max_level=16,
+    )
+    assert actions == []
+
+
+def test_plan_slot_actions_it_piece_below_cap_still_commits_to_cap():
+    # The at-cap guard must not over-filter: an IT piece below the cap still
+    # gets recommended, but only as far as the cap (16), not its true max (20).
+    candidates = [make_candidate(0.90, level=8, hidden=True)]
+    actions = le.plan_slot_actions(
+        "ITChar", "Feather", candidates, DEFAULT_LEVELING_CONFIG,
+        effective_max_level=16,
+    )
+    assert len(actions) == 1
+    assert actions[0]["action_type"] == "Commit"
+    assert actions[0]["current_level"] == 8
+    assert actions[0]["target_level"] == 16
+
+
+def test_plan_slot_actions_at_cap_runner_up_skipped_in_contested_slot():
+    # A contested slot's still-levelable leader is scouted; an at-cap runner-up
+    # contributes no action (its scout target would be <= current level anyway).
+    candidates = [
+        make_candidate(0.30, level=8, hidden=True),   # below cap -> live contender
+        make_candidate(0.40, level=16, hidden=False), # at cap -> no action
+    ]
+    actions = le.plan_slot_actions(
+        "ITChar", "Feather", candidates, DEFAULT_LEVELING_CONFIG,
+        effective_max_level=16,
+    )
+    assert len(actions) == 1
+    assert actions[0]["action_type"] == "Scout"
+    assert actions[0]["current_level"] == 8
+    assert actions[0]["target_level"] == 16
+
+
+# ---------------------------------------------------------------------------
+# Character priority tier gate (leveling.tier_gated)
+# ---------------------------------------------------------------------------
+
+def test_char_tier_mapping():
+    # Mirrors character_scoring.score_character's 1-5 priority tiers.
+    assert le._char_tier("Active", "Farming") == 1
+    assert le._char_tier("IT Only", "Farming") == 2
+    assert le._char_tier("Active", "Finished") == 3
+    assert le._char_tier("IT Only", "Finished") == 4
+    assert le._char_tier("Active", "Usable") == 5
+    assert le._char_tier("IT Only", "Luxury") == 5
+    assert le._char_tier(None, None) == 5
+
+
+def _optimizer_budget():
+    return {
+        "max_mora": 2_000_000,
+        "max_artifact_exp": 100_000_000,
+        "already_spent_mora": 0,
+        "already_spent_exp": 0,
+    }
+
+
+def test_tier_gated_optimizer_keeps_only_top_tier():
+    # Tier-1 (Active+Farming) and tier-2 (IT Only+Farming) both have viable
+    # commits this run -> only the tier-1 action may be suggested.
+    candidates_by_char = {
+        "ActiveFarmer": {"Feather": [make_candidate(0.90)]},
+        "ITFarmer": {"Flower": [make_candidate(0.90)]},
+    }
+    plan = le.build_leveling_plan_from_optimizer(
+        candidates_by_char,
+        {"ActiveFarmer": 900, "ITFarmer": 800},
+        _optimizer_budget(),
+        {**DEFAULT_LEVELING_CONFIG, "tier_gated": True},
+        char_tier_lookup={"ActiveFarmer": 1, "ITFarmer": 2},
+    )
+    assert plan["top_tier"] == 1
+    chars = {a["character"] for a in plan["actions"]}
+    assert chars == {"ActiveFarmer"}
+    assert all(a["tier"] == 1 for a in plan["actions"])
+
+
+def test_tier_gated_optimizer_falls_through_when_top_tier_has_no_viable_actions():
+    # The tier-1 character has nothing that meets a scout/commit threshold
+    # (below min_relevant_probability) -> tier-2 becomes the top tier.
+    candidates_by_char = {
+        "ActiveFarmer": {"Feather": [make_candidate(0.05)]},   # below floor -> no action
+        "ITFarmer": {"Flower": [make_candidate(0.90)]},
+    }
+    plan = le.build_leveling_plan_from_optimizer(
+        candidates_by_char,
+        {"ActiveFarmer": 900, "ITFarmer": 800},
+        _optimizer_budget(),
+        {**DEFAULT_LEVELING_CONFIG, "tier_gated": True},
+        char_tier_lookup={"ActiveFarmer": 1, "ITFarmer": 2},
+    )
+    assert plan["top_tier"] == 2
+    chars = {a["character"] for a in plan["actions"]}
+    assert chars == {"ITFarmer"}
+    assert all(a["tier"] == 2 for a in plan["actions"])
+
+
+def test_tier_gated_disabled_shows_both_tiers():
+    # With the gate off, both tiers' actions are allowed (tier-1 still sorts
+    # first, but nothing is dropped).
+    candidates_by_char = {
+        "ActiveFarmer": {"Feather": [make_candidate(0.90)]},
+        "ITFarmer": {"Flower": [make_candidate(0.90)]},
+    }
+    plan = le.build_leveling_plan_from_optimizer(
+        candidates_by_char,
+        {"ActiveFarmer": 900, "ITFarmer": 800},
+        _optimizer_budget(),
+        {**DEFAULT_LEVELING_CONFIG, "tier_gated": False},
+        char_tier_lookup={"ActiveFarmer": 1, "ITFarmer": 2},
+    )
+    chars = [a["character"] for a in plan["actions"]]
+    assert chars == ["ActiveFarmer", "ITFarmer"]
+
+
+def _make_bench(character, slot, expected_rolls=8, good=5, excellent=7,
+                current_rolls=2, max_rolls=8):
+    return {
+        "character": character,
+        "slot": slot,
+        "artifact_id": f"{character}-{slot}",
+        "rarity": 5,
+        "level": 0,
+        "original_artifact": {
+            "id": f"{character}-{slot}",
+            "level": 0,
+            "rarity": 5,
+            "substats": [
+                {"key": "critDMG_", "value": 7.8},
+                {"key": "critRate_", "value": 3.5},
+            ],
+            "unactivatedSubstats": [],
+        },
+        "good": good,
+        "excellent": excellent,
+        "useful_stats": ["CR", "CD"],
+        "current_rolls": current_rolls,
+        "expected_rolls": expected_rolls,
+        "max_rolls": max_rolls,
+        "verdict": "Could reach Good",
+    }
+
+
+def test_tier_gated_legacy_planner_keeps_only_top_tier():
+    # Both a tier-1 and a tier-2 character have viable legacy candidates ->
+    # only the tier-1 candidate survives the gate.
+    bench_results = [
+        _make_bench("LegacyT1", "Feather"),
+        _make_bench("LegacyT2", "Flower"),
+    ]
+    plan = le.build_leveling_plan(
+        bench_results,
+        _optimizer_budget(),
+        {**DEFAULT_LEVELING_CONFIG, "tier_gated": True, "soft_stop_floor": 0.15},
+        char_tier_lookup={"LegacyT1": 1, "LegacyT2": 2},
+    )
+    assert plan["top_tier"] == 1
+    chars = {a["character"] for a in plan["actions"]}
+    assert chars == {"LegacyT1"}
+    assert all(a["tier"] == 1 for a in plan["actions"])
+
+
+def test_tier_gated_combined_reconciles_across_planners():
+    # The optimizer planner has a viable tier-1 commit while the legacy
+    # planner (fallback) has viable tier-2 candidates -> the tier-2 legacy
+    # actions must be dropped from the merged plan.
+    candidates_by_char = {
+        "ActiveFarmer": {"Feather": [make_candidate(0.90)]},
+    }
+    slots = ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
+    bench_results = (
+        [_make_bench("ActiveFarmer", s) for s in slots]
+        + [_make_bench("ITLegacy", s) for s in slots]
+    )
+    plan = le.build_combined_leveling_plan(
+        bench_results,
+        candidates_by_char,
+        {"ActiveFarmer": 900, "ITLegacy": 800},
+        _optimizer_budget(),
+        {
+            **DEFAULT_LEVELING_CONFIG,
+            "tier_gated": True,
+            "soft_stop_floor": 0.15,
+            "min_distinct_on_set_slots": 4,
+            "max_pieces_per_run": 10,
+            "require_tier_upgrade": True,
+            "it_only_max_level": 16,
+        },
+        char_usage_lookup={"ActiveFarmer": "Active", "ITLegacy": "IT Only"},
+        char_status_lookup={"ActiveFarmer": "Farming", "ITLegacy": "Farming"},
+    )
+    assert plan["summary"]["top_tier"] == 1
+    chars = {a["character"] for a in plan["actions"]}
+    assert chars == {"ActiveFarmer"}
+    assert "tier-1" in plan["summary"]["recommendation_text"]

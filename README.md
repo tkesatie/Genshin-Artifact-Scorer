@@ -183,6 +183,7 @@ Controls scoring thresholds and farming priority:
   - `max_per_character`: cap on how many distinct slots one character can claim budget on per run (default `2`).
   - `it_only_max_level`: cap for IT Only characters — analysis runs as though the piece could go to 20, but the recommended target and budget reservation are capped here (default `16`).
   - `active_chars_only`: when `true`, only Active characters get leveling recommendations; IT Only characters are excluded entirely (default `false`).
+  - `tier_gated`: when `true`, the plan only suggests actions from the highest character priority tier that has any viable Scout/Commit action that run (tier 1 = Active + Farming), and defers all lower tiers until that tier is finished. This keeps Mora focused on completing one tier before moving to the next (default `true`).
   - `max_reveal_fraction`: fraction of remaining lifetime budget that can be spent on immediate (reveal/scout) actions (default `0.40`).
   - `max_pieces_per_run`: hard cap on the total number of pieces leveled in one run, across both planners combined (default `10`).
 

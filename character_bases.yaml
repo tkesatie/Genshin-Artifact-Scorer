@@ -210,3 +210,23 @@ Thoma:
   base_hp: 7980.6
   base_em: 80
   base_er: 1.199
+
+Collei:
+  base_atk: 186.36
+  base_atk_percent: 0.18
+  base_dmg_bonus: 0.15
+
+Beidou:
+  base_atk: 680.14
+  base_er: 1.503
+  base_dmg_bonus: 0.12
+
+Iansan:
+  base_atk: 763.31
+  base_atk_percent: 0.12
+  base_er: 1.306
+
+Kazuha:
+  base_em: 115.20
+  base_er: 1.613
+  base_dmg_bonus: 0.15

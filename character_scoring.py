@@ -230,9 +230,9 @@ def score_character(char_name, cfg, artifacts_by_slot, rules, roll_values, bench
     }
 
 
-def score_domains(char_results, rules):
+def score_domains(char_results, rules, roster, strongbox_recs=None):
     weights = rules["domain_scoring"]
-    domains = defaultdict(lambda: {"characters": [], "score": 0.0, "active": 0, "it_only": 0})
+    domains = defaultdict(lambda: {"characters": [], "score": 0.0, "active": 0, "it_only": 0, "strongbox": {}})
     for r in char_results:
         d = r["domain"]
         if d is None or d == "None":
@@ -247,4 +247,47 @@ def score_domains(char_results, rules):
             entry["active"] += 1
         else:
             entry["it_only"] += 1
+
+    # Incorporate strongbox recommendations if provided
+    if strongbox_recs:
+        # Build a mapping from set short label to recommended craft count and beneficiaries
+        recs = strongbox_recs.get("recommendations", {})
+        beneficiaries = strongbox_recs.get("beneficiaries", {})
+        beneficiary_slots = strongbox_recs.get("beneficiary_slots", {})
+
+        # For each character, we know their domain and set. We'll add strongbox info per domain.
+        # First, create a mapping from domain to a dict of set->crafts.
+        domain_set_recs = defaultdict(dict)
+        # Also need to know which characters are in which domain for each set.
+        # We can build a set->list of characters from the roster or char_results.
+        # We'll use char_results to find characters' domains and sets.
+        for r in char_results:
+            char_name = r["name"]
+            cfg = roster.get(char_name, {})
+            set_short = cfg.get("set")
+            if not set_short or "/" in set_short:
+                continue
+            domain = r["domain"] or "None"
+            craft_count = recs.get(set_short, 0)
+            if craft_count > 0:
+                # Ensure this set is only added once per domain
+                # We'll store it as set_short -> {crafts, beneficiaries}
+                if set_short not in domain_set_recs[domain]:
+                    # Get beneficiaries for this set (characters that have demand)
+                    ben_list = beneficiaries.get(set_short, [])
+                    # Filter to those in this domain
+                    domain_chars = [c for c in ben_list if c in domains[domain]["characters"]]
+                    if not domain_chars:
+                        # fallback: use any character from the domain that uses this set
+                        domain_chars = [char_name]  # at least the current one
+                    domain_set_recs[domain][set_short] = {
+                        "crafts": craft_count,
+                        "beneficiaries": domain_chars,
+                    }
+
+        # Now merge into domains dict
+        for domain, set_data in domain_set_recs.items():
+            if domain in domains:
+                domains[domain]["strongbox"] = set_data
+
     return dict(domains)

@@ -172,6 +172,37 @@ def format_substats_html(substats, rarity=5, level=0):
     return ", ".join(formatted)
 
 
+# Minimum build-optimality probability (as a fraction) for a candidate to count
+# as having "made it into the optimal build". Matches the threshold the character
+# detail modal uses when deciding which candidates to show.
+MIN_OPTIMALITY = 0.05  # 5%
+
+
+def slot_upgrade_counts(candidates_by_slot, slot):
+    """Among non-equipped candidates that actually make it into the optimal
+    build (probability >= MIN_OPTIMALITY), how many reach the Good tier and
+    how many reach the Excellent tier. Tiers come from each candidate's
+    reachable_tier (its roll ceiling vs. the Good/Excellent thresholds), so
+    the familiar Good/Excellent meaning is kept - just restricted to pieces
+    that win a spot in the build. Returns (good, excellent).
+
+    The currently-equipped piece is skipped: you don't "upgrade to" the piece
+    you already own.
+    """
+    good = excellent = 0
+    for c in candidates_by_slot.get(slot, []):
+        if c.get("is_equipped"):
+            continue                      # the piece you already own isn't an "upgrade"
+        if c.get("probability", 0.0) < MIN_OPTIMALITY:
+            continue                      # didn't win a spot in the optimal build
+        tier = c.get("reachable_tier")
+        if tier == "Excellent":
+            excellent += 1
+        elif tier == "Good":
+            good += 1
+    return good, excellent
+
+
 def _filter_input_html(table_id, placeholder):
     """Small, self-contained filter box for a given table. Filtering itself
     happens client-side in vanilla JS (see the wireup script at the bottom
@@ -191,7 +222,8 @@ def render_html(char_results, domain_results, recommendations, out_path,
                  equipped_artifacts_by_char=None, roster=None,
                  optimizer_candidates_by_char=None,
                  infeasible_rate_by_char=None,
-                 leveling_plan=None):       # <-- NEW
+                 leveling_plan=None,
+                 strongbox_recs=None):       # <-- NEW strongbox recommendations
     flex_results = flex_results or []
     inventory_results = inventory_results or []
     ceiling_only_results = ceiling_only_results or []
@@ -201,7 +233,8 @@ def render_html(char_results, domain_results, recommendations, out_path,
     prob_lookup = prob_lookup or {}
     optimizer_candidates_by_char = optimizer_candidates_by_char or {}
     infeasible_rate_by_char = infeasible_rate_by_char or {}
-    leveling_plan = leveling_plan or {"actions": [], "summary": {}}   # <-- NEW
+    leveling_plan = leveling_plan or {"actions": [], "summary": {}}
+    strongbox_recs = strongbox_recs or {"recommendations": {}, "beneficiaries": {}, "beneficiary_slots": {}}
     from artifact_utils import STAT_LABEL
     SLOT_ORDER = ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
 
@@ -228,6 +261,20 @@ def render_html(char_results, domain_results, recommendations, out_path,
 
     rows = []
     for r in char_results_sorted:
+        # Good/Excellent upgrades now reflect only pieces that make it into the
+        # optimal build (see slot_upgrade_counts). Fall back to the old
+        # bench-verdict counts only when this character has no optimizer data.
+        total_good = total_excellent = 0
+        char_slots = optimizer_candidates_by_char.get(r['name'])
+        if char_slots:
+            for slot in SLOT_ORDER:
+                g, e = slot_upgrade_counts(char_slots, slot)
+                total_good += g
+                total_excellent += e
+        else:
+            total_good = r.get('upgrades_good', 0)
+            total_excellent = r.get('upgrades_excellent', 0)
+
         slot_html = " ".join(
             f'<span title="{slot}: {s["roll_count"]} rolls equipped (need {s["good"]}/{s["excellent"]}); best bench candidate: EV {s["bench_expected"]}, max {s["bench_ceiling"]}">{badge(s["status"])}{slot_marker(r["name"], slot, s)}</span>'
             for slot, s in r["slots"].items()
@@ -269,7 +316,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
         <td>{set_bonus_html}</td>
         <td>{r['completion']}/5</td>
         <td>{r['excellent_pieces']}</td>
-        <td>{r['upgrades_good']} / {r['upgrades_excellent']}</td>
+        <td>{total_good} / {total_excellent}</td>
         <td>{slot_html}</td>
         <td>{r['domain']}</td>
         <td>{round(r['score'],1)}</td>
@@ -277,6 +324,23 @@ def render_html(char_results, domain_results, recommendations, out_path,
 
     domain_rows = []
     for name, d in domain_sorted:
+        # Build strongbox cell for this domain
+        strongbox_data = d.get("strongbox", {})
+        if strongbox_data:
+            strongbox_items = []
+            for set_label, info in strongbox_data.items():
+                crafts = info.get("crafts", 0)
+                if crafts == 0:
+                    continue
+                beneficiaries = info.get("beneficiaries", [])
+                ben_str = ", ".join(beneficiaries[:3])
+                if len(beneficiaries) > 3:
+                    ben_str += f" +{len(beneficiaries)-3} more"
+                strongbox_items.append(f"{set_label}: {crafts} crafts → {ben_str}")
+            strongbox_cell = "<br>".join(strongbox_items) if strongbox_items else "—"
+        else:
+            strongbox_cell = "—"
+
         domain_rows.append(f"""
         <tr>
           <td>{name}</td>
@@ -284,6 +348,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
           <td>{round(d['score'],1)}</td>
           <td>{d['active']}</td>
           <td>{d['it_only']}</td>
+          <td>{strongbox_cell}</td>
         </tr>""")
 
     VERDICT_COLOR = {
@@ -457,11 +522,76 @@ def render_html(char_results, domain_results, recommendations, out_path,
 
         # --- Try to use optimizer candidates ---
         char_candidates = optimizer_candidates_by_char.get(name)
+        current_build_html = ""
         if char_candidates:
+            # --- "Current optimal build" section: the equipped pieces, one per
+            # slot in the same 5-column grid. A slot is highlighted when its
+            # equipped piece already has the highest build optimality in that
+            # slot - i.e. it's already the best installed option. Main stats
+            # are shown at their full label (level-20 assumed); we don't lower
+            # them for the piece's current level.
+            current_columns = []
+            for slot in SLOT_ORDER:
+                slot_cands = char_candidates.get(slot, [])
+                equipped = next((c for c in slot_cands if c.get("is_equipped")), None)
+                best_prob = max((c.get("probability", 0.0) for c in slot_cands), default=0.0)
+                if equipped is None:
+                    current_columns.append(f"""
+                    <div class="modal-slot-column">
+                      <div class="modal-slot-column-head">{slot}</div>
+                      <p class="modal-empty">Not a valid candidate</p>
+                    </div>""")
+                    continue
+                art = equipped["artifact"]
+                equip_prob = equipped.get("probability", 0.0)
+                is_best = equip_prob > 0 and equip_prob >= best_prob - 1e-9
+                # Warn only on the piece we'd keep (the slot's highest build
+                # optimality) that is still underleveled for this character's
+                # usage (Active -> 20, IT Only -> 16). Underleveled pieces that
+                # aren't the best are just swap candidates - no leveling warning.
+                level = art.get("level", 0) or 0
+                min_level = 20 if r['usage'] == "Active" else 16
+                needs_leveling = is_best and level < min_level
+                card_cls = "modal-card equipped-card"
+                if needs_leveling:
+                    card_cls += " needs-leveling"
+                elif is_best:
+                    card_cls += " current-best"
+                best_marker = (
+                    ' <span style="color:#4ec97a;font-size:11px;font-weight:600;" '
+                    'title="This equipped piece has the highest build optimality in the slot - keep it.">&#10003; Best</span>'
+                    if is_best else ""
+                )
+                leveling_marker = (
+                    f' <span style="color:#e0a94e;font-size:11px;font-weight:600;" '
+                    f'title="Underleveled for this character (expects Lv {min_level}+) - it\u2019s the slot\u2019s best piece, so level it.">&#9888; Needs leveling (Lv{level})</span>'
+                    if needs_leveling else ""
+                )
+                prob_pct = equip_prob * 100
+                prob_display = f"{prob_pct:.1f}%" if prob_pct > 0 else "—"
+                current_columns.append(f"""
+                <div class="modal-slot-column">
+                  <div class="modal-slot-column-head">{slot}</div>
+                  <div class="{card_cls}">
+                    <div class="modal-card-head">{art.get('setKey', '?')} <span style="font-size:11px;color:#888;">(Equipped)</span>{best_marker}{leveling_marker}</div>
+                    <div class="modal-card-body">
+                      Main: {art.get('mainStatKey', '?')}<br>
+                      {substat_display_for(art, useful_stats)}<br>
+                      {art.get('rarity', '?')}★ Lv{art.get('level', 0)}<br>
+                      <span style="color:#4e8ee0;">Build Optimality: {prob_display}</span>
+                    </div>
+                  </div>
+                </div>""")
+            current_build_html = f'<div class="modal-slots-grid">{"".join(current_columns)}</div>'
             # Build a 5‑column grid with equipped + top candidates per slot
             options_columns = []
             for slot in SLOT_ORDER:
                 candidates = char_candidates.get(slot, [])
+                # Good/Excellent upgrade counts among candidates that make it
+                # into the optimal build, shown in parentheses next to the slot.
+                good_cnt, exc_cnt = slot_upgrade_counts(char_candidates, slot)
+                count_html = f' <span title="{good_cnt} Good / {exc_cnt} Excellent upgrade options make it into the optimal build.">(<span style="color:#e0a94e">{good_cnt}</span>/<span style="color:#4ec97a">{exc_cnt}</span>)</span>' if (good_cnt or exc_cnt) else ""
+                slot_head = f"{slot}{count_html}"
                 # Filter to only show candidates with >= 5% build optimality,
                 # but always keep the currently equipped piece.
                 MIN_OPTIMALITY = 0.05  # 5% as a fraction
@@ -474,7 +604,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
                 if not top_candidates:
                     options_columns.append(f"""
                     <div class="modal-slot-column">
-                      <div class="modal-slot-column-head">{slot}</div>
+                      <div class="modal-slot-column-head">{slot_head}</div>
                       <p class="modal-empty">No candidates found.</p>
                     </div>""")
                     continue
@@ -500,7 +630,7 @@ def render_html(char_results, domain_results, recommendations, out_path,
                 body = "".join(cards)
                 options_columns.append(f"""
                 <div class="modal-slot-column">
-                  <div class="modal-slot-column-head">{slot}</div>
+                  <div class="modal-slot-column-head">{slot_head}</div>
                   {body}
                 </div>""")
             options_html = f'<div class="modal-slots-grid">{"".join(options_columns)}</div>'
@@ -683,7 +813,10 @@ def render_html(char_results, domain_results, recommendations, out_path,
             # Unified: only one grid
             character_modal_html[name] = f"""
             <div class="modal-meta">{r['usage']} · {r['role']} · Domain: {r['domain']} · Score {round(r['score'], 1)}<br>{target_line}</div>
-            <h4>Artifact Candidates per Slot (sorted by Build Optimality)</h4>
+            <h4>Current Optimal Build</h4>
+            <p style="color:#999;font-size:13px;margin-top:-4px;">Your equipped pieces, one per slot (main stats shown as if leveled to 20). A green highlight means that slot's equipped piece already has the highest build optimality - it's already the best installed option, so it'll be kept.</p>
+            {current_build_html}
+            <h4>Upgrade Options per Slot (sorted by Build Optimality)</h4>
             {upgrade_caption}
             {options_html}
             {multi_piece_html}
@@ -864,6 +997,8 @@ tr:hover {{ background: #242424; }}
 .table-filter:focus {{ outline: none; border-color: #4e8ee0; }}
 .table-filter-empty {{ color: #999; font-size: 13px; padding: 8px 12px; display: none; }}
 .equipped-card {{ background: #1e2a3a; }}
+.modal-card.current-best {{ border: 2px solid #4ec97a; background: #16291c; }}
+.modal-card.needs-leveling {{ border: 2px solid #e0a94e; background: #2a2416; }}
 </style></head>
 <body>
 <h1>Artifact Farming Dashboard</h1>
@@ -887,7 +1022,7 @@ piece's optimistic ceiling beats what's equipped, but none clear the threshold o
 {_filter_input_html("charTable", "Filter by name, domain, status...")}
 <table id="charTable">
 <thead><tr><th>Character</th><th>Usage</th><th>Role</th><th>Status</th><th>Set Bonus</th><th>Completion</th>
-<th>Excellent</th><th>Good / Exc Upgrades</th><th>Slots</th><th>Domain</th><th>Score</th></tr></thead>
+<th>Excellent</th><th title="Counts only pieces that actually make it into the optimal build (>=5% build optimality): how many reach the Good tier / how many reach the Excellent tier.">Good / Exc Upgrades</th><th>Slots</th><th>Domain</th><th>Score</th></tr></thead>
 <tbody>{''.join(rows)}</tbody>
 </table>
 
@@ -924,9 +1059,14 @@ read as low RDI even when they're doing their job. See DAMAGE_CALCULATOR_DESIGN.
 </table>
 
 <h2>Domains (sorted by farming priority)</h2>
+<p style="color:#999;font-size:13px;max-width:750px;">
+  Strongbox recommendations are based on missing or needs-work slots,
+  weighted by character priority (score). "X crafts" means how many
+  strongbox pulls to do for that set with your current fodder (3 fodder = 1 craft).
+</p>
 {_filter_input_html("domainTable", "Filter by domain or character...")}
 <table id="domainTable">
-<thead><tr><th>Domain</th><th>Characters</th><th>Score</th><th>Active</th><th>IT Only</th></tr></thead>
+<thead><tr><th>Domain</th><th>Characters</th><th>Score</th><th>Active</th><th>IT Only</th><th>Strongbox</th></tr></thead>
 <tbody>{''.join(domain_rows)}</tbody>
 </table>
 

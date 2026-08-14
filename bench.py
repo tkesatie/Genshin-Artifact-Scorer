@@ -248,14 +248,23 @@ def expected_useful_rolls(artifact, useful_stats, roll_values):
 
 
 def find_bench_potential(good_json, roster, rules, roll_values):
-    """Under-max-level artifacts, evaluated against every roster character
-    who uses that artifact set (including the character currently holding it)."""
+    """Every artifact not equipped by another character, evaluated against
+    each roster character who uses that artifact set (including the character
+    currently holding it).
+
+    Max-level (already-finished) artifacts are deliberately INCLUDED, not
+    skipped: a finished good piece on the bench is a zero-Mora slot option,
+    and the optimizer / leveling planner need to see it so they don't waste
+    Mora leveling an under-leveled piece that can never outclass it. Their
+    current/ceiling/expected rolls collapse to their final stats (see
+    max_possible_useful_rolls / expected_useful_rolls - zero remaining
+    events), so the derived verdicts stay honest. The leveling planners still
+    never recommend leveling them - they're candidates for comparison and
+    slot coverage, not leveling targets."""
     results = []
     for art in good_json.get("artifacts", []):
         rarity = art.get("rarity", 5)
         level = art.get("level", 0)
-        if level >= MAX_LEVEL.get(rarity, 20):
-            continue  # already maxed, nothing left to gain
 
         slot = SLOT_MAP.get(art.get("slotKey"))
         if slot is None:

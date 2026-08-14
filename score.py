@@ -33,6 +33,7 @@ from bench import (
     expected_useful_rolls,
     SET_ALIASES,
 )
+from strongbox import get_strongbox_recommendations
 from character_scoring import score_character, score_domains
 from config import load_configs
 from flex import find_flex_candidates
@@ -212,7 +213,7 @@ _worker_ctx = {}
 
 def _init_optimizer_worker(good_json_artifacts, roll_values, required_slots,
                             apply_ceiling_filter, in_set_pool_size, off_set_pool_size,
-                            num_sims):
+                            num_sims, prune_after, prune_threshold, prune_min_keep):
     _worker_ctx["good_json_artifacts"] = good_json_artifacts
     _worker_ctx["roll_values"] = roll_values
     _worker_ctx["required_slots"] = required_slots
@@ -220,6 +221,9 @@ def _init_optimizer_worker(good_json_artifacts, roll_values, required_slots,
     _worker_ctx["in_set_pool_size"] = in_set_pool_size
     _worker_ctx["off_set_pool_size"] = off_set_pool_size
     _worker_ctx["num_sims"] = num_sims
+    _worker_ctx["prune_after"] = prune_after
+    _worker_ctx["prune_threshold"] = prune_threshold
+    _worker_ctx["prune_min_keep"] = prune_min_keep
 
 
 def _optimize_one_character(task):
@@ -232,6 +236,9 @@ def _optimize_one_character(task):
     in_set_pool_size = _worker_ctx["in_set_pool_size"]
     off_set_pool_size = _worker_ctx["off_set_pool_size"]
     num_sims = _worker_ctx["num_sims"]
+    prune_after = _worker_ctx["prune_after"]
+    prune_threshold = _worker_ctx["prune_threshold"]
+    prune_min_keep = _worker_ctx["prune_min_keep"]
 
     char_name = task["char_name"]
     cfg = task["cfg"]
@@ -318,6 +325,9 @@ def _optimize_one_character(task):
         num_sims=num_sims,
         stat_floors=stat_floors,
         team_context=team_context,
+        prune_after=prune_after,
+        prune_threshold=prune_threshold,
+        prune_min_keep=prune_min_keep,
     )
 
     elapsed = time.perf_counter() - start
@@ -350,6 +360,8 @@ def main():
                      help="Restrict scoring to a single character from the roster.")
     ap.add_argument("--validate-only", action="store_true",
                      help="Run config pre-flight validation and exit without scoring.")
+    ap.add_argument("--debug-strongbox", action="store_true",
+                help="Output detailed debug info for strongbox recommendations.")
     args = ap.parse_args()
 
     if not args.validate_only and not args.good_export:
@@ -383,6 +395,9 @@ def main():
     if args.char:
         print(f"Single character filter active: {len(roster)}/{total_roster_count} roster characters included.")
     theater_cfg = rules.get("imaginarium_theater", {}) or {}
+    it_enabled = theater_cfg.get("enabled", False)
+    it_focus_fraction = rules.get("strongbox", {}).get("it_focus_fraction", 0.7)
+
     if theater_cfg.get("enabled"):
         print(
             f"Imaginarium Theater filter active (elements={theater_cfg.get('elements', [])}): "
@@ -457,7 +472,6 @@ def main():
         char_results.append(score_character(name, cfg, artifacts, rules, roll_values, bench_lookup, bench_candidates, team_context=team_context))
         roll_value_by_char[name] = value_per_roll_for_character(name, cfg, artifacts, team_context, roll_values)
 
-    domain_results = score_domains(char_results, rules)
     recommendations = build_recommendations(bench_results, char_results)
     ceiling_only_results = build_ceiling_only_candidates(bench_results, char_results)
 
@@ -475,11 +489,15 @@ def main():
     in_set_pool_size = opt_cfg.get("in_set_pool_size", 5)
     off_set_pool_size = opt_cfg.get("off_set_pool_size", 5)
     apply_ceiling_filter = opt_cfg.get("apply_ceiling_filter", True)
+    prune_after = opt_cfg.get("prune_after", 0)
+    prune_threshold = opt_cfg.get("prune_threshold", 0.05)
+    prune_min_keep = opt_cfg.get("prune_min_keep", 1)
     candidate_pools_by_char = {}
 
     print(f"Running global optimizer (num_sims={num_sims}, "
           f"in_set_pool={in_set_pool_size}, off_set_pool={off_set_pool_size}, "
-          f"ceiling_filter={apply_ceiling_filter})...")
+          f"ceiling_filter={apply_ceiling_filter}, prune_after={prune_after}, "
+          f"prune_threshold={prune_threshold}, prune_min_keep={prune_min_keep})...")
 
     char_bench_results = defaultdict(list)
     for b in bench_results:
@@ -527,6 +545,7 @@ def main():
         initargs=(
             good_json.get("artifacts", []), roll_values, required_slots,
             apply_ceiling_filter, in_set_pool_size, off_set_pool_size, num_sims,
+            prune_after, prune_threshold, prune_min_keep,
         ),
     ) as executor:
         futures = {executor.submit(_optimize_one_character, t): t["char_name"] for t in tasks}
@@ -594,12 +613,19 @@ def main():
                     art.get('id') == pools["current"].get(slot, {}).get('id')
                 )
 
+                # Threshold/roll metadata is needed by the leveling planner
+                # (plan_slot_actions/_decide_slot_action) to compute each
+                # candidate's absolute probability of reaching "Good", so
+                # compute it for every candidate - not just when tier
+                # upgrades are required.
+                eff_pool = effective_useful_pool(art.get("mainStatKey"), useful_stats)
+                good, excellent = compute_thresholds(
+                    rules, cfg.get("usage"), cfg.get("role"), slot, eff_pool, char_name
+                )
+                _, max_rolls = max_possible_useful_rolls(art, useful_stats, roll_values)
+                current_rolls = roll_count_for_artifact(art, useful_stats, roll_values)
+
                 if require_tier_upgrade:
-                    eff_pool = effective_useful_pool(art.get("mainStatKey"), useful_stats)
-                    good, excellent = compute_thresholds(
-                        rules, cfg.get("usage"), cfg.get("role"), slot, eff_pool, char_name
-                    )
-                    _, max_rolls = max_possible_useful_rolls(art, useful_stats, roll_values)
                     reachable_tier = reachable_tier_for(max_rolls, good, excellent)
                     candidate_tier_upgrade_ok = tier_upgrade_ok(equipped_tier, reachable_tier)
                 else:
@@ -612,6 +638,11 @@ def main():
                     "is_equipped": is_equipped,
                     "reachable_tier": reachable_tier,
                     "tier_upgrade_ok": candidate_tier_upgrade_ok,
+                    "good": good,
+                    "excellent": excellent,
+                    "useful_stats": useful_stats,
+                    "current_rolls": current_rolls,
+                    "max_rolls": max_rolls,
                 })
             candidates.sort(key=lambda x: x["probability"], reverse=True)
             slot_candidates[slot] = candidates
@@ -666,6 +697,7 @@ def main():
     # Leveling plan
     char_score_lookup = {r["name"]: r["score"] for r in char_results}
     char_usage_lookup = {name: cfg.get("usage") for name, cfg in roster.items()}
+    char_status_lookup = {r["name"]: r["status"] for r in char_results}
     leveling_plan = generate_leveling_recommendations(
         bench_results, rules, roll_values,
         optimizer_candidates_by_char=optimizer_candidates_by_char,
@@ -673,6 +705,7 @@ def main():
         char_slot_tier_lookup=char_slot_tier_lookup,
         roll_value_by_char=roll_value_by_char,
         char_usage_lookup=char_usage_lookup,
+        char_status_lookup=char_status_lookup,
     )
 
     # Flex and Inventory (now with cache)
@@ -687,6 +720,25 @@ def main():
         prob_cache=cache,
         inventory_config=inventory_config,
     )
+
+    # Compute strongbox recommendations
+    strongbox_count = sum(
+        1 for i in inventory_results
+        if i["action"] == "SAFE_STRONGBOX" and i["artifact"].get("rarity") == 5
+    )
+    strongbox_recs = get_strongbox_recommendations(
+        rules, roster, char_results, bench_results, roll_values, strongbox_count,
+        debug=args.debug_strongbox,
+        it_enabled=it_enabled,
+        it_focus_fraction=it_focus_fraction,
+    )
+    print(f"Strongbox recommendations: {strongbox_recs.get('recommendations', {})}")
+
+    # Domain scoring incorporates strongbox recommendations, so it has to run
+    # after get_strongbox_recommendations() above. domain_results is consumed
+    # only by render_html(), so ordering it here (instead of near the top of
+    # main) is safe.
+    domain_results = score_domains(char_results, rules, roster, strongbox_recs=strongbox_recs)
 
     strongbox_count = sum(1 for i in inventory_results if i["action"] == "SAFE_STRONGBOX")
     elixir_count = sum(1 for i in inventory_results if i["action"] == "SANCTIFY_ELIXIR")
@@ -728,6 +780,7 @@ def main():
         optimizer_candidates_by_char=optimizer_candidates_by_char,
         infeasible_rate_by_char=infeasible_rate_by_char,
         leveling_plan=leveling_plan,
+        strongbox_recs=strongbox_recs,
     )
 
 

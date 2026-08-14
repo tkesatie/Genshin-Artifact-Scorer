@@ -153,10 +153,11 @@ Keqing:
   set: "Thundering Fury"
   domain: "Midsummer Courtyard"
   useful_stats: [CD, CR, "ATK%", EM]
-  main_stats: {Sands: ["ATK%"], Goblet: ["ElectroDMG%"], Circlet: [CD, CR]}
+  main_stats: {Sands: ["ATK%", EM], Goblet: ["ElectroDMG%"], Circlet: [CD, CR]}
   primary_stat: ATK
   evaluation_pipeline:
     - {type: standard_damage}
+    - {type: spread_reaction, config: {coefficient: 0.8}}   # Aggravate
     - {type: personal_damage}
 
 Lauma:
@@ -213,7 +214,7 @@ Columbina:
   set: Aubade
   domain: "Nod Krai 2"
   useful_stats: [ER, EM, CD, CR, "HP%"]
-  main_stats: {Sands: [ER, "HP%"], Goblet: ["HP%", "HydroDMG%"], Circlet: [CR, CD, "HP%"]}
+  main_stats: {Sands: [ER, "HP%"], Goblet: ["HP%"], Circlet: [CR, CD, "HP%"]}
   primary_stat: HP
   evaluation_pipeline:
     - {type: standard_damage}
@@ -266,7 +267,7 @@ Candace:
   element: Hydro
   role: Support
   set: Emblem
-  domain: "Sumeru 1"
+  domain: "Inazuma 1"
   useful_stats: [ER, "HP%", HP]
   main_stats: {Sands: ["HP%", ER], Goblet: ["HP%"], Circlet: ["HP%"]}
   primary_stat: HP
@@ -292,7 +293,7 @@ Linnea:
   role: Sub-DPS
   set: Husk
   domain: "Inazuma 2"
-  useful_stats: [ER, "DEF%", CR, CD, EM]
+  useful_stats: ["DEF%", CR, CD, EM]
   main_stats: {Sands: ["DEF%"], Goblet: ["DEF%"], Circlet: [CR, CD, "DEF%"]}
   primary_stat: DEF
   evaluation_pipeline:
@@ -344,11 +345,12 @@ Fischl:
   role: Sub-DPS
   set: "Golden Troupe"
   domain: "Fontaine 1"
-  useful_stats: [ER, CD, CR, "ATK%"]
-  main_stats: {Sands: ["ATK%"], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}
+  useful_stats: [ER, CD, CR, "ATK%", EM]
+  main_stats: {Sands: ["ATK%", EM], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
   evaluation_pipeline:
     - {type: standard_damage}
+    - {type: spread_reaction, config: {coefficient: 0.8}}   # Aggravate
     - {type: personal_damage}
 
 Ororon:
@@ -357,11 +359,12 @@ Ororon:
   role: Sub-DPS
   set: Scroll
   domain: "Natlan 1"
-  useful_stats: [ER, CD, CR, "ATK%"]
-  main_stats: {Sands: ["ATK%", ER], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}
+  useful_stats: [ER, CD, CR, "ATK%", EM]
+  main_stats: {Sands: ["ATK%", EM, ER], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
   evaluation_pipeline:
     - {type: standard_damage}
+    - {type: spread_reaction, config: {coefficient: 0.8}}   # Aggravate
     - {type: personal_damage}
 
 Xingqiu:
@@ -389,17 +392,18 @@ Bennett:
   evaluation_pipeline:
     - {type: hp_max}
 
-Xiangling:
+Diluc:
   usage: "IT Only"
   element: Pyro
-  role: Sub-DPS
-  set: Emblem
-  domain: "Inazuma 1"
-  useful_stats: [ER, CD, CR, "ATK%"]
-  main_stats: {Sands: ["ATK%", ER], Goblet: ["PyroDMG%"], Circlet: [CR, CD]}
+  role: DPS
+  set: Gilded
+  domain: "Sumeru 1"
+  useful_stats: [CR, CD, "ATK%", EM, ER]
+  main_stats: {Sands: ["ATK%", EM], Goblet: ["PyroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
   evaluation_pipeline:
     - {type: standard_damage}
+    - {type: reaction_damage, config: {reaction: vaporize}}
     - {type: personal_damage}
 
 Jean:
@@ -421,11 +425,12 @@ Diluc:
   role: DPS
   set: Gilded
   domain: "Sumeru 1"
-  useful_stats: [CR, CD, "ATK%", ER]
-  main_stats: {Sands: ["ATK%"], Goblet: ["PyroDMG%"], Circlet: [CR, CD]}
+  useful_stats: [CR, CD, "ATK%", EM, ER]
+  main_stats: {Sands: ["ATK%", EM], Goblet: ["PyroDMG%"], Circlet: [CR, CD]}
   primary_stat: ATK
   evaluation_pipeline:
     - {type: standard_damage}
+    - {type: reaction_damage, config: {reaction: vaporize}}
     - {type: personal_damage}
 
 Gorou:
@@ -582,3 +587,56 @@ Thoma:
   primary_stat: HP
   evaluation_pipeline:
     - {type: hp_max}
+
+Collei:
+  usage: "IT Only"
+  element: Dendro
+  role: Sub-DPS
+  set: Deepwood
+  domain: "Sumeru 1"
+  useful_stats: [ER, CD, CR, "ATK%", EM]
+  main_stats: {Sands: ["ATK%", EM, ER], Goblet: ["DendroDMG%"], Circlet: [CR, CD]}
+  primary_stat: ATK
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: spread_reaction, config: {coefficient: 1.0}}   # Spread
+    - {type: personal_damage}
+
+Beidou:
+  usage: "IT Only"
+  element: Electro
+  role: Sub-DPS
+  set: Emblem
+  domain: "Inazuma 1"
+  useful_stats: [ER, CD, CR, "ATK%", EM]
+  main_stats: {Sands: ["ATK%", EM, ER], Goblet: ["ElectroDMG%"], Circlet: [CR, CD]}
+  primary_stat: ATK
+  evaluation_pipeline:
+    - {type: standard_damage}
+    - {type: spread_reaction, config: {coefficient: 0.8}}   # Aggravate
+    - {type: personal_damage}
+
+Iansan:
+  usage: "IT Only"
+  element: Electro
+  role: Support
+  set: Scroll
+  domain: "Natlan 1"
+  useful_stats: [ER, "ATK%"]
+  main_stats: {Sands: ["ATK%", ER], Goblet: ["ATK%"], Circlet: ["ATK%"]}
+  primary_stat: ATK
+  scaling: [{stat: base_atk, weight: 0.4}]
+  evaluation_pipeline:
+    - {type: maximize_scaled_value}
+
+Kazuha:
+  usage: "IT Only"
+  element: Anemo
+  role: Support
+  set: VV
+  domain: Remembrance
+  useful_stats: [ER, EM]
+  main_stats: {Sands: [EM, ER], Goblet: [EM], Circlet: [EM]}
+  primary_stat: EM
+  evaluation_pipeline:
+    - {type: em_max}

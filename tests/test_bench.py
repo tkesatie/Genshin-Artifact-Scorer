@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from bench import max_possible_useful_rolls
+from bench import find_bench_potential, max_possible_useful_rolls
 
 
 ROLL_VALUES = {
@@ -86,3 +86,59 @@ def test_useful_active_substat_keeps_old_ceiling_behavior():
     # ceiling = current(1 base line) + all 5 remaining events = 6.
     art = make_artifact(level=0, substats=["eleMas", "def", "atk", "critRate_"])
     assert max_possible_useful_rolls(art, USEFUL, ROLL_VALUES) == (1, 6)
+
+# ---------------------------------------------------------------------------
+# find_bench_potential - max-level (already-finished) bench pieces are included
+# ---------------------------------------------------------------------------
+
+RULES = {
+    "base_thresholds": {"Active|DPS": {"good": 6, "excellent": 7}},
+    "stat_pool_adjustment": [{"stat_count": 1, "good_adj": 0, "excellent_adj": 0}],
+    "slot_adjustment": {
+        s: {"good_adj": 0, "excellent_adj": 0}
+        for s in ["Flower", "Feather", "Sands", "Goblet", "Circlet"]
+    },
+    "character_overrides": {},
+}
+
+ROSTER = {
+    "TestChar": {
+        "set": "SetA",
+        "usage": "Active",
+        "role": "DPS",
+        "useful_stats": ["CR", "CD"],
+    },
+}
+
+
+def _good_artifact(level=0, rarity=5):
+    # 5-star flower on the bench (no location), matching TestChar's set "SetA",
+    # with four initial-value (no-growth) substats.
+    return {
+        "id": "bench-flower",
+        "slotKey": "flower",
+        "setKey": "SetA",
+        "rarity": rarity,
+        "level": level,
+        "location": None,
+        "mainStatKey": "hp",
+        "mainStatValue": 4780.0,
+        "substats": [substat("critRate_"), substat("critDMG_"), substat("eleMas"), substat("def")],
+        "unactivatedSubstats": [],
+    }
+
+
+def test_find_bench_potential_includes_max_level_piece():
+    # A finished (level 20) on-set bench piece must be evaluated, NOT skipped:
+    # the optimizer / leveling planner need it as a zero-Mora slot option so they
+    # don't waste Mora leveling an under-leveled piece that can never outclass it.
+    results = find_bench_potential({"artifacts": [_good_artifact(level=20)]}, ROSTER, RULES, ROLL_VALUES)
+    matches = [r for r in results if r["character"] == "TestChar" and r["slot"] == "Flower"]
+    assert len(matches) == 1
+    assert matches[0]["level"] == 20
+    assert matches[0]["levels_needed"] == 0
+    # Two useful lines (CR, CD) at initial value -> current 2, and with zero
+    # remaining events the ceiling collapses to the current rolls.
+    assert matches[0]["current_rolls"] == 2
+    assert matches[0]["max_rolls"] == 2
+    assert matches[0]["expected_rolls"] == 2
